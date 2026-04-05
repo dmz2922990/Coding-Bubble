@@ -1,0 +1,78 @@
+{
+  "name": "@desktop-claw/desktop",
+  "version": "0.0.3",
+  "private": true,
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "pnpm run build:backend && pnpm run build:skills && electron-vite dev",
+    "build": "pnpm run build:backend && electron-vite build",
+    "preview": "electron-vite preview",
+    "package": "pnpm run build:backend && pnpm run build:skills && electron-vite build && electron-builder --mac",
+    "package:mac": "pnpm run build:backend && pnpm run build:skills && electron-vite build && electron-builder --mac",
+    "package:win": "pnpm run build:backend && pnpm run build:skills && electron-vite build && electron-builder --win",
+    "build:backend": "pnpm --filter @desktop-claw/backend run build",
+    "build:skills": "tsc -p ../../packages/backend/src/agent/skills/tsconfig.scripts.json && node ../../scripts/build-skills.mjs",
+    "typecheck": "pnpm run build:backend && tsc -p ../../packages/backend/tsconfig.json --noEmit && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
+  },
+  "build": {
+    "appId": "com.djtang.desktop-claw",
+    "productName": "Desktop-Claw",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/persona",
+        "to": "persona"
+      },
+      {
+        "from": "resources/skills",
+        "to": "skills"
+      }
+    ],
+    "mac": {
+      "icon": "resources/icon.icns",
+      "target": ["dmg", "zip"],
+      "category": "public.app-category.productivity",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "dmg": {
+      "title": "${productName} ${version}"
+    },
+    "win": {
+      "icon": "resources/icon.ico",
+      "target": ["nsis", "portable"],
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Desktop-Claw"
+    }
+  },
+  "dependencies": {
+    "@desktop-claw/backend": "workspace:*",
+    "@desktop-claw/shared": "workspace:*",
+    "@fastify/websocket": "^11.2.0",
+    "fastify": "^5.8.2",
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@types/ws": "^8.18.1",
+    "@vitejs/plugin-react": "^4.3.0",
+    "electron": "^34.0.0",
+    "electron-builder": "^26.8.1",
+    "electron-vite": "^2.3.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "typescript": "^5.4.0"
+  }
+}

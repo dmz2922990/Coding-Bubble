@@ -1,0 +1,174 @@
+/* ── ClawProfile 角色面板 ─────────────────────────────── */
+
+.claw-profile {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.claw-profile::-webkit-scrollbar {
+  width: 4px;
+}
+
+.claw-profile::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+.claw-profile__loading,
+.claw-profile__empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(240, 240, 240, 0.4);
+  font-size: 14px;
+}
+
+/* ── 卡片 ────────────────────────────────────────────── */
+
+.claw-profile__card {
+  background: rgba(50, 50, 56, 0.5);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.claw-profile__card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ff9441;
+  margin-bottom: 12px;
+}
+
+/* ── Claw 自我介绍 ───────────────────────────────────── */
+
+.claw-profile__section {
+  margin-bottom: 10px;
+}
+
+.claw-profile__section:last-child {
+  margin-bottom: 0;
+}
+
+.claw-profile__intro {
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(240, 240, 240, 0.85);
+  margin: 0;
+}
+
+/* ── 性格标签 ────────────────────────────────────────── */
+
+.claw-profile__traits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.claw-profile__trait-badge {
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(255, 148, 65, 0.12);
+  color: #ff9441;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ── 段落文本 ────────────────────────────────────────── */
+
+.claw-profile__section-block {
+  margin-top: 4px;
+}
+
+.claw-profile__section-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(240, 240, 240, 0.5);
+  margin-bottom: 6px;
+}
+
+.claw-profile__text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(240, 240, 240, 0.75);
+  margin: 0 0 2px;
+}
+
+/* ── 分组 ────────────────────────────────────────────── */
+
+.claw-profile__group {
+  margin-bottom: 10px;
+}
+
+.claw-profile__group:last-child {
+  margin-bottom: 0;
+}
+
+.claw-profile__group-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(240, 240, 240, 0.5);
+  margin-bottom: 6px;
+}
+
+/* ── Key-Value 列表 ──────────────────────────────────── */
+
+.claw-profile__kv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.claw-profile__kv {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.claw-profile__kv-key {
+  color: rgba(240, 240, 240, 0.5);
+  flex-shrink: 0;
+  min-width: 48px;
+}
+
+.claw-profile__kv-value {
+  color: rgba(240, 240, 240, 0.85);
+}
+
+/* ── 列表 ────────────────────────────────────────────── */
+
+.claw-profile__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.claw-profile__list li {
+  position: relative;
+  padding-left: 14px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: rgba(240, 240, 240, 0.75);
+}
+
+.claw-profile__list li::before {
+  content: '·';
+  position: absolute;
+  left: 0;
+  color: #ff9441;
+  font-weight: 700;
+}
+
+/* ── 占位文字 ────────────────────────────────────────── */
+
+.claw-profile__placeholder {
+  font-size: 13px;
+  color: rgba(240, 240, 240, 0.35);
+  margin: 0;
+  font-style: italic;
+}

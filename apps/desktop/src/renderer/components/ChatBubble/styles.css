@@ -1,0 +1,72 @@
+@keyframes bubble-slide-in {
+  from {
+    transform: translateY(8px) scale(0.95);
+  }
+  to {
+    transform: translateY(0) scale(1);
+  }
+}
+
+.chat-bubble {
+  position: relative;
+  max-width: 200px;
+  padding: 8px 14px;
+  margin-bottom: 8px;
+  background: rgba(30, 30, 30, 0.88);
+  border-radius: 12px;
+  animation: bubble-slide-in 0.25s ease;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+}
+
+/* 展开态气泡跟 QuickInput 同宽 */
+.ball-root--expanded .chat-bubble {
+  max-width: none;
+}
+
+/* 展开态取消行数限制，完整展示内容 */
+.ball-root--expanded .chat-bubble__text {
+  -webkit-line-clamp: unset;
+  display: block;
+  overflow: visible;
+}
+
+.chat-bubble--hiding {
+  opacity: 0 !important;
+  transform: translateY(-4px) scale(0.95);
+}
+
+.chat-bubble__text {
+  color: #f0f0f0;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.chat-bubble__tail {
+  position: absolute;
+  bottom: -6px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid rgba(30, 30, 30, 0.88);
+}
+
+.chat-bubble__tail--center {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.chat-bubble__tail--left {
+  left: 24px;
+}
+
+.chat-bubble__tail--right {
+  right: 24px;
+}
