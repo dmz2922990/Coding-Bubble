@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, Menu, screen } from 'electron'
 import { randomBytes } from 'crypto'
 import { join, basename, extname } from 'path'
 import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync } from 'fs'
-import { startBackend, copyInitialTemplates } from '@desktop-claw/backend'
+import { startBackend, copyInitialTemplates } from '@coding-bubble/backend'
 
 let ballWin: BrowserWindow | null = null
 let panelWin: BrowserWindow | null = null

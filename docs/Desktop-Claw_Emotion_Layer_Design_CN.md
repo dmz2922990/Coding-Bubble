@@ -1,8 +1,8 @@
-# Desktop-Claw 情绪层设计稿
+# Coding-bubble 情绪层设计稿
 
 ## 1. 文档目标
 
-本文档用于定义 Desktop-Claw 第一阶段“情绪层”的产品设计与技术实现方向。
+本文档用于定义 Coding-bubble 第一阶段“情绪层”的产品设计与技术实现方向。
 
 这不是一个纯视觉换皮方案，也不是一个完整桌宠动画系统。
 它的目标是：
@@ -161,8 +161,8 @@ Claw 正在“投入”和你相处，有精神、有回应感。
 - 当前是否在流式回复或刚完成任务
 
 这些信息现有项目基本已经具备，尤其是：
-[emotion.ts](/Users/djtang/Code/workshop/Desktop-Claw/packages/backend/src/memory/emotion.ts)
-[memory-service.ts](/Users/djtang/Code/workshop/Desktop-Claw/packages/backend/src/memory/memory-service.ts)
+[emotion.ts](/Users/djtang/Code/workshop/Coding-bubble/packages/backend/src/memory/emotion.ts)
+[memory-service.ts](/Users/djtang/Code/workshop/Coding-bubble/packages/backend/src/memory/memory-service.ts)
 
 ### 7.2 基础规则
 
@@ -317,7 +317,7 @@ interface EmotionSnapshot {
 
 ### 10.1 结构建议
 
-建议将当前的 [emotion.ts](/Users/djtang/Code/workshop/Desktop-Claw/packages/backend/src/memory/emotion.ts) 从纯函数升级为两层：
+建议将当前的 [emotion.ts](/Users/djtang/Code/workshop/Coding-bubble/packages/backend/src/memory/emotion.ts) 从纯函数升级为两层：
 
 #### 层 1：纯规则推导
 
@@ -575,7 +575,7 @@ useClawEmotion()
 
 优先接入位置：
 
-- [FloatingBall/index.tsx](/Users/djtang/Code/workshop/Desktop-Claw/apps/desktop/src/renderer/components/FloatingBall/index.tsx)
+- [FloatingBall/index.tsx](/Users/djtang/Code/workshop/Coding-bubble/apps/desktop/src/renderer/components/FloatingBall/index.tsx)
 
 第二阶段再接入：
 
@@ -733,7 +733,7 @@ interface EmotionSignals {
 
 ## 19. 最终判断
 
-情绪层不是“可爱化工程”，而是 Desktop-Claw 作为 Companion-first 产品的第一层产品骨架。
+情绪层不是“可爱化工程”，而是 Coding-bubble 作为 Companion-first 产品的第一层产品骨架。
 
 它解决的是：
 

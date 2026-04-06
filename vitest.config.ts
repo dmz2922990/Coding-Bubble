@@ -8,7 +8,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@desktop-claw/shared': resolve(__dirname, 'packages/shared/src/index.ts')
+      '@coding-bubble/shared': resolve(__dirname, 'packages/shared/src/index.ts')
     }
   }
 })

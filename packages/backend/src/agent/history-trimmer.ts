@@ -1,7 +1,7 @@
 /**
  * 历史消息裁剪模块 — 从 loop.ts 提取，便于独立测试
  */
-import type { ChatMessageData } from '@desktop-claw/shared'
+import type { ChatMessageData } from '@coding-bubble/shared'
 import { estimateMessageTokens, estimateHistoryTokens } from '../llm/token-estimator'
 import { loadLLMConfig } from '../llm/config'
 

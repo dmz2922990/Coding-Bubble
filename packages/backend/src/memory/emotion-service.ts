@@ -1,5 +1,5 @@
-import type { EmotionSnapshot, EmotionState } from '@desktop-claw/shared'
-import { EMOTION_PRIORITY, EMOTION_MIN_HOLD_MS, EMOTION_DEBOUNCE_MS } from '@desktop-claw/shared'
+import type { EmotionSnapshot, EmotionState } from '@coding-bubble/shared'
+import { EMOTION_PRIORITY, EMOTION_MIN_HOLD_MS, EMOTION_DEBOUNCE_MS } from '@coding-bubble/shared'
 import { deriveEmotionState, type EmotionSignals } from './emotion'
 import { memoryService } from './memory-service'
 

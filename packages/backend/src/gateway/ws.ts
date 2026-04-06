@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import websocket from '@fastify/websocket'
 import type { WebSocket } from 'ws'
-import type { ChatMessageData } from '@desktop-claw/shared'
+import type { ChatMessageData } from '@coding-bubble/shared'
 import { TaskCoordinator } from '../task-coordinator'
 import { memoryService } from '../memory/memory-service'
 import { emotionService } from '../memory/emotion-service'

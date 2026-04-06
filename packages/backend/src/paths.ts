@@ -4,9 +4,9 @@
  * 两种模式：
  * - 开发模式（pnpm dev）: 项目根目录下的 data/
  * - 生产模式（打包安装后）:
- *     macOS:   ~/Library/Application Support/Desktop-Claw/
- *     Windows: %LOCALAPPDATA%/Desktop-Claw/
- *     Linux:   ~/.config/Desktop-Claw/
+ *     macOS:   ~/Library/Application Support/Coding-bubble/
+ *     Windows: %LOCALAPPDATA%/Coding-bubble/
+ *     Linux:   ~/.config/Coding-bubble/
  *   （由 Electron app.getPath('userData') 自动处理平台差异）
  *
  * 由 main 进程在启动 backend 时通过 initDataDir() 注入路径；

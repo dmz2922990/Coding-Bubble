@@ -1,4 +1,4 @@
-import type { ChatMessageData, ToolSchema, ToolCall } from '@desktop-claw/shared'
+import type { ChatMessageData, ToolSchema, ToolCall } from '@coding-bubble/shared'
 import { loadLLMConfig } from './config'
 
 export interface StreamCallbacks {

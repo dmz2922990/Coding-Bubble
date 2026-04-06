@@ -1,4 +1,4 @@
-import type { ChatMessageData } from '@desktop-claw/shared'
+import type { ChatMessageData } from '@coding-bubble/shared'
 
 /**
  * 轻量 token 估算（不依赖任何 tokenizer 库，模型无关）

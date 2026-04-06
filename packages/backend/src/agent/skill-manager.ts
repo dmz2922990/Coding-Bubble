@@ -2,7 +2,7 @@ import { join } from 'path'
 import { readFileSync, existsSync } from 'fs'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
-import type { ToolSchema, ToolResult, ToolDefinition } from '@desktop-claw/shared'
+import type { ToolSchema, ToolResult, ToolDefinition } from '@coding-bubble/shared'
 import { getDataDir } from '../paths'
 import {
   extractFrontmatter,

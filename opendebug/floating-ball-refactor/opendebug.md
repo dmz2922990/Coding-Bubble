@@ -4,7 +4,7 @@
 # Code Insight: 悬浮球功能裁剪与双击改造
 
 ## 问题描述
-需要对 Desktop-Claw 项目进行裁剪，保留悬浮球功能，并将双击交互改为弹出面板。
+需要对 Coding-bubble 项目进行裁剪，保留悬浮球功能，并将双击交互改为弹出面板。
 
 ## 调查状态
 - [x] 代码分析
@@ -24,7 +24,7 @@
 ##### 2.1 项目架构
 
 ```
-Desktop-Claw/
+Coding-bubble/
 ├── apps/desktop/           # Electron 主应用
 │   ├── src/main/          # 主进程（窗口管理、IPC）
 │   ├── src/preload/       # 预加载脚本（contextBridge）

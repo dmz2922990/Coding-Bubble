@@ -1,14 +1,14 @@
 {
-  "name": "desktop-claw",
+  "name": "coding-bubble",
   "version": "0.0.3",
   "private": true,
   "description": "A lightweight desktop AI companion living as a floating ball on your screen. Supports macOS & Windows.",
   "license": "MIT",
   "packageManager": "pnpm@9.0.0",
   "scripts": {
-    "dev": "pnpm --filter @desktop-claw/desktop run dev",
-    "build": "pnpm --filter @desktop-claw/desktop run build",
-    "package": "pnpm --filter @desktop-claw/desktop run package",
+    "dev": "pnpm --filter @coding-bubble/desktop run dev",
+    "build": "pnpm --filter @coding-bubble/desktop run build",
+    "package": "pnpm --filter @coding-bubble/desktop run package",
     "test": "vitest run",
     "typecheck": "pnpm -r run typecheck",
     "lint": "pnpm -r run lint"

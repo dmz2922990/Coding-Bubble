@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync, statSync, existsSync } from 'fs'
 import { join, basename } from 'path'
-import type { ToolDefinition, ToolSchema } from '@desktop-claw/shared'
+import type { ToolDefinition, ToolSchema } from '@coding-bubble/shared'
 
 // ─── 类型 ──────────────────────────────────────
 

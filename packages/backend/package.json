@@ -1,5 +1,5 @@
 {
-  "name": "@desktop-claw/backend",
+  "name": "@coding-bubble/backend",
   "version": "0.0.2",
   "private": true,
   "type": "commonjs",
@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@desktop-claw/shared": "workspace:*",
+    "@coding-bubble/shared": "workspace:*",
     "@fastify/websocket": "^11.2.0",
     "fastify": "^5.8.2",
     "mammoth": "^1.12.0",

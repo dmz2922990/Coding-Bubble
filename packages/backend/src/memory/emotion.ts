@@ -1,5 +1,5 @@
 import type { PersistedMessage } from './memory-service'
-import type { EmotionState, EmotionSnapshot } from '@desktop-claw/shared'
+import type { EmotionState, EmotionSnapshot } from '@coding-bubble/shared'
 
 // ─── 话术池 ──────────────────────────────────
 

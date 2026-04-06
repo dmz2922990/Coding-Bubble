@@ -1,10 +1,10 @@
-# Desktop-Claw Product Strategy
+# Coding-bubble Product Strategy
 
 ## 1. Direction
 
 ### Core conclusion
 
-Desktop-Claw should not become a pure desktop pet, and it should not become a pure OpenClaw-style agent platform either.
+Coding-bubble should not become a pure desktop pet, and it should not become a pure OpenClaw-style agent platform either.
 
 The right direction is:
 
@@ -14,7 +14,7 @@ An AI companion that lives on the desktop, has presence and personality like a p
 
 ### One-line definition
 
-Desktop-Claw is a desktop-native AI companion that stays with you, remembers you, and quietly helps you handle small but frequent tasks.
+Coding-bubble is a desktop-native AI companion that stays with you, remembers you, and quietly helps you handle small but frequent tasks.
 
 ### Product formula
 
@@ -39,12 +39,12 @@ Desktop-Claw is a desktop-native AI companion that stays with you, remembers you
 
 ### External short version
 
-Desktop-Claw is an AI companion that lives on your desktop.
+Coding-bubble is an AI companion that lives on your desktop.
 It stays nearby, remembers your rhythms, and helps with the small things that happen every day.
 
 ### External medium version
 
-Desktop-Claw is not just a chat window in a desktop shell.
+Coding-bubble is not just a chat window in a desktop shell.
 It is an AI companion that stays on your screen, remembers who you are, builds continuity over time, and helps with lightweight daily tasks like notes, file reading, quick thinking, and end-of-day reflection.
 
 ### Homepage headline options
@@ -412,7 +412,7 @@ This directly damages the companion promise.
 
 ## 8. Product Shape We Should Aim For
 
-If successful, Desktop-Claw should feel like this:
+If successful, Coding-bubble should feel like this:
 
 - A small living presence on the desktop
 - A companion that remembers and adapts
@@ -445,7 +445,7 @@ If a feature fails all three, it should probably not be built.
 
 ## 10. Final Recommendation
 
-Desktop-Claw should become a new category:
+Coding-bubble should become a new category:
 
 **a companion-first desktop AI**
 

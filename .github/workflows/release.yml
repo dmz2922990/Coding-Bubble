@@ -20,7 +20,7 @@ jobs:
       - run: pnpm install
 
       - name: Build & Package (macOS)
-        run: pnpm --filter @desktop-claw/desktop run package:mac
+        run: pnpm --filter @coding-bubble/desktop run package:mac
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
@@ -45,7 +45,7 @@ jobs:
       - run: pnpm install
 
       - name: Build & Package (Windows)
-        run: pnpm --filter @desktop-claw/desktop run package:win
+        run: pnpm --filter @coding-bubble/desktop run package:win
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4

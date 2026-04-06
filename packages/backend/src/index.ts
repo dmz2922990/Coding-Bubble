@@ -33,7 +33,7 @@ export async function startBackend(options: {
   const app = Fastify({ logger: false })
   const accessConfig: BackendAccessConfig = { authToken, allowedOrigins }
 
-  // 仅允许 Desktop-Claw 自己的渲染进程跨域访问本地后端。
+  // 仅允许 Coding-bubble 自己的渲染进程跨域访问本地后端。
   app.addHook('onRequest', async (request, reply) => {
     const origin = request.headers.origin
     const corsOrigin = buildCorsOrigin(origin)

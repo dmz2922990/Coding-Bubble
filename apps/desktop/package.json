@@ -1,5 +1,5 @@
 {
-  "name": "@desktop-claw/desktop",
+  "name": "@coding-bubble/desktop",
   "version": "0.0.3",
   "private": true,
   "main": "out/main/index.js",
@@ -10,13 +10,13 @@
     "package": "pnpm run build:backend && pnpm run build:skills && electron-vite build && electron-builder --mac",
     "package:mac": "pnpm run build:backend && pnpm run build:skills && electron-vite build && electron-builder --mac",
     "package:win": "pnpm run build:backend && pnpm run build:skills && electron-vite build && electron-builder --win",
-    "build:backend": "pnpm --filter @desktop-claw/backend run build",
+    "build:backend": "pnpm --filter @coding-bubble/backend run build",
     "build:skills": "tsc -p ../../packages/backend/src/agent/skills/tsconfig.scripts.json && node ../../scripts/build-skills.mjs",
     "typecheck": "pnpm run build:backend && tsc -p ../../packages/backend/tsconfig.json --noEmit && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
   },
   "build": {
-    "appId": "com.djtang.desktop-claw",
-    "productName": "Desktop-Claw",
+    "appId": "com.djtang.coding-bubble",
+    "productName": "Coding-bubble",
     "directories": {
       "output": "release"
     },
@@ -52,12 +52,12 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Desktop-Claw"
+      "shortcutName": "Coding-bubble"
     }
   },
   "dependencies": {
-    "@desktop-claw/backend": "workspace:*",
-    "@desktop-claw/shared": "workspace:*",
+    "@coding-bubble/backend": "workspace:*",
+    "@coding-bubble/shared": "workspace:*",
     "@fastify/websocket": "^11.2.0",
     "fastify": "^5.8.2",
     "ws": "^8.19.0"

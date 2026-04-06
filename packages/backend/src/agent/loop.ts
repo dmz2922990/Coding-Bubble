@@ -1,4 +1,4 @@
-import type { ChatMessageData, ToolCall } from '@desktop-claw/shared'
+import type { ChatMessageData, ToolCall } from '@coding-bubble/shared'
 import { streamChat } from '../llm/client'
 import { loadLLMConfig } from '../llm/config'
 import { estimateTokens, estimateMessageTokens, estimateHistoryTokens } from '../llm/token-estimator'
@@ -208,7 +208,7 @@ function callLLM(
   onToken: (delta: string) => void,
   controller: AbortController,
   systemPrompt: string,
-  tools: import('@desktop-claw/shared').ToolSchema[]
+  tools: import('@coding-bubble/shared').ToolSchema[]
 ): Promise<LLMResult> {
   return new Promise((resolve) => {
     const abort = streamChat(

@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlinkSync } from 'fs'
 import { join } from 'path'
-import type { ChatMessageData } from '@desktop-claw/shared'
+import type { ChatMessageData } from '@coding-bubble/shared'
 import { streamChat } from '../llm/client'
 import { loadLLMConfig } from '../llm/config'
 import { estimateHistoryTokens } from '../llm/token-estimator'

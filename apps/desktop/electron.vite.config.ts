@@ -4,11 +4,11 @@ import { resolve } from 'path'
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin({ exclude: ['@desktop-claw/backend', '@desktop-claw/shared'] })],
+    plugins: [externalizeDepsPlugin({ exclude: ['@coding-bubble/backend', '@coding-bubble/shared'] })],
     resolve: {
       alias: {
-        '@desktop-claw/backend': resolve(__dirname, '../../packages/backend/src/index.ts'),
-        '@desktop-claw/shared': resolve(__dirname, '../../packages/shared/src/index.ts')
+        '@coding-bubble/backend': resolve(__dirname, '../../packages/backend/src/index.ts'),
+        '@coding-bubble/shared': resolve(__dirname, '../../packages/shared/src/index.ts')
       }
     }
   },

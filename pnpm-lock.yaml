@@ -14,10 +14,10 @@ importers:
 
   apps/desktop:
     dependencies:
-      '@desktop-claw/backend':
+      '@coding-bubble/backend':
         specifier: workspace:*
         version: link:../../packages/backend
-      '@desktop-claw/shared':
+      '@coding-bubble/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@fastify/websocket':
@@ -66,7 +66,7 @@ importers:
 
   packages/backend:
     dependencies:
-      '@desktop-claw/shared':
+      '@coding-bubble/shared':
         specifier: workspace:*
         version: link:../shared
       '@fastify/websocket':

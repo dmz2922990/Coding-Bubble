@@ -1,4 +1,4 @@
-import type { ChatMessageData } from '@desktop-claw/shared'
+import type { ChatMessageData } from '@coding-bubble/shared'
 import { agentLoop } from '../agent/loop'
 
 // ─── 类型定义 ─────────────────────────────────
