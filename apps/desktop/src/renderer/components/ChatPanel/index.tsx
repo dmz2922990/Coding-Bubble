@@ -148,6 +148,12 @@ export function ChatPanel(): React.JSX.Element {
     }
   }, [tabManager.activeTabId])
 
+  const handleAnswer = useCallback((answer: string) => {
+    if (tabManager.activeTabId !== 'chat') {
+      window.electronAPI.session.answer(tabManager.activeTabId, answer)
+    }
+  }, [tabManager.activeTabId])
+
   const activeTab = tabManager.tabs.find((t) => t.id === tabManager.activeTabId)
 
   const renderActiveTabContent = (): React.ReactNode => {
@@ -166,6 +172,7 @@ export function ChatPanel(): React.JSX.Element {
           onAllow={handleApprove}
           onDeny={handleDeny}
           onAlwaysAllow={handleAlwaysAllow}
+          onAnswer={handleAnswer}
         />
       )
     }

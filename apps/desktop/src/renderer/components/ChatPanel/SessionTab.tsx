@@ -1,4 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import type { ChatItem, SessionInfo } from './types'
 import './styles.css'
 
@@ -25,9 +27,10 @@ interface Props {
   onAllow?: () => void
   onDeny?: () => void
   onAlwaysAllow?: () => void
+  onAnswer?: (answer: string) => void
 }
 
-export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow }: Props): React.JSX.Element {
+export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onAnswer }: Props): React.JSX.Element {
   const listRef = useRef<HTMLDivElement>(null)
   const [autoScroll, setAutoScroll] = useState(true)
   const [newCount, setNewCount] = useState(0)
@@ -87,7 +90,24 @@ export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow }: P
         </button>
       )}
 
-      {session.phase === 'waitingForApproval' && (
+      {session.phase === 'waitingForApproval' && session.toolName === 'AskUserQuestion' ? (
+        <AskUserQuestion
+          question={(parseAskUserQuestion(session.toolInput)?.question) ?? ''}
+          header={parseAskUserQuestion(session.toolInput)?.header}
+          options={(parseAskUserQuestion(session.toolInput)?.options) ?? []}
+          multiSelect={parseAskUserQuestion(session.toolInput)?.multiSelect}
+          onAnswer={(answer) => {
+            if (onAnswer) {
+              if (Array.isArray(answer)) {
+                onAnswer(JSON.stringify(answer))
+              } else {
+                onAnswer(answer)
+              }
+            }
+          }}
+          onDeny={onDeny ?? (() => {})}
+        />
+      ) : session.phase === 'waitingForApproval' ? (
         <PermissionBar
           toolName={session.toolName ?? 'unknown'}
           toolInput={session.toolInput}
@@ -95,7 +115,7 @@ export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow }: P
           onDeny={onDeny}
           onAlwaysAllow={onAlwaysAllow}
         />
-      )}
+      ) : null}
     </div>
   )
 }
@@ -112,8 +132,34 @@ function MessageItem({ item }: { item: ChatItem }): React.JSX.Element {
     case 'assistant':
       return (
         <div className="chat-msg chat-msg--assistant">
-          <div className="chat-msg__bubble">
-            {item.content}
+          <div className="chat-msg__bubble chat-msg__markdown">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                code({ node, inline, className, children, ...props }) {
+                  return !inline ? (
+                    <pre className="chat-msg__code-block">
+                      <code className={className} {...props}>
+                        {children}
+                      </code>
+                    </pre>
+                  ) : (
+                    <code className="chat-msg__inline-code" {...props}>
+                      {children}
+                    </code>
+                  )
+                },
+                a({ node, children, ...props }) {
+                  return (
+                    <a {...props} target="_blank" rel="noopener noreferrer">
+                      {children}
+                    </a>
+                  )
+                }
+              }}
+            >
+              {item.content}
+            </ReactMarkdown>
           </div>
         </div>
       )
@@ -212,4 +258,146 @@ function PermissionBar({ toolName, onAllow, onDeny, onAlwaysAllow }: PermissionB
       </div>
     </div>
   )
+}
+
+// ── AskUserQuestion Component ─────────────────────────────────────
+
+interface AskUserQuestionProps {
+  question: string
+  header?: string
+  options: Array<{ label: string; description: string }>
+  multiSelect?: boolean
+  onAnswer: (answer: string | string[]) => void
+  onDeny: () => void
+}
+
+function AskUserQuestion({
+  question,
+  header = '请选择',
+  options,
+  multiSelect = false,
+  onAnswer,
+  onDeny
+}: AskUserQuestionProps): React.JSX.Element {
+  const [selected, setSelected] = React.useState<Set<string>>(new Set())
+  const [customInput, setCustomInput] = React.useState('')
+
+  const handleSelect = (label: string) => {
+    const newSelected = new Set(selected)
+    if (multiSelect) {
+      if (newSelected.has(label)) {
+        newSelected.delete(label)
+      } else {
+        newSelected.add(label)
+      }
+    } else {
+      newSelected.clear()
+      newSelected.add(label)
+    }
+    setSelected(newSelected)
+  }
+
+  const handleConfirm = () => {
+    if (selected.size === 0) return
+    if (multiSelect) {
+      onAnswer(Array.from(selected))
+    } else {
+      onAnswer(Array.from(selected)[0])
+    }
+  }
+
+  const handleSendCustom = () => {
+    const trimmed = customInput.trim()
+    if (!trimmed) return
+    if (multiSelect) {
+      const lines = trimmed.split('\n').map(l => l.trim()).filter(l => l.length > 0)
+      onAnswer(lines)
+    } else {
+      onAnswer(trimmed)
+    }
+  }
+
+  return (
+    <div className="ask-user-question">
+      {header && <div className="aqu-header">{header}</div>}
+      <div className="aqu-question">{question}</div>
+
+      <div className="aqu-options">
+        {options.map((opt, idx) => (
+          <button
+            key={idx}
+            className={`aqu-option ${selected.has(opt.label) ? 'selected' : ''}`}
+            onClick={() => handleSelect(opt.label)}
+          >
+            <span className="aqu-option-label">{opt.label}</span>
+            {multiSelect && (
+              <span className="aqu-option-check">
+                {selected.has(opt.label) ? '✓' : ''}
+              </span>
+            )}
+            <span className="aqu-option-desc">{opt.description}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="aqu-custom-input">
+        <textarea
+          className="aqu-textarea"
+          placeholder={multiSelect
+            ? '或直接输入自定义答案（多个答案用换行分隔）...'
+            : '或直接输入自定义答案...'}
+          value={customInput}
+          onChange={(e) => setCustomInput(e.target.value)}
+          rows={multiSelect ? 3 : 2}
+        />
+      </div>
+
+      <div className="aqu-actions">
+        <button
+          className="aqu-btn-send"
+          onClick={handleSendCustom}
+          disabled={!customInput.trim()}
+        >
+          发送自定义答案
+        </button>
+        <button
+          className="aqu-btn-confirm"
+          onClick={handleConfirm}
+          disabled={selected.size === 0}
+        >
+          确认选择{selected.size > 0 && ` (${selected.size})`}
+        </button>
+      </div>
+
+      <button className="aqu-btn-deny" onClick={onDeny}>
+        拒绝此请求
+      </button>
+    </div>
+  )
+}
+
+// ── Helper: Parse AskUserQuestion data ───────────────────────────
+
+interface QuestionData {
+  question: string
+  header?: string
+  options: Array<{ label: string; description: string }>
+  multiSelect?: boolean
+}
+
+function parseAskUserQuestion(toolInput: unknown): QuestionData | null {
+  if (!toolInput || typeof toolInput !== 'object') return null
+
+  const input = toolInput as Record<string, unknown>
+  const questions = input.questions as Array<unknown>
+
+  if (!questions || questions.length === 0) return null
+
+  const q = questions[0] as Record<string, unknown>
+  return {
+    question: (q.question as string) ?? '',
+    header: (q.header as string) ?? undefined,
+    options: (q.options as Array<{ label: string; description: string }>) ?? [],
+    multiSelect: (q.multiSelect as boolean) ?? false
+  }
 }
