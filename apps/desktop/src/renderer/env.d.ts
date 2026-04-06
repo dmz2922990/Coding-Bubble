@@ -12,36 +12,25 @@ declare global {
       dragEnd: () => void
       /** 透明区域点击穿透控制 */
       setIgnoreMouseEvents: (ignore: boolean) => void
-      /** QuickInput 条形输入框 */
-      toggleQuickInput: () => Promise<{ visible: boolean; direction: 'left' | 'right' }>
-      /** 拖拽后重算 QuickInput 方向 */
-      repositionQuickInput: () => Promise<{ direction: 'left' | 'right' } | null>
       /** 右键上下文菜单 */
       showContextMenu: () => void
       /** 关闭当前窗口 */
       closeWindow: () => void
       /** 打开对话面板 */
       openPanel: () => void
-      /** 本地后端运行时配置 */
-      getBackendRuntimeConfig: () => Promise<{
-        httpBaseURL: string
-        wsBaseURL: string
-        authToken: string
-      }>
       /** 读取配置 */
       getConfig: () => Promise<Record<string, unknown>>
       /** 写入配置 */
       setConfig: (config: Record<string, unknown>) => Promise<void>
-      /** 获取拖入文件的原生路径（Electron 28+） */
-      getPathForFile: (file: File) => string
-      /** 解析拖入的文件路径 → 文件元信息 */
-      resolveDroppedFiles: (paths: string[]) => Promise<Array<{ path: string; name: string; ext: string; size: number }>>
-      /** 打开 ChatPanel 并传入文件附件 */
-      openPanelWithFiles: (files: Array<{ path: string; name: string; ext: string; size: number }>) => void
-      /** 监听 main → renderer 传递文件附件 */
-      onReceiveFiles: (callback: (files: Array<{ path: string; name: string; ext: string; size: number }>) => void) => () => void
-      /** 拉取待处理的文件附件 */
-      getPendingFiles: () => Promise<Array<{ path: string; name: string; ext: string; size: number }> | null>
+      /** 会话管理 */
+      session: {
+        list: () => Promise<unknown[]>
+        approve: (sessionId: string) => Promise<void>
+        deny: (sessionId: string, reason?: string) => Promise<void>
+        hooksStatus: () => Promise<{ installed: boolean }>
+        installHooks: () => Promise<void>
+        onUpdate: (cb: (event: unknown, data: unknown) => void) => () => void
+      }
     }
   }
 }

@@ -1,15 +1,10 @@
 import { app, BrowserWindow, ipcMain, Menu, screen } from 'electron'
-import { randomBytes } from 'crypto'
-import { join, basename, extname } from 'path'
-import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync } from 'fs'
-import { startBackend } from '@coding-bubble/backend'
+import { join } from 'path'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 
 let ballWin: BrowserWindow | null = null
 let panelWin: BrowserWindow | null = null
 let settingsWin: BrowserWindow | null = null
-let backendHandle: { close: () => Promise<void>; sealDay: () => Promise<void> } | null = null
-const BACKEND_PORT = 3721
-const BACKEND_AUTH_TOKEN = randomBytes(32).toString('hex')
 
 /** 拖拽时记录光标相对于窗口左上角的偏移量 */
 let dragOffset = { x: 0, y: 0 }
@@ -21,21 +16,6 @@ function resolveDataDir(): string {
   }
   // dev: 项目根目录 data/（__dirname = apps/desktop/out/main/）
   return join(__dirname, '..', '..', '..', '..', 'data')
-}
-
-function resolveAllowedOrigins(): string[] {
-  const allowed = new Set<string>(['null', 'file://'])
-  const rendererURL = process.env['ELECTRON_RENDERER_URL']
-
-  if (rendererURL) {
-    try {
-      allowed.add(new URL(rendererURL).origin)
-    } catch {
-      console.warn('[main] invalid ELECTRON_RENDERER_URL, skip origin allowlist')
-    }
-  }
-
-  return Array.from(allowed)
 }
 
 /** 悬浮球窗口尺寸（含气泡区域） */
@@ -176,14 +156,6 @@ ipcMain.handle('ipc:ping', () => {
 // ── IPC: 打开对话面板 ─────────────────────────────────────
 ipcMain.on('panel:open', () => {
   createPanelWindow()
-})
-
-ipcMain.handle('backend:get-runtime-config', () => {
-  return {
-    httpBaseURL: `http://127.0.0.1:${BACKEND_PORT}`,
-    wsBaseURL: `ws://127.0.0.1:${BACKEND_PORT}`,
-    authToken: BACKEND_AUTH_TOKEN
-  }
 })
 
 // ── IPC: 右键上下文菜单 ───────────────────────────────────
@@ -368,56 +340,35 @@ ipcMain.handle('config:set', (_event, config: Record<string, unknown>) => {
   writeConfig({ ...existing, ...config })
 })
 
-// ── 启动内嵌后端 ───────────────────────────────────────────
-// 后端在 app.whenReady() 内启动，确保顺序可控
+// ── IPC: Session Management (stubs — full impl in Phase 1) ─
+
+ipcMain.handle('session:list', () => {
+  return []
+})
+
+ipcMain.handle('session:approve', async (_event, _sessionId: string) => {
+  console.warn('[main] session:approve called but no session store yet')
+})
+
+ipcMain.handle('session:deny', async (_event, _sessionId: string, _reason?: string) => {
+  console.warn('[main] session:deny called but no session store yet')
+})
+
+ipcMain.handle('session:hooks-status', () => {
+  return { installed: false }
+})
+
+ipcMain.handle('session:install-hooks', async () => {
+  console.warn('[main] session:install-hooks called but not implemented yet')
+})
 
 // ── App 生命周期 ───────────────────────────────────────────
-app.whenReady().then(async () => {
-  try {
-    backendHandle = await startBackend({
-      port: BACKEND_PORT,
-      dataDir: resolveDataDir(),
-      authToken: BACKEND_AUTH_TOKEN,
-      allowedOrigins: resolveAllowedOrigins()
-    })
-  } catch (err: unknown) {
-    console.error('[main] Failed to start backend:', err)
-  }
-
+app.whenReady().then(() => {
   createBallWindow()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createBallWindow()
   })
-})
-
-let isQuitting = false
-app.on('before-quit', (event) => {
-  if (isQuitting) return           // 第二次进入：不拦截，让 Electron 正常退出
-  if (!backendHandle) return       // 后端未启动：直接退出
-  event.preventDefault()
-  isQuitting = true
-
-  // 先关闭所有窗口（断开 WS），再做后端清理
-  for (const win of BrowserWindow.getAllWindows()) {
-    win.destroy()
-  }
-
-  // 关机归档：sealDay → close → exit，设 30s 超时兜底（sealDay 内部有 2×20s LLM 调用）
-  const exitTimer = setTimeout(() => {
-    console.warn('[main] shutdown timeout, force exit')
-    app.exit(0)
-  }, 30000)
-
-  const handle = backendHandle
-  handle.sealDay()
-    .catch((err) => console.error('[main] sealDay error:', err))
-    .then(() => handle.close())
-    .catch((err) => console.error('[main] close error:', err))
-    .finally(() => {
-      clearTimeout(exitTimer)
-      app.exit(0)
-    })
 })
 
 app.on('window-all-closed', () => {

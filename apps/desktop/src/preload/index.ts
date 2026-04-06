@@ -18,14 +18,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showContextMenu: (): void => { ipcRenderer.send('contextmenu:show') },
   /** 关闭当前窗口 */
   closeWindow: (): void => { ipcRenderer.send('window:close') },
-  /** 本地后端运行时配置 */
-  getBackendRuntimeConfig: (): Promise<{
-    httpBaseURL: string
-    wsBaseURL: string
-    authToken: string
-  }> => ipcRenderer.invoke('backend:get-runtime-config'),
   /** 读取配置 */
   getConfig: (): Promise<Record<string, unknown>> => ipcRenderer.invoke('config:get'),
   /** 写入配置 */
-  setConfig: (config: Record<string, unknown>): Promise<void> => ipcRenderer.invoke('config:set', config)
+  setConfig: (config: Record<string, unknown>): Promise<void> => ipcRenderer.invoke('config:set', config),
+  /** 会话管理 */
+  session: {
+    list: (): Promise<unknown[]> => ipcRenderer.invoke('session:list'),
+    approve: (sessionId: string): Promise<void> => ipcRenderer.invoke('session:approve', sessionId),
+    deny: (sessionId: string, reason?: string): Promise<void> => ipcRenderer.invoke('session:deny', sessionId, reason),
+    hooksStatus: (): Promise<{ installed: boolean }> => ipcRenderer.invoke('session:hooks-status'),
+    installHooks: (): Promise<void> => ipcRenderer.invoke('session:install-hooks'),
+    onUpdate: (cb: (event: unknown, data: unknown) => void) => {
+      ipcRenderer.on('session:update', cb)
+      return () => ipcRenderer.removeListener('session:update', cb)
+    }
+  }
 })
