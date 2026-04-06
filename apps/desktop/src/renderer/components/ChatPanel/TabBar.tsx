@@ -1,6 +1,15 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
-import type { TabItem } from './types'
+import type { TabItem, SessionPhaseType } from './types'
 import './TabBar.css'
+
+const TAB_PHASE_COLORS: Record<SessionPhaseType, string> = {
+  idle: '#888',
+  processing: '#4caf50',
+  waitingForInput: '#888',
+  waitingForApproval: '#ff9800',
+  compacting: '#2196f3',
+  ended: '#f44336'
+}
 
 interface Props {
   tabs: TabItem[]
@@ -86,6 +95,9 @@ export function TabBar({ tabs, chatTab, activeTabId, onTabSelect, onTabClose }: 
                       title={tab.title}
                     >
                       <span className="tab-bar__title">{tab.title}</span>
+                      {tab.phase && tab.phase !== 'idle' && (
+                        <span className="tab-bar__dot" style={{ backgroundColor: TAB_PHASE_COLORS[tab.phase] ?? '#888' }} />
+                      )}
                       {tab.closable !== false && (
                         <button
                           className="tab-bar__close"

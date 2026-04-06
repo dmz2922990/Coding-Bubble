@@ -4,6 +4,7 @@ export interface TabItem {
   title: string
   closable?: boolean
   content: React.ReactNode
+  phase?: SessionPhaseType
 }
 
 /** Functions exposed by the tab manager */

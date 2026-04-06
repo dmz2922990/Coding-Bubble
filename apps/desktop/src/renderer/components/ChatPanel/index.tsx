@@ -179,10 +179,12 @@ export function ChatPanel(): React.JSX.Element {
   }, [handleClose])
 
   const allTabs = useMemo(
-    () => tabManager.tabs.map((t) =>
-      t.id === 'chat' ? { ...t, content: null } : t
-    ),
-    [tabManager.tabs]
+    () => tabManager.tabs.map((t) => {
+      if (t.id === 'chat') return { ...t, content: null }
+      const s = sessions.get(t.id)
+      return { ...t, content: null, phase: s?.phase as SessionPhaseType | undefined }
+    }),
+    [tabManager.tabs, sessions]
   )
 
   return (
