@@ -1,14 +1,18 @@
 import React, { useRef, useCallback, useEffect } from 'react'
 import type { ConnectionState, ChatMessage } from '../../hooks/useClawSocket'
+import type { TabItem, TabManager } from './types'
 import './styles.css'
 
 interface Props {
   messages: ChatMessage[]
   connectionState: ConnectionState
   statusText: string
+  tabs: TabItem[]
+  activeTabId: string
+  tabManager: TabManager
 }
 
-export function ChatView({ messages, connectionState, statusText }: Props): React.JSX.Element {
+export function ChatView({ messages, connectionState, statusText, tabs, activeTabId, tabManager }: Props): React.JSX.Element {
   const connected = connectionState === 'connected'
   const listRef = useRef<HTMLDivElement>(null)
 
@@ -17,6 +21,8 @@ export function ChatView({ messages, connectionState, statusText }: Props): Reac
       listRef.current.scrollTop = listRef.current.scrollHeight
     }
   }, [messages])
+
+  const otherTabs = tabs.filter((t) => t.id !== 'chat')
 
   return (
     <>
@@ -46,6 +52,25 @@ export function ChatView({ messages, connectionState, statusText }: Props): Reac
       {!connected && (
         <div className="chat-panel__status-bar">
           {connectionState === 'connecting' ? '连接中...' : '已断开，正在重连...'}
+        </div>
+      )}
+
+      {otherTabs.length > 0 && (
+        <div className="chat-panel__sidebar">
+          <div className="chat-panel__sidebar-title">其他页面</div>
+          <div className="chat-panel__sidebar-list">
+            {otherTabs.map((tab) => (
+              <button
+                key={tab.id}
+                className="chat-panel__sidebar-item"
+                onClick={() => tabManager.setActiveTabId(tab.id)}
+              >
+                <span className="chat-panel__sidebar-item-icon">{tab.id === 'notes' ? '📝' : tab.id === 'tools' ? '🔧' : '📄'}</span>
+                <span className="chat-panel__sidebar-item-title">{tab.title}</span>
+                <span className="chat-panel__sidebar-item-arrow">→</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </>

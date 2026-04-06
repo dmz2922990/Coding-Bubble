@@ -167,3 +167,63 @@
   text-align: center;
   flex-shrink: 0;
 }
+
+/* ── 侧边栏 ───────────────────────────────────────────── */
+
+.chat-panel__sidebar {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.chat-panel__sidebar-title {
+  padding: 8px 16px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.chat-panel__sidebar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 8px 8px;
+}
+
+.chat-panel__sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(240, 240, 240, 0.7);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  font-family: inherit;
+  text-align: left;
+  width: 100%;
+}
+
+.chat-panel__sidebar-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #f0f0f0;
+}
+
+.chat-panel__sidebar-item-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.chat-panel__sidebar-item-title {
+  flex: 1;
+}
+
+.chat-panel__sidebar-item-arrow {
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 12px;
+  flex-shrink: 0;
+}

@@ -14,9 +14,9 @@ export function ChatPanel(): React.JSX.Element {
       id: 'chat',
       title: '对话',
       closable: false,
-      content: <ChatView messages={messages} connectionState={connectionState} statusText={statusText} />
+      content: null
     }),
-    [messages, connectionState, statusText]
+    []
   )
 
   const testTabs: TabItem[] = useMemo(
@@ -74,6 +74,22 @@ export function ChatPanel(): React.JSX.Element {
 
   const activeTab = tabManager.tabs.find((t) => t.id === tabManager.activeTabId)
 
+  const renderActiveTabContent = (): React.ReactNode => {
+    if (tabManager.activeTabId === 'chat') {
+      return (
+        <ChatView
+          messages={messages}
+          connectionState={connectionState}
+          statusText={statusText}
+          tabs={tabManager.tabs}
+          activeTabId={tabManager.activeTabId}
+          tabManager={tabManager}
+        />
+      )
+    }
+    return activeTab?.content ?? null
+  }
+
   return (
     <div className="chat-panel">
       <div className="chat-panel__header">
@@ -90,7 +106,7 @@ export function ChatPanel(): React.JSX.Element {
         <button className="chat-panel__close" onClick={handleClose} title="关闭">×</button>
       </div>
 
-      <div className="chat-panel__content">{activeTab?.content}</div>
+      <div className="chat-panel__content">{renderActiveTabContent()}</div>
     </div>
   )
 }
