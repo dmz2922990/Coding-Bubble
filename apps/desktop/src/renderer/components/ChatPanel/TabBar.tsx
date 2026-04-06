@@ -4,12 +4,13 @@ import './TabBar.css'
 
 interface Props {
   tabs: TabItem[]
+  chatTab: TabItem | undefined
   activeTabId: string
   onTabSelect: (id: string) => void
   onTabClose: (id: string) => void
 }
 
-export function TabBar({ tabs, activeTabId, onTabSelect, onTabClose }: Props): React.JSX.Element {
+export function TabBar({ tabs, chatTab, activeTabId, onTabSelect, onTabClose }: Props): React.JSX.Element {
   const tabsRef = useRef<HTMLDivElement>(null)
 
   const handleScroll = useCallback((direction: 'left' | 'right') => {
@@ -28,43 +29,68 @@ export function TabBar({ tabs, activeTabId, onTabSelect, onTabClose }: Props): R
     onTabClose(id)
   }
 
+  const scrollableTabs = tabs.filter((t) => t.id !== 'chat')
+
   return (
     <div className="tab-bar-wrapper">
-      <button
-        className="tab-bar__scroll-btn"
-        onClick={() => handleScroll('left')}
-        title="向左"
-      >
-        ‹
-      </button>
-      <div className="tab-bar" ref={tabsRef}>
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            className={`tab-bar__tab${tab.id === activeTabId ? ' tab-bar__tab--active' : ''}`}
-            onClick={() => handleTabClick(tab.id)}
-            title={tab.title}
-          >
-            <span className="tab-bar__title">{tab.title}</span>
-            {tab.closable !== false && (
+      {chatTab && !scrollableTabs.length ? (
+        <button
+          className={`tab-bar__tab${activeTabId === chatTab.id ? ' tab-bar__tab--active' : ''}`}
+          onClick={() => handleTabClick(chatTab.id)}
+        >
+          <span className="tab-bar__title">{chatTab.title}</span>
+        </button>
+      ) : (
+        <>
+          {chatTab && (
+            <button
+              className={`tab-bar__tab${activeTabId === chatTab.id ? ' tab-bar__tab--active' : ''}`}
+              onClick={() => handleTabClick(chatTab.id)}
+            >
+              <span className="tab-bar__title">{chatTab.title}</span>
+            </button>
+          )}
+          {scrollableTabs.length > 0 && (
+            <>
               <button
-                className="tab-bar__close"
-                onClick={(e) => handleCloseClick(e, tab.id)}
-                title="关闭"
+                className="tab-bar__scroll-btn"
+                onClick={() => handleScroll('left')}
+                title="向左"
               >
-                ×
+                ‹
               </button>
-            )}
-          </button>
-        ))}
-      </div>
-      <button
-        className="tab-bar__scroll-btn"
-        onClick={() => handleScroll('right')}
-        title="向右"
-      >
-        ›
-      </button>
+              <div className="tab-bar" ref={tabsRef}>
+                {scrollableTabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    className={`tab-bar__tab${activeTabId === tab.id ? ' tab-bar__tab--active' : ''}`}
+                    onClick={() => handleTabClick(tab.id)}
+                    title={tab.title}
+                  >
+                    <span className="tab-bar__title">{tab.title}</span>
+                    {tab.closable !== false && (
+                      <button
+                        className="tab-bar__close"
+                        onClick={(e) => handleCloseClick(e, tab.id)}
+                        title="关闭"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <button
+                className="tab-bar__scroll-btn"
+                onClick={() => handleScroll('right')}
+                title="向右"
+              >
+                ›
+              </button>
+            </>
+          )}
+        </>
+      )}
     </div>
   )
 }

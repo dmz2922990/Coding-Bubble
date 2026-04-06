@@ -134,6 +134,7 @@ export function ChatPanel(): React.JSX.Element {
         ) : (
           <TabBar
             tabs={tabManager.tabs}
+            chatTab={chatTab}
             activeTabId={tabManager.activeTabId}
             onTabSelect={tabManager.setActiveTabId}
             onTabClose={tabManager.removeTab}
