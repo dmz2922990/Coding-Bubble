@@ -52,6 +52,15 @@
   color: #f0f0f0;
 }
 
+/* ── 内容容器 ────────────────────────────────────────── */
+
+.chat-panel__content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 /* ── 消息列表 ────────────────────────────────────────── */
 
 .chat-panel__messages {
