@@ -8,7 +8,8 @@ export default defineConfig({
     resolve: {
       alias: {
         '@coding-bubble/backend': resolve(__dirname, '../../packages/backend/src/index.ts'),
-        '@coding-bubble/shared': resolve(__dirname, '../../packages/shared/src/index.ts')
+        '@coding-bubble/shared': resolve(__dirname, '../../packages/shared/src/index.ts'),
+        '@coding-bubble/session-monitor': resolve(__dirname, '../../packages/session-monitor/src/index.ts')
       }
     }
   },

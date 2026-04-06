@@ -340,30 +340,69 @@ ipcMain.handle('config:set', (_event, config: Record<string, unknown>) => {
   writeConfig({ ...existing, ...config })
 })
 
-// ── IPC: Session Management (stubs — full impl in Phase 1) ─
+// ── Session Monitor ──────────────────────────────────────────
+
+import { SessionStore, createSocketServer, installHooks, hooksInstalled } from '@coding-bubble/session-monitor'
+import type { HookEvent, HookResponse } from '@coding-bubble/session-monitor'
+
+let sessionStore: SessionStore | null = null
+
+function broadcastToRenderer(channel: string, data: unknown): void {
+  if (panelWin && !panelWin.isDestroyed()) {
+    panelWin.webContents.send(channel, data)
+  }
+}
+
+// ── IPC: Session Management ─────────────────────────────────
 
 ipcMain.handle('session:list', () => {
-  return []
+  if (!sessionStore) return []
+  return Array.from(sessionStore.sessions.values())
 })
 
-ipcMain.handle('session:approve', async (_event, _sessionId: string) => {
-  console.warn('[main] session:approve called but no session store yet')
+ipcMain.handle('session:approve', async (_event, sessionId: string) => {
+  console.log('[main] session:approve', sessionId)
+  // TODO: wire to SessionStore.resolvePermission
 })
 
 ipcMain.handle('session:deny', async (_event, _sessionId: string, _reason?: string) => {
-  console.warn('[main] session:deny called but no session store yet')
+  console.warn('[main] session:deny called')
+  // TODO: wire to SessionStore.resolvePermission
 })
 
 ipcMain.handle('session:hooks-status', () => {
-  return { installed: false }
+  return { installed: hooksInstalled() }
 })
 
-ipcMain.handle('session:install-hooks', async () => {
-  console.warn('[main] session:install-hooks called but not implemented yet')
+ipcMain.handle('session:install-hooks', () => {
+  installHooks()
+  console.log('[main] hooks installed')
 })
 
 // ── App 生命周期 ───────────────────────────────────────────
 app.whenReady().then(() => {
+  installHooks()
+
+  sessionStore = new SessionStore()
+  sessionStore.onPublish((channel, data) => broadcastToRenderer(channel, data))
+
+  createSocketServer({
+    onEvent: (event: HookEvent) => {
+      sessionStore?.process(event)
+    },
+    onPermissionRequest: async (sessionId, toolName, toolInput): Promise<HookResponse> => {
+      return new Promise<HookResponse>((resolve) => {
+        sessionStore?.process({
+          hook_event_name: 'PermissionRequest',
+          session_id: sessionId,
+          cwd: '',
+          payload: { toolUseId: `pending_${Date.now()}`, tool: toolName, input: toolInput }
+        } as HookEvent)
+        setTimeout(() => resolve({ decision: 'allow' }), 5000)
+      })
+    }
+  })
+
   createBallWindow()
 
   app.on('activate', () => {

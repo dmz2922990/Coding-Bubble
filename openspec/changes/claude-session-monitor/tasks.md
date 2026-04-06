@@ -32,10 +32,10 @@ Tasks must be completed and verified sequentially. Do not start a task until the
 
 ## Phase 1: Core Infrastructure — Hook, Socket, Session Store
 
-- [ ] **Task 8: Create Hook Python script**
+- [x] **Task 8: Create Hook Python script**
   Verification: File `packages/session-monitor/resources/claude-bubble-state.py` exists. Reads JSON from stdin, connects to Unix socket, sends event data. For PermissionRequest, waits for response before printing allow/deny JSON.
 
-- [ ] **Task 9: Create HookInstaller (main process)**
+- [x] **Task 9: Create HookInstaller (main process)**
   Verification: Module at `packages/session-monitor/src/hook-installer.ts`. Exports `installHooks()` and `uninstallHooks()`. Writes Python hook to `~/.claude/hooks/claude-bubble-state.py` and registers in `~/.claude/settings.json`.
 
 - [ ] **Task 10: Create Unix Domain Socket Server (main process)**

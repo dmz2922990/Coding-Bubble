@@ -34,12 +34,14 @@ const HOOK_EVENTS = [
  * In production the app bundles this file; in dev we resolve relative to package.
  */
 function loadHookScript(): string {
-  // Try the resources/ path relative to this package
-  const candidate = join(__dirname, '..', 'resources', 'claude-bubble-state.py')
-  if (existsSync(candidate)) {
-    return readFileSync(candidate, 'utf-8')
+  const candidates = [
+    join(__dirname, '..', 'resources', 'claude-bubble-state.py'),
+    join(__dirname, '..', '..', '..', '..', '..', 'packages', 'session-monitor', 'resources', 'claude-bubble-state.py')
+  ]
+  for (const p of candidates) {
+    if (existsSync(p)) return readFileSync(p, 'utf-8')
   }
-  throw new Error(`hook script not found at ${candidate}`)
+  throw new Error(`hook script not found in any of: ${candidates.join(', ')}`)
 }
 
 export function installHooks(): void {
