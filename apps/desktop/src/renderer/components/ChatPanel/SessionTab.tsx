@@ -10,6 +10,15 @@ const TOOL_STATUS_COLORS: Record<string, string> = {
   waitingForApproval: '#ff9800'
 }
 
+const PHASE_LABELS: Record<string, string> = {
+  idle: '空闲',
+  processing: '处理中',
+  waitingForInput: '等待输入',
+  waitingForApproval: '等待授权',
+  compacting: '压缩中',
+  ended: '已结束',
+}
+
 interface Props {
   session: SessionInfo
   items: ChatItem[]
@@ -46,13 +55,26 @@ export function SessionTab({ session, items, onAllow, onDeny }: Props): React.JS
     <div className="session-tab">
       <div className="session-tab__header">
         <span className="session-tab__name">{session.projectName}</span>
-        <span className="session-tab__phase">· {session.phase}</span>
+        <span className={`session-tab__phase-badge session-tab__phase-badge--${session.phase}`}>
+          {PHASE_LABELS[session.phase] ?? session.phase}
+        </span>
+      </div>
+
+      <div className="session-tab__details">
+        <div className="session-tab__detail-row">
+          <span className="session-tab__detail-label">工作目录</span>
+          <span className="session-tab__detail-value" title={session.cwd}>{session.cwd}</span>
+        </div>
       </div>
 
       <div className="session-tab__messages" ref={listRef} onScroll={handleScroll}>
-        {items.map((item) => (
-          <MessageItem key={item.id} item={item} />
-        ))}
+        {items.length === 0 ? (
+          <div className="session-tab__empty">暂无对话记录</div>
+        ) : (
+          items.map((item) => (
+            <MessageItem key={item.id} item={item} />
+          ))
+        )}
       </div>
 
       {!autoScroll && newCount > 0 && (
@@ -152,15 +174,30 @@ interface PermissionBarProps {
 }
 
 function PermissionBar({ toolName, toolInput, onAllow, onDeny }: PermissionBarProps): React.JSX.Element {
-  const inputPreview = toolInput ? JSON.stringify(toolInput).slice(0, 200) : ''
+  const [expanded, setExpanded] = useState(false)
+  const inputJson = toolInput ? JSON.stringify(toolInput, null, 2) : ''
+  const inputPreview = inputJson.slice(0, 200)
+  const isTruncated = inputJson.length > 200
 
   return (
     <div className="permission-bar">
       <div className="permission-bar__content">
         <div className="permission-bar__label">工具请求授权</div>
         <div className="permission-bar__tool">{toolName}</div>
-        {inputPreview && (
-          <pre className="permission-bar__input">{inputPreview}</pre>
+        {inputJson && (
+          <div>
+            <pre className="permission-bar__input">
+              {expanded ? inputJson : inputPreview}
+            </pre>
+            {isTruncated && (
+              <button
+                className="permission-bar__toggle"
+                onClick={() => setExpanded(!expanded)}
+              >
+                {expanded ? '收起' : '展开完整输入'}
+              </button>
+            )}
+          </div>
         )}
       </div>
       <div className="permission-bar__actions">

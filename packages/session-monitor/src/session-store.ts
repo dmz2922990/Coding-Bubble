@@ -180,7 +180,7 @@ export class SessionStore {
     }
 
     const target = this._sessions.get(sessionId)!
-    const context = { toolUseId, toolName, toolInput, receivedAt: now() }
+    const context = { type: 'waitingForApproval' as const, toolUseId, toolName, toolInput, receivedAt: now() }
     this.transition(target, 'waitingForApproval', context)
 
     const pending: PendingPermission = {
@@ -209,8 +209,8 @@ export class SessionStore {
     }
 
     session.phase = newPhase(newType)
-    if (newType === 'waitingForApproval' && context?.type === 'waitingForApproval') {
-      session.phase = context
+    if (newType === 'waitingForApproval' && context) {
+      Object.assign(session.phase, context)
     }
     session.lastActivity = now()
   }

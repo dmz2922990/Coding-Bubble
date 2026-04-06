@@ -303,22 +303,57 @@
 }
 
 .session-tab__header {
-  padding: 6px 12px;
+  padding: 8px 12px;
   background: rgba(255, 255, 255, 0.04);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .session-tab__name {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: #f0f0f0;
 }
 
-.session-tab__phase {
+.session-tab__phase-badge {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
-  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.session-tab__phase-badge--idle {
+  background: rgba(158, 158, 158, 0.15);
+  color: rgba(158, 158, 158, 0.8);
+}
+
+.session-tab__phase-badge--processing {
+  background: rgba(33, 150, 243, 0.15);
+  color: rgba(33, 150, 243, 0.9);
+  animation: tool-pulse 1.5s ease infinite;
+}
+
+.session-tab__phase-badge--waitingForInput {
+  background: rgba(158, 158, 158, 0.15);
+  color: rgba(158, 158, 158, 0.8);
+}
+
+.session-tab__phase-badge--waitingForApproval {
+  background: rgba(255, 152, 0, 0.15);
+  color: rgba(255, 178, 112, 0.9);
+}
+
+.session-tab__phase-badge--compacting {
+  background: rgba(33, 150, 243, 0.15);
+  color: rgba(33, 150, 243, 0.9);
+}
+
+.session-tab__phase-badge--ended {
+  background: rgba(244, 67, 54, 0.15);
+  color: rgba(244, 67, 54, 0.8);
 }
 
 .session-tab__messages {
@@ -337,6 +372,43 @@
 .session-tab__messages::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.15);
   border-radius: 2px;
+}
+
+.session-tab__details {
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.session-tab__detail-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.session-tab__detail-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  flex-shrink: 0;
+  min-width: 52px;
+}
+
+.session-tab__detail-value {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  font-family: monospace;
+  word-break: break-all;
+}
+
+.session-tab__empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.2);
+  font-size: 13px;
 }
 
 .session-tab__new-indicator {

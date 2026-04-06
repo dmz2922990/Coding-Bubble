@@ -29,7 +29,13 @@ export function ChatPanel(): React.JSX.Element {
 
       for (const s of (list as Record<string, unknown>[])) {
         const sessionId = s.sessionId as string
-        const phase = (s.phase as Record<string, unknown>)?.type as string ?? 'idle'
+        const phaseObj = s.phase as Record<string, unknown> | undefined
+        const phase = (phaseObj?.type as string) ?? 'idle'
+        // toolName/toolInput are nested inside phase.context for waitingForApproval
+        const phaseContext = phaseObj?.context as Record<string, unknown> | undefined
+        const toolName = phaseObj?.toolName as string | undefined ?? phaseContext?.toolName as string | undefined
+        const toolInput = phaseObj?.toolInput as Record<string, unknown> | null | undefined ?? phaseContext?.toolInput as Record<string, unknown> | null | undefined
+
         sessionMap.set(sessionId, {
           phase,
           session: {
@@ -37,7 +43,9 @@ export function ChatPanel(): React.JSX.Element {
             projectName: s.projectName as string,
             cwd: s.cwd as string,
             phase: phase as SessionInfo['phase'],
-            lastActivity: s.lastActivity as number
+            lastActivity: s.lastActivity as number,
+            toolName: toolName || undefined,
+            toolInput: toolInput || undefined,
           }
         })
         itemsMap.set(sessionId, (s.chatItems as ChatItem[]) ?? [])
@@ -57,7 +65,7 @@ export function ChatPanel(): React.JSX.Element {
 
       const sessionType = (msg.type as string) ?? ''
 
-      if (sessionType === 'session:new' || sessionType === 'session:update') {
+      if (sessionType === 'session:new' || sessionType === 'session:update' || sessionType === 'session:permission') {
         loadSessions()
       } else if (sessionType === 'session:ended') {
         const sid = msg.sessionId as string
