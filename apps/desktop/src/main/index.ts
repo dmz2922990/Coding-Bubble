@@ -410,6 +410,37 @@ ipcMain.handle('session:deny', async (_event, sessionId: string, reason?: string
   entry.resolve(response)
 })
 
+ipcMain.handle('session:always-allow', async (_event, sessionId: string) => {
+  console.log('[main] ===== session:always-allow START =====')
+  console.log('[main] session:always-allow called for session:', sessionId)
+
+  // Set session permission mode to 'auto' for future auto-allow
+  sessionStore?.setPermissionMode(sessionId, 'auto')
+
+  // Also approve the current pending permission
+  const entry = pendingPermissionResolvers.get(sessionId)
+  if (!entry) {
+    console.error('[main] session:always-allow FAILED - no pending resolver for session:', sessionId)
+    return
+  }
+
+  console.log('[main] Found entry:', { toolUseId: entry.toolUseId })
+  pendingPermissionResolvers.delete(sessionId)
+
+  const response: HookResponse = { decision: 'allow' }
+  console.log('[main] Resolving with response:', JSON.stringify(response))
+
+  try {
+    console.log('[main] About to call entry.resolve()...')
+    entry.resolve(response)
+    console.log('[main] entry.resolve() completed successfully')
+  } catch (err) {
+    console.error('[main] Error during resolve:', err)
+  }
+
+  console.log('[main] ===== session:always-allow END =====')
+})
+
 ipcMain.handle('session:hooks-status', () => {
   return { installed: hooksInstalled() }
 })

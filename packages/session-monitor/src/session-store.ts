@@ -43,6 +43,14 @@ export class SessionStore {
     return this._sessions.get(sessionId)
   }
 
+  setPermissionMode(sessionId: string, mode: string): void {
+    const session = this._sessions.get(sessionId)
+    if (session) {
+      session.permissionMode = mode
+      console.log('[SessionStore] set permission mode to', mode, 'for session:', sessionId)
+    }
+  }
+
   async resolvePermission(toolUseId: string, response: HookResponse): Promise<void> {
     const pending = this._pendingPermissions.get(toolUseId)
     if (!pending?.length) return
@@ -186,7 +194,13 @@ export class SessionStore {
     }
 
     const target = this._sessions.get(sessionId)!
-    const context = { type: 'waitingForApproval' as const, toolUseId, toolName, toolInput, receivedAt: now() }
+    // Pass context as separate properties for transition to assemble into nested structure
+    const context = {
+      toolUseId,
+      toolName,
+      toolInput,
+      receivedAt: now()
+    }
     this.transition(target, 'waitingForApproval', context)
 
     const pending: PendingPermission = {
@@ -216,7 +230,14 @@ export class SessionStore {
 
     session.phase = newPhase(newType)
     if (newType === 'waitingForApproval' && context) {
-      Object.assign(session.phase, context)
+      // For waitingForApproval, context should be nested under phase.context
+      const phaseWithContext = session.phase as { type: 'waitingForApproval', context: PermissionContext }
+      phaseWithContext.context = {
+        toolUseId: (context as { toolUseId?: string }).toolUseId ?? '',
+        toolName: (context as { toolName?: string }).toolName ?? '',
+        toolInput: (context as { toolInput?: Record<string, unknown> | null }).toolInput ?? null,
+        receivedAt: (context as { receivedAt?: number }).receivedAt ?? now()
+      }
     }
     session.lastActivity = now()
   }

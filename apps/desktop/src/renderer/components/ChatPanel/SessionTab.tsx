@@ -24,9 +24,10 @@ interface Props {
   items: ChatItem[]
   onAllow?: () => void
   onDeny?: () => void
+  onAlwaysAllow?: () => void
 }
 
-export function SessionTab({ session, items, onAllow, onDeny }: Props): React.JSX.Element {
+export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow }: Props): React.JSX.Element {
   const listRef = useRef<HTMLDivElement>(null)
   const [autoScroll, setAutoScroll] = useState(true)
   const [newCount, setNewCount] = useState(0)
@@ -92,6 +93,7 @@ export function SessionTab({ session, items, onAllow, onDeny }: Props): React.JS
           toolInput={session.toolInput}
           onAllow={onAllow}
           onDeny={onDeny}
+          onAlwaysAllow={onAlwaysAllow}
         />
       )}
     </div>
@@ -193,9 +195,10 @@ interface PermissionBarProps {
   toolInput?: Record<string, unknown> | null
   onAllow?: () => void
   onDeny?: () => void
+  onAlwaysAllow?: () => void
 }
 
-function PermissionBar({ toolName, onAllow, onDeny }: PermissionBarProps): React.JSX.Element {
+function PermissionBar({ toolName, onAllow, onDeny, onAlwaysAllow }: PermissionBarProps): React.JSX.Element {
   return (
     <div className="permission-bar">
       <div className="permission-bar__content">
@@ -205,6 +208,7 @@ function PermissionBar({ toolName, onAllow, onDeny }: PermissionBarProps): React
       <div className="permission-bar__actions">
         <button className="permission-bar__btn permission-bar__btn--deny" onClick={onDeny}>拒绝</button>
         <button className="permission-bar__btn permission-bar__btn--allow" onClick={onAllow}>允许</button>
+        <button className="permission-bar__btn permission-bar__btn--always" onClick={onAlwaysAllow}>一直允许</button>
       </div>
     </div>
   )

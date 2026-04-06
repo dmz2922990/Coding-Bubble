@@ -644,6 +644,15 @@
   background: #ffffff;
 }
 
+.permission-bar__btn--always {
+  background: rgba(76, 175, 80, 0.9);
+  color: #ffffff;
+}
+
+.permission-bar__btn--always:hover {
+  background: rgba(76, 175, 80, 1);
+}
+
 @keyframes tool-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }

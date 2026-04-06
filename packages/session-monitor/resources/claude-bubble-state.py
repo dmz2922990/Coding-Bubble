@@ -70,6 +70,7 @@ def main():
                             'decision': {'behavior': 'allow'}
                         }
                     }))
+                    sys.exit(0)
                 elif decision == 'deny':
                     decision_obj = {'behavior': 'deny'}
                     if reason:
@@ -80,9 +81,11 @@ def main():
                             'decision': decision_obj
                         }
                     }))
+                    sys.exit(0)
                 else:
                     # Unknown decision - let Claude show its UI
                     log('[hook] unknown decision, exiting without output')
+                    sys.exit(0)
             else:
                 log('[hook] PermissionRequest no response, auto-allow')
                 print(json.dumps({
@@ -91,6 +94,7 @@ def main():
                         'decision': {'behavior': 'allow'}
                     }
                 }))
+                sys.exit(0)
         # All other events: fire-and-forget, no output needed (auto-allow by default)
     except Exception as e:
         log(f'[hook] error: {e}')

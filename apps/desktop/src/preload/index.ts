@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     list: (): Promise<unknown[]> => ipcRenderer.invoke('session:list'),
     approve: (sessionId: string): Promise<void> => ipcRenderer.invoke('session:approve', sessionId),
     deny: (sessionId: string, reason?: string): Promise<void> => ipcRenderer.invoke('session:deny', sessionId, reason),
+    alwaysAllow: (sessionId: string): Promise<void> => ipcRenderer.invoke('session:always-allow', sessionId),
     hooksStatus: (): Promise<{ installed: boolean }> => ipcRenderer.invoke('session:hooks-status'),
     installHooks: (): Promise<void> => ipcRenderer.invoke('session:install-hooks'),
     onUpdate: (cb: (event: unknown, data: unknown) => void) => {
