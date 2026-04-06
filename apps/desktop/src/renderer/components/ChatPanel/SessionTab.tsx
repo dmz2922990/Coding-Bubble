@@ -68,7 +68,10 @@ export function SessionTab({ session, items, onAllow, onDeny }: Props): React.JS
       </div>
 
       <div className="session-tab__messages" ref={listRef} onScroll={handleScroll}>
-        {items.length === 0 ? (
+        {session.phase === 'waitingForApproval' && session.toolName && (
+          <ApprovalDetail toolName={session.toolName} toolInput={session.toolInput} />
+        )}
+        {items.length === 0 && session.phase !== 'waitingForApproval' ? (
           <div className="session-tab__empty">暂无对话记录</div>
         ) : (
           items.map((item) => (
@@ -162,6 +165,25 @@ function ThinkingItem({ content }: { content: string }): React.JSX.Element {
         <span className="chat-msg__thinking-label">💭 思考</span>
         <span className="chat-msg__thinking-content">{expanded ? content : preview}</span>
       </div>
+    </div>
+  )
+}
+
+function ApprovalDetail({ toolName, toolInput }: { toolName: string; toolInput?: Record<string, unknown> | null }): React.JSX.Element {
+  const inputJson = toolInput ? JSON.stringify(toolInput, null, 2) : ''
+  return (
+    <div className="approval-detail">
+      <div className="approval-detail__title">工具请求授权</div>
+      <div className="approval-detail__row">
+        <span className="approval-detail__label">工具</span>
+        <code className="approval-detail__value">{toolName}</code>
+      </div>
+      {inputJson && (
+        <div className="approval-detail__row approval-detail__row--col">
+          <span className="approval-detail__label">参数</span>
+          <pre className="approval-detail__json">{inputJson}</pre>
+        </div>
+      )}
     </div>
   )
 }

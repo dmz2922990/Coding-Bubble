@@ -513,6 +513,58 @@
   font-size: 12px;
 }
 
+/* ── Approval Detail ──────────────────────────────────────── */
+
+.approval-detail {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 152, 0, 0.08);
+  border: 1px solid rgba(255, 152, 0, 0.15);
+}
+
+.approval-detail__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 178, 112, 0.9);
+  margin-bottom: 8px;
+}
+
+.approval-detail__row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.approval-detail__row--col {
+  flex-direction: column;
+}
+
+.approval-detail__label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  flex-shrink: 0;
+  min-width: 32px;
+}
+
+.approval-detail__value {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.approval-detail__json {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  padding: 8px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 240px;
+  overflow-y: auto;
+  margin-top: 4px;
+}
+
 /* ── Permission Bar ──────────────────────────────────────── */
 
 .permission-bar {

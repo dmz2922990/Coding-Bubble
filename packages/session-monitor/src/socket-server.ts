@@ -72,8 +72,8 @@ export function createSocketServer(options: SocketServerOptions): SocketServer {
 
         if (event.hook_event_name === 'PermissionRequest') {
           // Keep socket open; wait for renderer decision
-          const toolName = (payload?.tool as string) ?? 'unknown'
-          const toolInput = (payload?.input as Record<string, unknown>) ?? null
+          const toolName = (payload?.tool_name as string) ?? (payload?.tool as string) ?? 'unknown'
+          const toolInput = (payload?.tool_input as Record<string, unknown>) ?? (payload?.input as Record<string, unknown>) ?? null
           const key = ToolUseIdCache.makeKey(event.session_id, toolName, toolInput)
           const toolUseId = cache.pop(key)
 
@@ -93,8 +93,8 @@ export function createSocketServer(options: SocketServerOptions): SocketServer {
         } else {
           // Cache tool_use_id from PreToolUse for later PermissionRequest correlation
           if (event.hook_event_name === 'PreToolUse' && payload?.tool_use_id) {
-            const toolName = (payload.tool as string) ?? ''
-            const toolInput = (payload.input as Record<string, unknown>) ?? null
+            const toolName = (payload.tool_name as string) ?? (payload.tool as string) ?? ''
+            const toolInput = (payload.tool_input as Record<string, unknown>) ?? (payload.input as Record<string, unknown>) ?? null
             const key = ToolUseIdCache.makeKey(event.session_id, toolName, toolInput)
             cache.push(key, payload.tool_use_id as string)
           }
