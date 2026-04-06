@@ -23,7 +23,7 @@ export function useTabManager(initialTabs: TabItem[]): TabManager {
   const removeTab = useCallback((id: string) => {
     setTabs((prev) => {
       const target = prev.find((t) => t.id === id)
-      if (!target || target.closable === false) return prev
+      if (!target) return prev
 
       const next = prev.filter((t) => t.id !== id)
       if (id === activeTabId && next.length > 0) {

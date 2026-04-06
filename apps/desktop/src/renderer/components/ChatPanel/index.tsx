@@ -21,51 +21,6 @@ export function ChatPanel(): React.JSX.Element {
     { ...chatTab, content: null }
   ])
 
-  // Listen for session updates from main process
-  useEffect(() => {
-    // Load existing sessions on mount
-    loadSessions()
-  }, [])
-
-  useEffect(() => {
-    const cleanup = window.electronAPI.session.onUpdate((_event: unknown, data: unknown) => {
-      const msg = data as Record<string, unknown> | undefined
-      if (!msg || !msg.sessionId) return
-
-      const sessionType = (msg.type as string) ?? ''
-
-      if (sessionType === 'session:new') {
-        // Reload session list
-        loadSessions()
-      } else if (sessionType === 'session:ended') {
-        // Remove session tab
-        const sid = msg.sessionId as string
-        setSessions((prev) => {
-          const next = new Map(prev)
-          next.delete(sid)
-          setActiveSessionTab(null)
-          return next
-        })
-        // Switch to chat tab if active tab was removed
-        if (tabManager.activeTabId === sid) {
-          tabManager.setActiveTabId('chat')
-        }
-      } else if (sessionType === 'session:update') {
-        loadSessions()
-      } else if (sessionType === 'session:history') {
-        const sid = msg.sessionId as string
-        const items = (msg.items as ChatItem[]) ?? []
-        setSessionItems((prev) => new Map(prev).set(sid, items))
-      }
-    })
-    return () => cleanup()
-  }, [])
-
-  useEffect(() => {
-    // Check hook status on mount
-    window.electronAPI.session.hooksStatus().then(setHookStatus).catch(() => {})
-  }, [])
-
   const loadSessions = useCallback(async () => {
     try {
       const list = await window.electronAPI.session.list()
@@ -89,32 +44,79 @@ export function ChatPanel(): React.JSX.Element {
       }
       setSessions(sessionMap)
       setSessionItems(itemsMap)
-
-      // Create/remove tabs based on sessions
-      const currentTabs = tabManager.tabs
-      const sessionIds = Array.from(sessionMap.keys())
-
-      for (const id of sessionIds) {
-        const info = sessionMap.get(id)!
-        if (!currentTabs.find((t) => t.id === id)) {
-          tabManager.addTab({
-            id,
-            title: info.session.projectName,
-            content: null,
-            closable: false
-          })
-        } else {
-          // Update tab title
-          const idx = currentTabs.findIndex((t) => t.id === id)
-          if (idx >= 0) {
-            currentTabs[idx].title = info.session.projectName
-          }
-        }
-      }
     } catch {
       // ignore
     }
-  }, [tabManager])
+  }, [])
+
+  // Listen for session updates from main process
+  useEffect(() => {
+    const cleanup = window.electronAPI.session.onUpdate((_event: unknown, data: unknown) => {
+      const msg = data as Record<string, unknown> | undefined
+      if (!msg || !msg.sessionId) return
+
+      const sessionType = (msg.type as string) ?? ''
+
+      if (sessionType === 'session:new' || sessionType === 'session:update') {
+        loadSessions()
+      } else if (sessionType === 'session:ended') {
+        const sid = msg.sessionId as string
+        setSessions(prev => {
+          const next = new Map(prev)
+          next.delete(sid)
+          return next
+        })
+        setSessionItems(prev => {
+          const next = new Map(prev)
+          next.delete(sid)
+          return next
+        })
+      } else if (sessionType === 'session:history') {
+        const sid = msg.sessionId as string
+        const items = (msg.items as ChatItem[]) ?? []
+        setSessionItems(prev => new Map(prev).set(sid, items))
+      }
+    })
+
+    // Load existing sessions on mount
+    loadSessions()
+
+    return () => cleanup()
+  }, [loadSessions])
+
+  useEffect(() => {
+    // Check hook status on mount
+    window.electronAPI.session.hooksStatus().then(setHookStatus).catch(() => {})
+  }, [])
+
+  // Sync tabs with active sessions
+  useEffect(() => {
+    const sessionIds = new Set(sessions.keys())
+
+    // Remove tabs for ended sessions
+    const tabsToRemove = tabManager.tabs.filter(
+      t => t.id !== 'chat' && !sessionIds.has(t.id)
+    )
+    for (const tab of tabsToRemove) {
+      tabManager.removeTab(tab.id)
+    }
+
+    // Add new tabs for active sessions
+    for (const id of sessionIds) {
+      const info = sessions.get(id)!
+      const existing = tabManager.tabs.find(t => t.id === id)
+      if (!existing) {
+        tabManager.addTab({
+          id,
+          title: info.session.projectName,
+          content: null,
+          closable: false,
+        })
+      } else if (existing.title !== info.session.projectName) {
+        existing.title = info.session.projectName
+      }
+    }
+  }, [sessions, tabManager])
 
   const handleSessionClick = useCallback((sessionId: string) => {
     tabManager.setActiveTabId(sessionId)
