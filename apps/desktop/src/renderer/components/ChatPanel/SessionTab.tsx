@@ -170,7 +170,7 @@ function ThinkingItem({ content }: { content: string }): React.JSX.Element {
 }
 
 function ApprovalDetail({ toolName, toolInput }: { toolName: string; toolInput?: Record<string, unknown> | null }): React.JSX.Element {
-  const inputJson = toolInput ? JSON.stringify(toolInput, null, 2) : ''
+  const command = typeof toolInput?.command === 'string' ? toolInput.command : ''
   return (
     <div className="approval-detail">
       <div className="approval-detail__title">工具请求授权</div>
@@ -178,10 +178,10 @@ function ApprovalDetail({ toolName, toolInput }: { toolName: string; toolInput?:
         <span className="approval-detail__label">工具</span>
         <code className="approval-detail__value">{toolName}</code>
       </div>
-      {inputJson && (
+      {command && (
         <div className="approval-detail__row approval-detail__row--col">
-          <span className="approval-detail__label">参数</span>
-          <pre className="approval-detail__json">{inputJson}</pre>
+          <span className="approval-detail__label">命令</span>
+          <pre className="approval-detail__json">{command}</pre>
         </div>
       )}
     </div>
@@ -195,32 +195,12 @@ interface PermissionBarProps {
   onDeny?: () => void
 }
 
-function PermissionBar({ toolName, toolInput, onAllow, onDeny }: PermissionBarProps): React.JSX.Element {
-  const [expanded, setExpanded] = useState(false)
-  const inputJson = toolInput ? JSON.stringify(toolInput, null, 2) : ''
-  const inputPreview = inputJson.slice(0, 200)
-  const isTruncated = inputJson.length > 200
-
+function PermissionBar({ toolName, onAllow, onDeny }: PermissionBarProps): React.JSX.Element {
   return (
     <div className="permission-bar">
       <div className="permission-bar__content">
         <div className="permission-bar__label">工具请求授权</div>
         <div className="permission-bar__tool">{toolName}</div>
-        {inputJson && (
-          <div>
-            <pre className="permission-bar__input">
-              {expanded ? inputJson : inputPreview}
-            </pre>
-            {isTruncated && (
-              <button
-                className="permission-bar__toggle"
-                onClick={() => setExpanded(!expanded)}
-              >
-                {expanded ? '收起' : '展开完整输入'}
-              </button>
-            )}
-          </div>
-        )}
       </div>
       <div className="permission-bar__actions">
         <button className="permission-bar__btn permission-bar__btn--deny" onClick={onDeny}>拒绝</button>
