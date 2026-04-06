@@ -163,7 +163,7 @@ export class SessionStore {
         this.transition(session, 'processing')
         break
       case 'PreToolUse':
-        this.transition(session, 'processing')
+        // Don't transition - stay in current state (likely processing)
         break
       case 'PostToolUse': {
         const payload = event.payload as Record<string, unknown> | undefined
@@ -174,8 +174,7 @@ export class SessionStore {
         if (toolUseId) {
           this._updateToolResult(sessionId, toolUseId, toolResponse)
         }
-
-        this.transition(session, 'idle')
+        // Don't transition - stay in current state
         break
       }
       case 'Notification':
