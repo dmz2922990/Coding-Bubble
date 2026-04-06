@@ -57,7 +57,7 @@ Tasks must be completed and verified sequentially. Do not start a task until the
 - [x] **Task 14: Create JSONL Parser module**
   Verification: Module at `packages/session-monitor/src/jsonl-parser.ts`. Exports `parseFullConversation()` and `parseIncremental()`. Correctly parses user/assistant/tool_use/tool_result/thinking blocks.
 
-- [ ] **Task 15: Wire JSONL parser with file watching (fs.watch)**
+- [x] **Task 15: Wire JSONL parser with file watching (fs.watch)**
   Verification: Parser watches the JSONL file. When Claude Code writes new data, the parser triggers incremental parsing. Debounced (100ms). Results fed into `SessionStore.process('fileUpdated', payload)`.
 
 - [x] **Task 16: Implement Tool Use ID cache in socket server**
@@ -103,5 +103,5 @@ Tasks must be completed and verified sequentially. Do not start a task until the
   5. Trigger permission → Bar appears → Click Allow → CLI proceeds
   6. End session → tab disappears → switches to "对话"
 
-- [ ] **Task 26: Build verification**
+- [x] **Task 26: Build verification**
   Verification: `pnpm install && pnpm build` succeeds with zero errors. App launches in dev mode without console errors.

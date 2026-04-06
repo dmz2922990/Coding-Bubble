@@ -139,6 +139,9 @@ export function FloatingBall(): React.JSX.Element {
       }
 
       const onUp = (ev: MouseEvent): void => {
+        window.removeEventListener('mousemove', onMove)
+        window.removeEventListener('mouseup', onUp)
+
         window.electronAPI.dragEnd()
         isDraggingRef.current = false
 

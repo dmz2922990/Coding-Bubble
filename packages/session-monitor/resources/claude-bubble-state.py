@@ -5,12 +5,35 @@ import os
 
 SOCKET_PATH = '/tmp/claude-bubble.sock'
 
+# Events that expect hookSpecificOutput in stdout
+RESPONSE_EVENTS = {'PreToolUse', 'PostToolUse', 'PermissionRequest'}
+
+def output_allow():
+    print(json.dumps({
+        'hookSpecificOutput': {
+            'shouldDeny': False,
+            'allowance': 'allow'
+        }
+    }))
+
 def main():
     event_raw = sys.stdin.read().strip()
-    event = json.loads(event_raw)
+    if not event_raw:
+        return
+    try:
+        event = json.loads(event_raw)
+    except json.JSONDecodeError:
+        return
+
     hook_name = event.get('hook_event_name', 'unknown')
     session_id = event.get('session_id', '')
     cwd = event.get('cwd', '')
+
+    if not os.path.exists(SOCKET_PATH):
+        # Only output for events that expect a response
+        if hook_name in RESPONSE_EVENTS:
+            output_allow()
+        return
 
     message = {
         'hook_event_name': hook_name,
@@ -19,23 +42,12 @@ def main():
         'payload': event
     }
 
-    if not os.path.exists(SOCKET_PATH):
-        # Socket not available — output default allow to not block Claude
-        print(json.dumps({
-            'hookSpecificOutput': {
-                'shouldDeny': False,
-                'allowance': 'allow'
-            }
-        }))
-        return
-
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     sock.connect(SOCKET_PATH)
     try:
         sock.sendall((json.dumps(message) + '\n').encode('utf-8'))
 
         if hook_name == 'PermissionRequest':
-            # Block and wait for decision
             data = b''
             while True:
                 chunk = sock.recv(4096)
@@ -56,14 +68,7 @@ def main():
                     }
                 }))
             else:
-                # Connection closed without response — default allow
-                print(json.dumps({
-                    'hookSpecificOutput': {
-                        'shouldDeny': False,
-                        'allowance': 'allow'
-                    }
-                }))
-        # For non-PermissionRequest, just send event and close
+                output_allow()
     finally:
         sock.close()
 

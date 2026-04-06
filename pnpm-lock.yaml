@@ -54,6 +54,8 @@ importers:
 
   packages/backend: {}
 
+  packages/session-monitor: {}
+
   packages/shared: {}
 
 packages:

@@ -342,10 +342,11 @@ ipcMain.handle('config:set', (_event, config: Record<string, unknown>) => {
 
 // ── Session Monitor ──────────────────────────────────────────
 
-import { SessionStore, createSocketServer, installHooks, hooksInstalled } from '@coding-bubble/session-monitor'
+import { SessionStore, createSocketServer, installHooks, hooksInstalled, watchJsonlFile, parseFullConversation } from '@coding-bubble/session-monitor'
 import type { HookEvent, HookResponse } from '@coding-bubble/session-monitor'
 
 let sessionStore: SessionStore | null = null
+const jsonlWatchers = new Map<string, ReturnType<typeof watchJsonlFile>>()
 
 function broadcastToRenderer(channel: string, data: unknown): void {
   if (panelWin && !panelWin.isDestroyed()) {
@@ -381,7 +382,11 @@ ipcMain.handle('session:install-hooks', () => {
 
 // ── App 生命周期 ───────────────────────────────────────────
 app.whenReady().then(() => {
-  installHooks()
+  try {
+    installHooks()
+  } catch (err) {
+    console.error('[main] hook install failed:', err)
+  }
 
   sessionStore = new SessionStore()
   sessionStore.onPublish((channel, data) => broadcastToRenderer(channel, data))
@@ -389,6 +394,41 @@ app.whenReady().then(() => {
   createSocketServer({
     onEvent: (event: HookEvent) => {
       sessionStore?.process(event)
+
+      // Start JSONL watcher on session start
+      if (event.hook_event_name === 'SessionStart' && event.session_id) {
+        if (!jsonlWatchers.has(event.session_id) && event.cwd) {
+          const watcher = watchJsonlFile(event.session_id, event.cwd, (sessionId, items) => {
+            sessionStore?.process({
+              hook_event_name: 'fileUpdated',
+              session_id: sessionId,
+              cwd: '',
+              payload: { chatItems: items }
+            } as HookEvent)
+          })
+          jsonlWatchers.set(event.session_id, watcher)
+
+          // Also parse full conversation on first load
+          const fullItems = parseFullConversation(event.session_id, event.cwd)
+          if (fullItems.length > 0) {
+            sessionStore?.process({
+              hook_event_name: 'fileUpdated',
+              session_id: event.session_id,
+              cwd: '',
+              payload: { chatItems: fullItems }
+            } as HookEvent)
+          }
+        }
+      }
+
+      // Clean up watcher on session end
+      if (event.hook_event_name === 'SessionEnd' && event.session_id) {
+        const watcher = jsonlWatchers.get(event.session_id)
+        if (watcher) {
+          watcher.stop()
+          jsonlWatchers.delete(event.session_id)
+        }
+      }
     },
     onPermissionRequest: async (sessionId, toolUseId, toolName, toolInput): Promise<HookResponse> => {
       return new Promise<HookResponse>((resolve) => {

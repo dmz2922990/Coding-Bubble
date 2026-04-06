@@ -1,4 +1,4 @@
-import { readFileSync, existsSync, createReadStream } from 'fs'
+import { readFileSync, existsSync, statSync, watch, FSWatcher } from 'fs'
 import { homedir } from 'os'
 import { join } from 'path'
 import type { ChatHistoryItem } from './types'
@@ -15,14 +15,12 @@ function resolveJsonlPath(sessionId: string, cwd: string): string | null {
   return null
 }
 
-/** Extract a display ID from a JSONL message */
 function extractId(msg: Record<string, unknown>, index: number): string {
   if (typeof msg.id === 'string') return msg.id
   if (typeof msg.uuid === 'string') return msg.uuid
   return `msg_${index}`
 }
 
-/** Extract timestamp */
 function extractTimestamp(msg: Record<string, unknown>): number {
   if (typeof msg.timestamp === 'number') return msg.timestamp
   if (typeof msg.created === 'number') return msg.created * 1000
@@ -33,7 +31,6 @@ function generateId(): string {
   return `gen_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 }
 
-/** Parse a single JSONL message into ChatHistoryItem(s) */
 function parseMessage(msg: Record<string, unknown>, index: number): ChatHistoryItem[] {
   const role = msg.role as string | undefined
   const type = msg.type as string | undefined
@@ -48,7 +45,6 @@ function parseMessage(msg: Record<string, unknown>, index: number): ChatHistoryI
       return parseAssistantMessage(msg, index)
     }
     default:
-      // Handle type-based messages (SubagentStop, etc.)
       if (type === 'subagent_stop') {
         return [{ id: extractId(msg, index), type: 'interrupted', timestamp: extractTimestamp(msg) }]
       }
@@ -60,7 +56,6 @@ function parseAssistantMessage(msg: Record<string, unknown>, index: number): Cha
   const items: ChatHistoryItem[] = []
   const ts = extractTimestamp(msg)
 
-  // Content can be string or array of content blocks
   const content = msg.content
   if (typeof content === 'string' && content.length > 0) {
     items.push({ id: extractId(msg, index), type: 'assistant', content, timestamp: ts })
@@ -68,9 +63,8 @@ function parseAssistantMessage(msg: Record<string, unknown>, index: number): Cha
     for (const block of content) {
       if (!block || typeof block !== 'object') continue
       const b = block as Record<string, unknown>
-      const blockType = b.type as string | undefined
 
-      switch (blockType) {
+      switch (b.type as string | undefined) {
         case 'text': {
           const text = b.text as string | undefined
           if (text && text.length > 0) {
@@ -79,18 +73,15 @@ function parseAssistantMessage(msg: Record<string, unknown>, index: number): Cha
           break
         }
         case 'tool_use': {
-          const toolId = b.id as string | undefined
           const toolName = b.name as string | undefined
-          const toolInput = b.input as Record<string, string> | undefined
           if (toolName) {
             items.push({
               id: generateId(),
               type: 'toolCall',
               tool: {
                 name: toolName,
-                input: toolInput ?? {},
-                status: 'running',
-                result: undefined
+                input: (b.input as Record<string, string>) ?? {},
+                status: 'running'
               },
               timestamp: ts
             })
@@ -102,6 +93,17 @@ function parseAssistantMessage(msg: Record<string, unknown>, index: number): Cha
           if (thinking && thinking.length > 0) {
             items.push({ id: generateId(), type: 'thinking', content: thinking, timestamp: ts })
           }
+          break
+        }
+        case 'tool_result': {
+          const toolUseId = b.tool_use_id as string | undefined
+          const content = b.content
+          const isInterrupted = typeof content === 'string' && content.includes('interrupted')
+          items.push({
+            id: toolUseId ?? generateId(),
+            type: 'interrupted',
+            timestamp: ts
+          })
           break
         }
       }
@@ -118,8 +120,8 @@ function extractTextContent(msg: Record<string, unknown>): string {
     const textBlocks = content.filter((b: unknown) => {
       if (!b || typeof b !== 'object') return false
       return (b as Record<string, unknown>).type === 'text'
-    })
-    return textBlocks.map((b: Record<string, unknown>) => b.text as string).join('\n')
+    }) as Record<string, unknown>[]
+    return textBlocks.map((b) => b.text as string).join('\n')
   }
   return ''
 }
@@ -128,76 +130,103 @@ export function parseFullConversation(sessionId: string, cwd: string): ChatHisto
   const path = resolveJsonlPath(sessionId, cwd)
   if (!path || !existsSync(path)) return []
 
-  const content = readFileSync(path, 'utf-8')
-  const lines = content.split('\n').filter(line => line.trim().length > 0)
-
+  const lines = readFileSync(path, 'utf-8').split('\n').filter(line => line.trim().length > 0)
   const items: ChatHistoryItem[] = []
   for (let i = 0; i < lines.length; i++) {
     try {
       const msg = JSON.parse(lines[i]) as Record<string, unknown>
       items.push(...parseMessage(msg, i))
-    } catch {
-      // skip malformed lines
-    }
+    } catch { /* skip */ }
   }
   return items
 }
 
-interface ParseIncrementalResult {
-  newItems: ChatHistoryItem[]
-  completedTools: number
-}
-
-const fileOffsets = new Map<string, number>()
-
-export function parseIncremental(sessionId: string, cwd: string): ParseIncrementalResult {
+/** Parse only new lines since last offset */
+export function parseIncremental(sessionId: string, cwd: string): ChatHistoryItem[] {
   const path = resolveJsonlPath(sessionId, cwd)
-  if (!path || !existsSync(path)) return { newItems: [], completedTools: 0 }
+  if (!path || !existsSync(path)) return []
 
-  const stats = require('fs').statSync(path)
+  const stats = statSync(path)
   const offset = fileOffsets.get(path) ?? 0
 
-  if (stats.size <= offset) return { newItems: [], completedTools: 0 }
+  if (stats.size <= offset) return []
 
-  const stream = createReadStream(path, {
-    encoding: 'utf-8',
-    start: offset,
-    end: stats.size - 1
-  })
-
-  let buffer = ''
-  let completedTools = 0
-  let newItems: ChatHistoryItem[] = []
-  let lineIndex = 0
-
-  stream.readSync && void 0 // not used, just to ensure types check
-
-  // Read synchronously for simplicity
   const content = readFileSync(path, 'utf-8')
-  const allLines = content.split('\n').filter(line => line.trim().length > 0)
-  const newLines = allLines.slice(offset > 0 ? Math.floor(offset / 100) : 0)
 
+  // Recalculate line offset based on byte position
+  const lines = content.split('\n')
+  const byteToLineOffset = estimateLineOffset(content, offset)
+  const newLines = lines.slice(byteToLineOffset)
+
+  const newItems: ChatHistoryItem[] = []
   for (let i = 0; i < newLines.length; i++) {
     try {
       const msg = JSON.parse(newLines[i]) as Record<string, unknown>
-      const parsed = parseMessage(msg, lineIndex++)
-      newItems.push(...parsed)
-      // Count completed tools
-      for (const item of parsed) {
-        if (item.type === 'toolCall' && item.tool.status === 'success') {
-          completedTools++
-        }
-      }
-    } catch {
-      // skip
-    }
+      newItems.push(...parseMessage(msg, byteToLineOffset + i))
+    } catch { /* skip */ }
   }
 
   fileOffsets.set(path, stats.size)
+  return newItems
+}
 
-  return { newItems, completedTools: 0 }
+/** Estimate which line number corresponds to a byte offset */
+function estimateLineOffset(content: string, byteOffset: number): number {
+  if (byteOffset <= 0) return 0
+  const lines = content.slice(0, byteOffset).split('\n')
+  return lines.length - 1
 }
 
 export function resetOffset(path: string): void {
   fileOffsets.delete(path)
+}
+
+/** Track file offsets per session */
+const fileOffsets = new Map<string, number>()
+
+// ── File Watcher ─────────────────────────────────────────────
+
+const DEBOUNCE_MS = 100
+
+export interface JsonlWatcher {
+  stop: () => void
+}
+
+/**
+ * Watch a JSONL file for changes and call onUpdated with new ChatHistoryItems.
+ * Debounced at 100ms to avoid excessive re-parsing.
+ */
+export function watchJsonlFile(
+  sessionId: string,
+  cwd: string,
+  onUpdated: (sessionId: string, newItems: ChatHistoryItem[]) => void
+): JsonlWatcher {
+  const path = resolveJsonlPath(sessionId, cwd)
+  if (!path) return { stop: () => {} }
+
+  let timer: ReturnType<typeof setTimeout> | null = null
+
+  const doParse = () => {
+    const items = parseIncremental(sessionId, cwd)
+    if (items.length > 0) onUpdated(sessionId, items)
+  }
+
+  const handler = () => {
+    if (timer) clearTimeout(timer)
+    timer = setTimeout(doParse, DEBOUNCE_MS)
+  }
+
+  let watcher: FSWatcher | null = null
+  try {
+    watcher = watch(path, { persistent: false }, handler)
+  } catch {
+    // file may not exist yet — will be retried on demand
+  }
+
+  return {
+    stop: () => {
+      if (timer) clearTimeout(timer)
+      watcher?.close()
+    }
+  }
 }
