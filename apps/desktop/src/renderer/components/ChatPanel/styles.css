@@ -18,8 +18,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 44px;
-  padding: 0 16px;
+  min-height: 44px;
+  padding: 4px 8px 4px 4px;
   background: rgba(30, 30, 34, 0.9);
   -webkit-app-region: drag;
   flex-shrink: 0;
@@ -35,6 +35,7 @@
   -webkit-app-region: no-drag;
   width: 28px;
   height: 28px;
+  flex-shrink: 0;
   border: none;
   border-radius: 6px;
   background: transparent;
@@ -45,6 +46,7 @@
   align-items: center;
   justify-content: center;
   transition: background 0.15s ease, color 0.15s ease;
+  z-index: 1;
 }
 
 .chat-panel__close:hover {

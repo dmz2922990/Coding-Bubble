@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useRef, useCallback } from 'react'
 import type { TabItem } from './types'
 import './TabBar.css'
 
@@ -10,6 +10,15 @@ interface Props {
 }
 
 export function TabBar({ tabs, activeTabId, onTabSelect, onTabClose }: Props): React.JSX.Element {
+  const tabsRef = useRef<HTMLDivElement>(null)
+
+  const handleScroll = useCallback((direction: 'left' | 'right') => {
+    const el = tabsRef.current
+    if (!el) return
+    const delta = 120
+    el.scrollBy({ left: direction === 'left' ? -delta : delta, behavior: 'smooth' })
+  }, [])
+
   const handleTabClick = (id: string) => {
     onTabSelect(id)
   }
@@ -20,26 +29,42 @@ export function TabBar({ tabs, activeTabId, onTabSelect, onTabClose }: Props): R
   }
 
   return (
-    <div className="tab-bar">
-      {tabs.map((tab) => (
-        <button
-          key={tab.id}
-          className={`tab-bar__tab${tab.id === activeTabId ? ' tab-bar__tab--active' : ''}`}
-          onClick={() => handleTabClick(tab.id)}
-          title={tab.title}
-        >
-          <span className="tab-bar__title">{tab.title}</span>
-          {tab.closable !== false && (
-            <button
-              className="tab-bar__close"
-              onClick={(e) => handleCloseClick(e, tab.id)}
-              title="关闭"
-            >
-              ×
-            </button>
-          )}
-        </button>
-      ))}
+    <div className="tab-bar-wrapper">
+      <button
+        className="tab-bar__scroll-btn"
+        onClick={() => handleScroll('left')}
+        title="向左"
+      >
+        ‹
+      </button>
+      <div className="tab-bar" ref={tabsRef}>
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            className={`tab-bar__tab${tab.id === activeTabId ? ' tab-bar__tab--active' : ''}`}
+            onClick={() => handleTabClick(tab.id)}
+            title={tab.title}
+          >
+            <span className="tab-bar__title">{tab.title}</span>
+            {tab.closable !== false && (
+              <button
+                className="tab-bar__close"
+                onClick={(e) => handleCloseClick(e, tab.id)}
+                title="关闭"
+              >
+                ×
+              </button>
+            )}
+          </button>
+        ))}
+      </div>
+      <button
+        className="tab-bar__scroll-btn"
+        onClick={() => handleScroll('right')}
+        title="向右"
+      >
+        ›
+      </button>
     </div>
   )
 }

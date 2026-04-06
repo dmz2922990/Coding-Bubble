@@ -44,6 +44,42 @@ export function ChatPanel(): React.JSX.Element {
             <p>后续可以在这里添加各种实用工具。</p>
           </div>
         )
+      },
+      {
+        id: 'history',
+        title: '历史',
+        closable: true,
+        content: (
+          <div style={{ padding: '20px', color: '#f0f0f0' }}>
+            <h3>📜 历史记录</h3>
+            <p>这是一个测试标签页。</p>
+            <p>后续可以在这里查看历史对话记录。</p>
+          </div>
+        )
+      },
+      {
+        id: 'settings',
+        title: '设置',
+        closable: true,
+        content: (
+          <div style={{ padding: '20px', color: '#f0f0f0' }}>
+            <h3>⚙️ 设置</h3>
+            <p>这是一个测试标签页。</p>
+            <p>后续可以在这里修改应用配置。</p>
+          </div>
+        )
+      },
+      {
+        id: 'about',
+        title: '关于',
+        closable: true,
+        content: (
+          <div style={{ padding: '20px', color: '#f0f0f0' }}>
+            <h3>ℹ️ 关于</h3>
+            <p>Coding-bubble v0.0.3</p>
+            <p>桌面 AI 伴侣助手</p>
+          </div>
+        )
       }
     ],
     []

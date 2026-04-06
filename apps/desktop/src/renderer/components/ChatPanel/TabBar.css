@@ -1,5 +1,15 @@
 /* ── TabBar 标签栏样式 ───────────────────────────────── */
 
+.tab-bar-wrapper {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  max-width: calc(100% - 40px);
+  gap: 2px;
+  -webkit-app-region: no-drag;
+}
+
 .tab-bar {
   display: flex;
   align-items: center;
@@ -7,7 +17,6 @@
   flex: 1;
   overflow-x: auto;
   overflow-y: hidden;
-  -webkit-app-region: no-drag;
   scrollbar-width: none;
 }
 
@@ -31,6 +40,7 @@
   white-space: nowrap;
   transition: background 0.15s ease, color 0.15s ease;
   font-family: inherit;
+  flex-shrink: 0;
 }
 
 .tab-bar__tab:hover {
@@ -80,6 +90,27 @@
 }
 
 .tab-bar__close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f0f0f0;
+}
+
+.tab-bar__scroll-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(240, 240, 240, 0.5);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.tab-bar__scroll-btn:hover {
   background: rgba(255, 255, 255, 0.1);
   color: #f0f0f0;
 }

@@ -23,9 +23,29 @@ export function ChatView({ messages, connectionState, statusText, tabs, activeTa
   }, [messages])
 
   const otherTabs = tabs.filter((t) => t.id !== 'chat')
+  const iconMap: Record<string, string> = { notes: '📝', tools: '🔧', history: '📜', settings: '⚙️', about: 'ℹ️' }
 
   return (
     <>
+      {otherTabs.length > 0 && (
+        <div className="chat-panel__sidebar">
+          <div className="chat-panel__sidebar-title">其他页面</div>
+          <div className="chat-panel__sidebar-list">
+            {otherTabs.map((tab) => (
+              <button
+                key={tab.id}
+                className="chat-panel__sidebar-item"
+                onClick={() => tabManager.setActiveTabId(tab.id)}
+              >
+                <span className="chat-panel__sidebar-item-icon">{iconMap[tab.id] || '📄'}</span>
+                <span className="chat-panel__sidebar-item-title">{tab.title}</span>
+                <span className="chat-panel__sidebar-item-arrow">→</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="chat-panel__messages" ref={listRef}>
         {messages.length === 0 && (
           <div className="chat-panel__empty">
@@ -52,25 +72,6 @@ export function ChatView({ messages, connectionState, statusText, tabs, activeTa
       {!connected && (
         <div className="chat-panel__status-bar">
           {connectionState === 'connecting' ? '连接中...' : '已断开，正在重连...'}
-        </div>
-      )}
-
-      {otherTabs.length > 0 && (
-        <div className="chat-panel__sidebar">
-          <div className="chat-panel__sidebar-title">其他页面</div>
-          <div className="chat-panel__sidebar-list">
-            {otherTabs.map((tab) => (
-              <button
-                key={tab.id}
-                className="chat-panel__sidebar-item"
-                onClick={() => tabManager.setActiveTabId(tab.id)}
-              >
-                <span className="chat-panel__sidebar-item-icon">{tab.id === 'notes' ? '📝' : tab.id === 'tools' ? '🔧' : '📄'}</span>
-                <span className="chat-panel__sidebar-item-title">{tab.title}</span>
-                <span className="chat-panel__sidebar-item-arrow">→</span>
-              </button>
-            ))}
-          </div>
         </div>
       )}
     </>
