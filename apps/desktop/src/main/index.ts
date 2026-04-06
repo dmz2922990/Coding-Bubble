@@ -350,7 +350,10 @@ const jsonlWatchers = new Map<string, ReturnType<typeof watchJsonlFile>>()
 
 function broadcastToRenderer(channel: string, data: unknown): void {
   if (panelWin && !panelWin.isDestroyed()) {
-    panelWin.webContents.send(channel, data)
+    const payload = typeof data === 'object' && data !== null
+      ? { ...(data as Record<string, unknown>), type: channel }
+      : data
+    panelWin.webContents.send('session:update', payload)
   }
 }
 
@@ -393,6 +396,7 @@ app.whenReady().then(() => {
 
   createSocketServer({
     onEvent: (event: HookEvent) => {
+      console.log('[main] socket onEvent:', JSON.stringify(event))
       sessionStore?.process(event)
 
       // Start JSONL watcher on session start

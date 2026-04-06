@@ -23,6 +23,11 @@ export function ChatPanel(): React.JSX.Element {
 
   // Listen for session updates from main process
   useEffect(() => {
+    // Load existing sessions on mount
+    loadSessions()
+  }, [])
+
+  useEffect(() => {
     const cleanup = window.electronAPI.session.onUpdate((_event: unknown, data: unknown) => {
       const msg = data as Record<string, unknown> | undefined
       if (!msg || !msg.sessionId) return
