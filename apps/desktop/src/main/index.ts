@@ -1,10 +1,14 @@
 import { app, BrowserWindow, ipcMain, Menu, screen } from 'electron'
 import { join } from 'path'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import type { HookResponse } from '@coding-bubble/session-monitor'
 
 let ballWin: BrowserWindow | null = null
 let panelWin: BrowserWindow | null = null
 let settingsWin: BrowserWindow | null = null
+
+/** Pending permission resolvers keyed by sessionId */
+const pendingPermissionResolvers = new Map<string, { toolUseId: string | undefined; resolve: (response: HookResponse) => void }>()
 
 /** 拖拽时记录光标相对于窗口左上角的偏移量 */
 let dragOffset = { x: 0, y: 0 }
@@ -365,13 +369,45 @@ ipcMain.handle('session:list', () => {
 })
 
 ipcMain.handle('session:approve', async (_event, sessionId: string) => {
-  console.log('[main] session:approve', sessionId)
-  // TODO: wire to SessionStore.resolvePermission
+  console.log('[main] ===== session:approve START =====')
+  console.log('[main] session:approve called for session:', sessionId)
+  console.log('[main] pendingPermissionResolvers keys:', [...pendingPermissionResolvers.keys()])
+
+  const entry = pendingPermissionResolvers.get(sessionId)
+  if (!entry) {
+    console.error('[main] session:approve FAILED - no pending resolver for session:', sessionId)
+    console.error('[main] Available sessions in sessionStore:', sessionStore ? [...sessionStore.sessions.keys()] : 'no sessionStore')
+    return
+  }
+
+  console.log('[main] Found entry:', { toolUseId: entry.toolUseId })
+  pendingPermissionResolvers.delete(sessionId)
+
+  const response: HookResponse = { decision: 'allow' }
+  console.log('[main] Resolving with response:', JSON.stringify(response))
+
+  try {
+    console.log('[main] About to call entry.resolve()...')
+    entry.resolve(response)
+    console.log('[main] entry.resolve() completed successfully')
+  } catch (err) {
+    console.error('[main] Error during resolve:', err)
+  }
+
+  console.log('[main] ===== session:approve END =====')
 })
 
-ipcMain.handle('session:deny', async (_event, _sessionId: string, _reason?: string) => {
-  console.warn('[main] session:deny called')
-  // TODO: wire to SessionStore.resolvePermission
+ipcMain.handle('session:deny', async (_event, sessionId: string, reason?: string) => {
+  console.log('[main] session:deny', sessionId, 'pending keys:', [...pendingPermissionResolvers.keys()])
+  const entry = pendingPermissionResolvers.get(sessionId)
+  if (!entry) return
+  pendingPermissionResolvers.delete(sessionId)
+
+  const response: HookResponse = { decision: 'deny', reason }
+  if (entry.toolUseId) {
+    sessionStore?.resolvePermission(entry.toolUseId, response)
+  }
+  entry.resolve(response)
 })
 
 ipcMain.handle('session:hooks-status', () => {
@@ -435,14 +471,27 @@ app.whenReady().then(() => {
       }
     },
     onPermissionRequest: async (sessionId, toolUseId, toolName, toolInput): Promise<HookResponse> => {
+      // Check session permission mode - only prompt user if mode is 'default'
+      const session = sessionStore?.sessions.get(sessionId)
+      const permissionMode = session?.permissionMode ?? 'auto'
+
+      console.log('[main] onPermissionRequest sessionId:', sessionId, 'permissionMode:', permissionMode)
+
+      if (permissionMode !== 'default') {
+        // Auto-allow for non-default modes
+        console.log('[main] auto-allow for permissionMode:', permissionMode)
+        return { decision: 'allow' }
+      }
+
+      // Wait for user approval
       return new Promise<HookResponse>((resolve) => {
+        pendingPermissionResolvers.set(sessionId, { toolUseId, resolve })
         sessionStore?.process({
           hook_event_name: 'PermissionRequest',
           session_id: sessionId,
           cwd: '',
           payload: { toolUseId, tool: toolName, input: toolInput }
         } as HookEvent)
-        setTimeout(() => resolve({ decision: 'allow' }), 5000)
       })
     }
   })

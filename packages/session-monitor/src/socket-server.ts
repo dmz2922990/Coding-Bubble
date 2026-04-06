@@ -39,7 +39,7 @@ export interface SocketServerOptions {
   onEvent: (event: HookEvent) => void
   onPermissionRequest: (
     sessionId: string,
-    toolUseId: string | undefined,
+    toolUseId: string,
     toolName: string,
     toolInput: Record<string, unknown> | null
   ) => Promise<HookResponse>
@@ -70,19 +70,24 @@ export function createSocketServer(options: SocketServerOptions): SocketServer {
         const event: HookEvent = JSON.parse(buffer.trim())
         const payload = event.payload as Record<string, unknown> | undefined
 
+        // PermissionRequest - wait for user decision
         if (event.hook_event_name === 'PermissionRequest') {
-          // Keep socket open; wait for renderer decision
+          console.log('[socket-server] PermissionRequest received for session:', event.session_id)
           const toolName = (payload?.tool_name as string) ?? (payload?.tool as string) ?? 'unknown'
           const toolInput = (payload?.tool_input as Record<string, unknown>) ?? (payload?.input as Record<string, unknown>) ?? null
           const key = ToolUseIdCache.makeKey(event.session_id, toolName, toolInput)
+          console.log('[socket-server] cache key:', key)
           const toolUseId = cache.pop(key)
+          console.log('[socket-server] toolUseId from cache:', toolUseId)
 
+          // Keep socket open; wait for renderer decision
           options.onPermissionRequest(
             event.session_id,
-            toolUseId,
+            toolUseId ?? '',
             toolName,
             toolInput
           ).then((response) => {
+            console.log('[socket-server] sending response:', JSON.stringify(response))
             socket.write(JSON.stringify(response) + '\n')
             socket.end()
           }).catch((err) => {
@@ -90,18 +95,20 @@ export function createSocketServer(options: SocketServerOptions): SocketServer {
             socket.write(JSON.stringify({ decision: 'allow', reason: 'handler error' }) + '\n')
             socket.end()
           })
-        } else {
-          // Cache tool_use_id from PreToolUse for later PermissionRequest correlation
-          if (event.hook_event_name === 'PreToolUse' && payload?.tool_use_id) {
-            const toolName = (payload.tool_name as string) ?? (payload.tool as string) ?? ''
-            const toolInput = (payload.tool_input as Record<string, unknown>) ?? (payload.input as Record<string, unknown>) ?? null
-            const key = ToolUseIdCache.makeKey(event.session_id, toolName, toolInput)
-            cache.push(key, payload.tool_use_id as string)
-          }
-
-          options.onEvent(event)
-          socket.end()
+          return
         }
+
+        // Cache tool_use_id from PreToolUse for later PermissionRequest correlation
+        if (event.hook_event_name === 'PreToolUse' && payload?.tool_use_id) {
+          const toolName = (payload.tool_name as string) ?? (payload.tool as string) ?? ''
+          const toolInput = (payload.tool_input as Record<string, unknown>) ?? (payload.input as Record<string, unknown>) ?? null
+          const key = ToolUseIdCache.makeKey(event.session_id, toolName, toolInput)
+          cache.push(key, payload.tool_use_id as string)
+          console.log('[socket-server] PreToolUse cached toolUseId for key:', key)
+        }
+
+        options.onEvent(event)
+        socket.end()
       } catch {
         // Incomplete JSON — wait for more data
         if (buffer.length > 65536) {

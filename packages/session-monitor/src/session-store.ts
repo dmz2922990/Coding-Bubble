@@ -124,7 +124,8 @@ export class SessionStore {
       phase: { type: 'idle' },
       chatItems: [],
       lastActivity: t,
-      createdAt: t
+      createdAt: t,
+      permissionMode: 'auto' // Default to auto-allow
     })
   }
 
@@ -148,6 +149,11 @@ export class SessionStore {
 
     switch (eventName) {
       case 'UserPromptSubmit':
+        // Update permission mode from UserPromptSubmit payload
+        const permissionMode = (event.payload?.permission_mode as string) ?? session.permissionMode
+        session.permissionMode = permissionMode
+        this.transition(session, 'processing')
+        break
       case 'PreToolUse':
         this.transition(session, 'processing')
         break

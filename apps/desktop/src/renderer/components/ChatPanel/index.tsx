@@ -31,10 +31,10 @@ export function ChatPanel(): React.JSX.Element {
         const sessionId = s.sessionId as string
         const phaseObj = s.phase as Record<string, unknown> | undefined
         const phase = (phaseObj?.type as string) ?? 'idle'
-        // toolName/toolInput are nested inside phase.context for waitingForApproval
-        const phaseContext = phaseObj?.context as Record<string, unknown> | undefined
-        const toolName = phaseObj?.toolName as string | undefined ?? phaseContext?.toolName as string | undefined
-        const toolInput = phaseObj?.toolInput as Record<string, unknown> | null | undefined ?? phaseContext?.toolInput as Record<string, unknown> | null | undefined
+        // For waitingForApproval, toolName and toolInput are in phase.context
+        const context = phaseObj?.context as Record<string, unknown> | undefined
+        const toolName = context?.toolName as string | undefined
+        const toolInput = context?.toolInput as Record<string, unknown> | null | undefined
 
         sessionMap.set(sessionId, {
           phase,

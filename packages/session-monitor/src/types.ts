@@ -63,6 +63,7 @@ export interface SessionState {
   tty?: string
   lastActivity: number
   createdAt: number
+  permissionMode: string
 }
 
 // ═─ Hook Events ─────────────────────────────────────────────
