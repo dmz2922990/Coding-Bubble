@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer, webUtils } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 
 // 通过 contextBridge 向渲染进程安全暴露 IPC 通道
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -12,12 +12,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setIgnoreMouseEvents: (ignore: boolean): void => {
     ipcRenderer.send('set-ignore-mouse-events', ignore)
   },
-  /** QuickInput 条形输入框 */
-  toggleQuickInput: (): Promise<{ visible: boolean; direction: 'left' | 'right' }> =>
-    ipcRenderer.invoke('quickinput:toggle'),
-  /** 拖拽后重算 QuickInput 方向 */
-  repositionQuickInput: (): Promise<{ direction: 'left' | 'right' } | null> =>
-    ipcRenderer.invoke('quickinput:reposition'),
+  /** 打开对话面板 */
+  openPanel: (): void => { ipcRenderer.send('panel:open') },
   /** 右键上下文菜单 */
   showContextMenu: (): void => { ipcRenderer.send('contextmenu:show') },
   /** 关闭当前窗口 */
@@ -31,25 +27,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   /** 读取配置 */
   getConfig: (): Promise<Record<string, unknown>> => ipcRenderer.invoke('config:get'),
   /** 写入配置 */
-  setConfig: (config: Record<string, unknown>): Promise<void> => ipcRenderer.invoke('config:set', config),
-  /** 获取拖入文件的原生路径（Electron 28+ 替代 File.path） */
-  getPathForFile: (file: File): string => webUtils.getPathForFile(file),
-  /** 解析拖入的文件路径 → 文件元信息 */
-  resolveDroppedFiles: (paths: string[]): Promise<Array<{ path: string; name: string; ext: string; size: number }>> =>
-    ipcRenderer.invoke('drop:files', paths),
-  /** 打开 ChatPanel 并传入文件附件 */
-  openPanelWithFiles: (files: Array<{ path: string; name: string; ext: string; size: number }>): void => {
-    ipcRenderer.send('panel:open-with-files', files)
-  },
-  /** 监听 main → renderer 传递文件附件 */
-  onReceiveFiles: (callback: (files: Array<{ path: string; name: string; ext: string; size: number }>) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, files: Array<{ path: string; name: string; ext: string; size: number }>): void => {
-      callback(files)
-    }
-    ipcRenderer.on('receive-files', handler)
-    return () => { ipcRenderer.removeListener('receive-files', handler) }
-  },
-  /** 拉取待处理的文件附件（拉模型，解决新窗口 race condition） */
-  getPendingFiles: (): Promise<Array<{ path: string; name: string; ext: string; size: number }> | null> =>
-    ipcRenderer.invoke('panel:get-pending-files')
+  setConfig: (config: Record<string, unknown>): Promise<void> => ipcRenderer.invoke('config:set', config)
 })

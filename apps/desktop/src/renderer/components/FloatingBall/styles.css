@@ -64,26 +64,6 @@ body,
   flex-shrink: 0;
 }
 
-/* ── 展开态 ──────────────────────────────── */
-.ball-root--expanded .bubble-area {
-  align-items: stretch;
-  padding: 8px 12px;
-  overflow-y: auto;
-  pointer-events: auto;
-}
-
-.ball-root--expanded .bottom-section {
-  width: 100%;
-}
-
-.qi-area {
-  flex: 1;
-  display: flex;
-  align-items: flex-end;
-  min-width: 0;
-  padding-bottom: 4px;
-}
-
 /* ── 悬浮球 ──────────────────────────────── */
 .ball {
   width: 56px;
@@ -122,21 +102,6 @@ body,
   font-size: 26px;
   line-height: 1;
   pointer-events: none;
-}
-
-/* ── 文件拖入高亮 ────────────────────────── */
-.ball--drop-active {
-  transform: scale(1.2);
-  box-shadow:
-    0 0 24px rgba(100, 180, 255, 0.8),
-    0 0 48px rgba(100, 180, 255, 0.4),
-    0 4px 14px rgba(232, 85, 10, 0.55);
-  animation: drop-pulse 1s ease-in-out infinite;
-}
-
-@keyframes drop-pulse {
-  0%, 100% { box-shadow: 0 0 24px rgba(100, 180, 255, 0.8), 0 0 48px rgba(100, 180, 255, 0.4); }
-  50% { box-shadow: 0 0 32px rgba(100, 180, 255, 1), 0 0 64px rgba(100, 180, 255, 0.6); }
 }
 
 /* ══════════════════════════════════════════════
@@ -419,9 +384,4 @@ body,
     background 0.8s ease,
     box-shadow 0.6s ease,
     transform 0.6s ease;
-}
-
-/* ── drop-active 高于情绪层 ─────────────── */
-.ball--drop-active[data-emotion] {
-  animation: drop-pulse 1s ease-in-out infinite;
 }

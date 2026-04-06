@@ -1,7 +1,5 @@
 import Fastify from 'fastify'
 import { setupWebSocket } from './gateway/ws'
-import { setupCalendarRoutes } from './gateway/calendar'
-import { setupPersonaRoutes } from './gateway/persona'
 import { setupEmotionRoutes } from './gateway/emotion'
 import { memoryService } from './memory/memory-service'
 import { greetingService } from './memory/greeting-service'
@@ -71,12 +69,6 @@ export async function startBackend(options: {
 
   // 注册 WebSocket 路由（必须在 listen 之前）
   await setupWebSocket(app, accessConfig)
-
-  // 注册日历查询路由（B.8）
-  await setupCalendarRoutes(app)
-
-  // 注册人格信息路由
-  await setupPersonaRoutes(app)
 
   // 注册情绪状态路由
   await setupEmotionRoutes(app)

@@ -1,6 +1,6 @@
-<!-- STATE: action -->
+<!-- STATE: done -->
 <!-- BRANCH: main -->
-<!-- TEMP_BRANCH: -->
+<!-- TEMP_BRANCH: refactor/floating-ball-simplify -->
 # Code Insight: 悬浮球功能裁剪与双击改造
 
 ## 问题描述
@@ -10,7 +10,7 @@
 - [x] 代码分析
 - [x] 根因定位
 - [x] 修复方案设计
-- [ ] 修复实施
+- [x] 修复实施
 
 ## 分析记录
 
@@ -302,3 +302,42 @@ openPanel: (): void => { ipcRenderer.send('panel:open') }
 - [x] 文件拖入功能 → 移除
 - [x] 单击气泡功能 → 保留
 - [x] 双击打开面板动画 → 不需要
+
+---
+
+## Change log
+
+### 2024-04-06
+
+#### 前端组件修改
+- **FloatingBall/index.tsx**:
+  - 删除 QuickInput 相关 state 和引用
+  - 删除文件拖入事件处理器
+  - 双击交互改为调用 `window.electronAPI.openPanel()`
+  - 简化气泡方向计算（固定为 center）
+- **FloatingBall/styles.css**:
+  - 删除展开态样式（`.ball-root--expanded`, `.qi-area`）
+  - 删除文件拖入高亮样式（`.ball--drop-active`）
+- **ChatPanel/index.tsx**:
+  - 删除多标签页逻辑（仅保留对话界面）
+  - 删除文件附件相关代码
+- **删除组件**: QuickInput/, CalendarView.tsx, DayDetailView.tsx, ClawProfile/
+
+#### 主进程修改
+- **main/index.ts**:
+  - 删除 QuickInput 相关 IPC（约 120 行）
+  - 删除文件拖入相关 IPC（约 50 行）
+  - 新增 `panel:open` IPC handler
+- **preload/index.ts**:
+  - 删除 QuickInput 和文件拖入相关 API 暴露
+  - 新增 `openPanel` API 暴露
+
+#### 后端修改
+- **index.ts**: 删除日历和人格路由注册
+- **删除路由**: calendar.ts, persona.ts
+
+#### 改动统计
+- 15 个文件修改
+- 删除 1355 行代码
+- 新增 73 行代码
+- 净减少 1282 行
