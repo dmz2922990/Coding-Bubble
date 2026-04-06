@@ -165,12 +165,30 @@ export class SessionStore {
       case 'PreToolUse':
         this.transition(session, 'processing')
         break
-      case 'PostToolUse':
+      case 'PostToolUse': {
+        const payload = event.payload as Record<string, unknown> | undefined
+        const toolUseId = payload?.tool_use_id as string
+        const toolResponse = payload?.tool_response as Record<string, unknown> | undefined
+
+        // Update tool status and result
+        if (toolUseId) {
+          this._updateToolResult(sessionId, toolUseId, toolResponse)
+        }
+
         this.transition(session, 'idle')
         break
+      }
       case 'Notification':
         break
-      case 'Stop':
+      case 'Stop': {
+        const stopPayload = event.payload as Record<string, unknown> | undefined
+        const lastMessage = stopPayload?.last_assistant_message as string | undefined
+        if (lastMessage && lastMessage.length > 0) {
+          this._addAssistantMessage(sessionId, lastMessage)
+        }
+        this.transition(session, 'waitingForInput')
+        break
+      }
       case 'SubagentStop':
         this.transition(session, 'waitingForInput')
         break
@@ -219,6 +237,64 @@ export class SessionStore {
     this._publish('session:permission', { sessionId, toolName, toolInput })
   }
 
+  private _updateToolResult(sessionId: string, toolUseId: string, toolResponse: Record<string, unknown> | undefined): void {
+    const session = this._sessions.get(sessionId)
+    if (!session) return
+
+    // Find the chat item with matching toolUseId and update its result
+    for (let i = 0; i < session.chatItems.length; i++) {
+      const item = session.chatItems[i]
+      if (item.id === toolUseId && item.type === 'toolCall') {
+        const tool = item.tool
+        if (tool.status === 'running' || tool.status === 'waitingForApproval') {
+          // Update the tool item with result
+          session.chatItems[i] = {
+            ...item,
+            tool: {
+              ...tool,
+              status: toolResponse?.interrupted ? 'interrupted' : 'success',
+              result: this._formatToolResult(toolResponse)
+            }
+          }
+          console.log('[SessionStore] updated tool result for:', toolUseId)
+
+          // Notify renderer about the updated items
+          this._publish('session:history', { sessionId, items: session.chatItems })
+        }
+        break
+      }
+    }
+  }
+
+  private _formatToolResult(toolResponse: Record<string, unknown>): string {
+    const stdout = toolResponse.stdout as string | undefined
+    const stderr = toolResponse.stderr as string | undefined
+    const output = []
+
+    if (stdout) output.push(stdout)
+    if (stderr) output.push(stderr)
+
+    return output.join('\n').trim() || '(no output)'
+  }
+
+  private _addAssistantMessage(sessionId: string, content: string): void {
+    const session = this._sessions.get(sessionId)
+    if (!session) return
+
+    // Add assistant message to chat items
+    const item: ChatHistoryItem = {
+      id: `assistant_${Date.now()}`,
+      type: 'assistant',
+      content,
+      timestamp: now()
+    }
+    session.chatItems.push(item)
+    console.log('[SessionStore] added assistant message for session:', sessionId)
+
+    // Notify renderer about new items
+    this._publish('session:history', { sessionId, items: session.chatItems })
+  }
+
   transition(session: SessionState, newType: SessionPhase['type'], context?: Partial<SessionState['phase']>): void {
     const currentType = session.phase.type
     const allowed = VALID_TRANSITIONS[currentType]
@@ -243,6 +319,7 @@ export class SessionStore {
   }
 
   private _publish(channel: string, data: unknown): void {
+    console.log('[SessionStore] _publish channel:', channel, 'data:', JSON.stringify(data))
     // To be wired by main process IPC bridge
     this._onPublish?.(channel, data)
   }

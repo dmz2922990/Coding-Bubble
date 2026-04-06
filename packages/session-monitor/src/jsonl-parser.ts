@@ -128,9 +128,16 @@ function extractTextContent(msg: Record<string, unknown>): string {
 
 export function parseFullConversation(sessionId: string, cwd: string): ChatHistoryItem[] {
   const path = resolveJsonlPath(sessionId, cwd)
-  if (!path || !existsSync(path)) return []
+  console.log('[jsonl-parser] parseFullConversation sessionId:', sessionId, 'path:', path)
+
+  if (!path || !existsSync(path)) {
+    console.log('[jsonl-parser] path not found or does not exist')
+    return []
+  }
 
   const lines = readFileSync(path, 'utf-8').split('\n').filter(line => line.trim().length > 0)
+  console.log('[jsonl-parser] found', lines.length, 'lines in JSONL file')
+
   const items: ChatHistoryItem[] = []
   for (let i = 0; i < lines.length; i++) {
     try {
@@ -138,6 +145,8 @@ export function parseFullConversation(sessionId: string, cwd: string): ChatHisto
       items.push(...parseMessage(msg, i))
     } catch { /* skip */ }
   }
+
+  console.log('[jsonl-parser] parsed', items.length, 'chat items')
   return items
 }
 

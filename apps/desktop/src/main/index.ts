@@ -353,6 +353,7 @@ let sessionStore: SessionStore | null = null
 const jsonlWatchers = new Map<string, ReturnType<typeof watchJsonlFile>>()
 
 function broadcastToRenderer(channel: string, data: unknown): void {
+  console.log('[main] broadcastToRenderer channel:', channel, 'data keys:', data ? Object.keys(data as Record<string, unknown>) : 'no data')
   if (panelWin && !panelWin.isDestroyed()) {
     const payload = typeof data === 'object' && data !== null
       ? { ...(data as Record<string, unknown>), type: channel }
@@ -385,6 +386,12 @@ ipcMain.handle('session:approve', async (_event, sessionId: string) => {
 
   const response: HookResponse = { decision: 'allow' }
   console.log('[main] Resolving with response:', JSON.stringify(response))
+
+  // Update sessionStore phase state
+  if (entry.toolUseId) {
+    console.log('[main] calling sessionStore.resolvePermission for toolUseId:', entry.toolUseId)
+    await sessionStore?.resolvePermission(entry.toolUseId, response)
+  }
 
   try {
     console.log('[main] About to call entry.resolve()...')
