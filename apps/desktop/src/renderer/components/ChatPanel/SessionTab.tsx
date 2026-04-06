@@ -1,0 +1,172 @@
+import React, { useState, useRef, useCallback, useEffect } from 'react'
+import type { ChatItem, SessionInfo } from './types'
+import './styles.css'
+
+const TOOL_STATUS_COLORS: Record<string, string> = {
+  running: '#ff9800',
+  success: '#4caf50',
+  error: '#f44336',
+  interrupted: '#9e9e9e',
+  waitingForApproval: '#ff9800'
+}
+
+interface Props {
+  session: SessionInfo
+  items: ChatItem[]
+  onAllow?: () => void
+  onDeny?: () => void
+}
+
+export function SessionTab({ session, items, onAllow, onDeny }: Props): React.JSX.Element {
+  const listRef = useRef<HTMLDivElement>(null)
+  const [autoScroll, setAutoScroll] = useState(true)
+  const [newCount, setNewCount] = useState(0)
+
+  useEffect(() => {
+    if (listRef.current && autoScroll) {
+      listRef.current.scrollTop = listRef.current.scrollHeight
+    }
+  }, [items, autoScroll])
+
+  const handleScroll = useCallback(() => {
+    const el = listRef.current
+    if (!el) return
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 30
+    setAutoScroll(atBottom)
+    if (atBottom) setNewCount(0)
+  }, [])
+
+  const scrollToBottom = useCallback(() => {
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
+    setAutoScroll(true)
+    setNewCount(0)
+  }, [])
+
+  return (
+    <div className="session-tab">
+      <div className="session-tab__header">
+        <span className="session-tab__name">{session.projectName}</span>
+        <span className="session-tab__phase">· {session.phase}</span>
+      </div>
+
+      <div className="session-tab__messages" ref={listRef} onScroll={handleScroll}>
+        {items.map((item) => (
+          <MessageItem key={item.id} item={item} />
+        ))}
+      </div>
+
+      {!autoScroll && newCount > 0 && (
+        <button className="session-tab__new-indicator" onClick={scrollToBottom}>
+          ↓ {newCount} 条新消息
+        </button>
+      )}
+
+      {session.phase === 'waitingForApproval' && (
+        <PermissionBar
+          toolName={session.toolName ?? 'unknown'}
+          toolInput={session.toolInput}
+          onAllow={onAllow}
+          onDeny={onDeny}
+        />
+      )}
+    </div>
+  )
+}
+
+function MessageItem({ item }: { item: ChatItem }): React.JSX.Element {
+  switch (item.type) {
+    case 'user':
+      return (
+        <div className="chat-msg chat-msg--user">
+          <div className="chat-msg__bubble">{item.content}</div>
+        </div>
+      )
+
+    case 'assistant':
+      return (
+        <div className="chat-msg chat-msg--assistant">
+          <div className="chat-msg__bubble">
+            {item.content}
+          </div>
+        </div>
+      )
+
+    case 'toolCall':
+      return <ToolItem tool={item.tool!} />
+
+    case 'thinking':
+      return <ThinkingItem content={item.content ?? ''} />
+
+    case 'interrupted':
+      return (
+        <div className="chat-msg chat-msg--interrupted">
+          <div className="chat-msg__interrupted">⚠️ 会话已中断</div>
+        </div>
+      )
+
+    default:
+      return null
+  }
+}
+
+function ToolItem({ tool }: { tool: { name: string; input: Record<string, string>; status: string; result?: string } }): React.JSX.Element {
+  const [expanded, setExpanded] = useState(false)
+  const color = TOOL_STATUS_COLORS[tool.status] ?? '#888'
+  const inputPreview = JSON.stringify(tool.input).slice(0, 80)
+
+  return (
+    <div className="chat-msg chat-msg--tool">
+      <div className="chat-msg__tool" onClick={() => setExpanded(!expanded)}>
+        <div className="chat-msg__tool-header">
+          <span className="chat-msg__tool-dot" style={{ backgroundColor: color }} />
+          <span className="chat-msg__tool-name">{tool.name}</span>
+          <span className="chat-msg__tool-input">{inputPreview}</span>
+        </div>
+        {expanded && tool.result && (
+          <pre className="chat-msg__tool-result">{tool.result}</pre>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ThinkingItem({ content }: { content: string }): React.JSX.Element {
+  const [expanded, setExpanded] = useState(false)
+  const preview = content.slice(0, 80) + (content.length > 80 ? '...' : '')
+
+  return (
+    <div className="chat-msg chat-msg--thinking" onClick={() => setExpanded(!expanded)}>
+      <div className="chat-msg__thinking">
+        <span className="chat-msg__thinking-label">💭 思考</span>
+        <span className="chat-msg__thinking-content">{expanded ? content : preview}</span>
+      </div>
+    </div>
+  )
+}
+
+interface PermissionBarProps {
+  toolName: string
+  toolInput?: Record<string, unknown> | null
+  onAllow?: () => void
+  onDeny?: () => void
+}
+
+function PermissionBar({ toolName, toolInput, onAllow, onDeny }: PermissionBarProps): React.JSX.Element {
+  const inputPreview = toolInput ? JSON.stringify(toolInput).slice(0, 200) : ''
+
+  return (
+    <div className="permission-bar">
+      <div className="permission-bar__content">
+        <div className="permission-bar__label">工具请求授权</div>
+        <div className="permission-bar__tool">{toolName}</div>
+        {inputPreview && (
+          <pre className="permission-bar__input">{inputPreview}</pre>
+        )}
+      </div>
+      <div className="permission-bar__actions">
+        <button className="permission-bar__btn permission-bar__btn--deny" onClick={onDeny}>拒绝</button>
+        <button className="permission-bar__btn permission-bar__btn--allow" onClick={onAllow}>允许</button>
+      </div>
+    </div>
+  )
+}

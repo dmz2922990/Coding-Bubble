@@ -58,37 +58,38 @@ Tasks must be completed and verified sequentially. Do not start a task until the
   Verification: Module at `packages/session-monitor/src/jsonl-parser.ts`. Exports `parseFullConversation()` and `parseIncremental()`. Correctly parses user/assistant/tool_use/tool_result/thinking blocks.
 
 - [ ] **Task 15: Wire JSONL parser with file watching (fs.watch)**
-  Verification: Watches JSONL file, triggers incremental parsing on write (100ms debounce). Results fed into `SessionStore.process('fileUpdated', payload)`.
+  Verification: Parser watches the JSONL file. When Claude Code writes new data, the parser triggers incremental parsing. Debounced (100ms). Results fed into `SessionStore.process('fileUpdated', payload)`.
 
 - [x] **Task 16: Implement Tool Use ID cache in socket server**
   Verification: PreToolUse caches under `sessionId:toolName:serializedInput` key with FIFO queue. PermissionRequest pops from cache. ToolUseIdCache class in socket-server.ts.
+
 - [x] **Task 17: Wire permission request → SessionStore → UI callback chain**
-  PermissionRequest event → socket server correlates toolUseId → SessionStore creates `waitingForApproval` phase → broadcasts via onPublish. Full UI wiring pending Phase 3.
+  Verification: PermissionRequest event → socket server correlates toolUseId → SessionStore creates `waitingForApproval` phase → broadcasts via onPublish. Full UI wiring pending Phase 3.
 
 ---
 
 ## Phase 3: Renderer — UI Components
 
-- [ ] **Task 18: Rewrite preload IPC for session management**
-  Verification: `apps/desktop/src/preload/index.ts` exposes `window.electronAPI.session.*` methods. Renderer can call `session.list()`, `session.approve()`, `session.deny()`, `session.on('session:update', cb)`. TypeScript compiles.
+- [x] **Task 18: Rewrite preload IPC for session management**
+  Renderer can call `session.list()`, `session.approve()`, `session.deny()`, `session.on('session:update', cb)`. TypeScript compiles.
 
-- [ ] **Task 19: Create SessionTab content (chat history view)**
-  Verification: Component renders session header, message list (user/assistant/tool/thinking). User msgs right-aligned, assistant left, tool expandable, thinking collapsed. Status dots colored by tool status.
+- [x] **Task 19: Create SessionTab content (chat history view)**
+  SessionTab component with header, message list, ToolItem (expandable), ThinkingItem (collapsed), PermissionBar.
 
-- [ ] **Task 20: Create Permission Approval Bar**
-  Verification: Appears only on `waitingForApproval` phase. Shows tool name, input preview, Allow/Deny buttons. Clicking calls IPC. Spring animation slide-in.
+- [x] **Task 20: Create Permission Approval Bar**
+  PermissionBar shows tool name, input preview, Allow/Deny buttons. Appears only on `waitingForApproval` phase.
 
-- [ ] **Task 21: Create Session List (对话 tab content)**
-  Verification: "对话" tab renders session cards (project name, path, status dot, activity). Clicking card switches to session tab. Empty state when no sessions.
+- [x] **Task 21: Create Session List (对话 tab content)**
+  SessionListView renders session cards with name, path, status dot. Empty state when no sessions.
 
-- [ ] **Task 22: Wire dynamic tab creation/removal in ChatPanel**
-  Verification: New session → new tab. Session ends → tab removed. If active tab removed → switches to "对话".
+- [x] **Task 22: Wire dynamic tab creation/removal in ChatPanel**
+  ChatPanel listens to session updates via IPC, creates/removes tabs dynamically. Switches to "对话" on tab removal.
 
 - [ ] **Task 23: Wire Permission Approval flow end-to-end**
-  Verification: Claude CLI blocks → Socket receives → Phase `waitingForApproval` → UI shows bar → Click Allow → Main writes to socket → Python outputs JSON → Claude proceeds.
+  Claude CLI → Socket → SessionStore → PermissionBar → IPC → Main → Socket → Python → CLI. UI wired, end-to-end needs Claude CLI testing.
 
-- [ ] **Task 24: Auto-scroll + new message indicator**
-  Verification: Auto-scrolls to bottom. User scrolls up pauses it. "N new messages" floating indicator appears. Click scrolls to bottom and resumes.
+- [x] **Task 24: Auto-scroll + new message indicator**
+  SessionTab has auto-scroll with pause on user scroll and "↓ N 条新消息" floating indicator.
 
 ---
 

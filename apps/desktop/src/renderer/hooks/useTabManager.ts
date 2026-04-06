@@ -33,8 +33,12 @@ export function useTabManager(initialTabs: TabItem[]): TabManager {
     })
   }, [activeTabId])
 
+  const setActiveTab = useCallback((id: string) => {
+    setActiveTabId(id)
+  }, [])
+
   return useMemo(
-    () => ({ tabs, addTab, removeTab, setActiveTabId, activeTabId }),
-    [tabs, addTab, removeTab, activeTabId]
+    () => ({ tabs, addTab, removeTab, setActiveTabId: setActiveTab, activeTabId }),
+    [tabs, addTab, removeTab, setActiveTab, activeTabId]
   )
 }

@@ -1,27 +1,50 @@
-import type { ReactNode } from 'react'
-
 /** Represents a single tab in the panel */
 export interface TabItem {
-  /** Unique identifier (e.g., 'chat', 'notes', 'tools') */
   id: string
-  /** Display title shown in the tab label */
   title: string
-  /** Content to render when tab is active */
-  content: ReactNode
-  /** Whether to show close button. Default true. Default tab uses false. */
   closable?: boolean
+  content: React.ReactNode
 }
 
 /** Functions exposed by the tab manager */
 export interface TabManager {
-  /** Register a new tab. Replaces if id already exists. */
   addTab: (tab: TabItem) => void
-  /** Remove a tab by id. Cannot remove tabs with closable=false. */
   removeTab: (id: string) => void
-  /** Switch active tab to given id */
-  setActiveTabId: (id: React.SetStateAction<string>) => void
-  /** Current registered tabs */
+  setActiveTabId: (id: string) => void
   tabs: TabItem[]
-  /** Currently active tab id */
   activeTabId: string
+}
+
+/** Session phase type for UI rendering */
+export type SessionPhaseType =
+  | 'idle'
+  | 'processing'
+  | 'waitingForInput'
+  | 'waitingForApproval'
+  | 'compacting'
+  | 'ended'
+
+/** Status indicator for a session */
+export interface SessionInfo {
+  sessionId: string
+  projectName: string
+  cwd: string
+  phase: SessionPhaseType
+  lastActivity: number
+  toolName?: string
+  toolInput?: Record<string, unknown> | null
+}
+
+/** Chat history item rendered in a session tab */
+export interface ChatItem {
+  id: string
+  type: 'user' | 'assistant' | 'toolCall' | 'thinking' | 'interrupted'
+  content?: string
+  tool?: {
+    name: string
+    input: Record<string, string>
+    status: 'running' | 'success' | 'error' | 'interrupted' | 'waitingForApproval'
+    result?: string
+  }
+  timestamp: number
 }
