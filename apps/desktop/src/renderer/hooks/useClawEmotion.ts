@@ -1,5 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
-import type { EmotionSnapshot, EmotionState } from '@coding-bubble/shared'
+// Stub types — will be removed in later tasks
+export type EmotionState = 'idle' | 'busy' | 'done' | 'night'
+export interface EmotionSnapshot {
+  state: EmotionState
+  reason: string
+  updatedAt: string
+  phrases: string[]
+  intensity: number
+  ambientLevel: 'low' | 'medium' | 'high'
+}
 import { backendFetch } from '../lib/backend-client'
 
 /** 默认轮询间隔 15 秒（后续可平滑升级到 WS push） */

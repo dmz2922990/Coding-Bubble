@@ -1,14 +1,8 @@
 import { defineConfig } from 'vitest/config'
-import { resolve } from 'path'
 
 export default defineConfig({
   test: {
-    include: ['packages/backend/src/**/*.test.ts'],
+    include: ['apps/**/*.{test,spec}.{ts,tsx}', 'packages/**/*.{test,spec}.{ts,tsx}'],
     globals: true
-  },
-  resolve: {
-    alias: {
-      '@coding-bubble/shared': resolve(__dirname, 'packages/shared/src/index.ts')
-    }
   }
 })

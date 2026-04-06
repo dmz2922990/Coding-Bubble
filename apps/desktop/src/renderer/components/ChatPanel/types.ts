@@ -19,7 +19,7 @@ export interface TabManager {
   /** Remove a tab by id. Cannot remove tabs with closable=false. */
   removeTab: (id: string) => void
   /** Switch active tab to given id */
-  setActiveTab: (id: string) => void
+  setActiveTabId: (id: React.SetStateAction<string>) => void
   /** Current registered tabs */
   tabs: TabItem[]
   /** Currently active tab id */

@@ -4,7 +4,7 @@ import { resolve } from 'path'
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin({ exclude: ['@coding-bubble/backend', '@coding-bubble/shared'] })],
+    plugins: [externalizeDepsPlugin()],
     resolve: {
       alias: {
         '@coding-bubble/backend': resolve(__dirname, '../../packages/backend/src/index.ts'),

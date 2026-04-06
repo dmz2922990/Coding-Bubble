@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
-import type { EmotionState } from '@coding-bubble/shared'
+import type { EmotionState } from '../../hooks/useClawEmotion'
 import { ChatBubble } from '../ChatBubble'
 import { useClawSocket } from '../../hooks/useClawSocket'
 import { useClawEmotion } from '../../hooks/useClawEmotion'

@@ -20,6 +20,8 @@ declare global {
       showContextMenu: () => void
       /** 关闭当前窗口 */
       closeWindow: () => void
+      /** 打开对话面板 */
+      openPanel: () => void
       /** 本地后端运行时配置 */
       getBackendRuntimeConfig: () => Promise<{
         httpBaseURL: string
