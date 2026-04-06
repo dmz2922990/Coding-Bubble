@@ -59,6 +59,19 @@ export function ChatPanel(): React.JSX.Element {
     window.electronAPI.closeWindow()
   }, [])
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        handleClose()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [handleClose])
+
   const activeTab = tabManager.tabs.find((t) => t.id === tabManager.activeTabId)
 
   return (
