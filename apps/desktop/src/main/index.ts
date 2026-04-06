@@ -390,13 +390,13 @@ app.whenReady().then(() => {
     onEvent: (event: HookEvent) => {
       sessionStore?.process(event)
     },
-    onPermissionRequest: async (sessionId, toolName, toolInput): Promise<HookResponse> => {
+    onPermissionRequest: async (sessionId, toolUseId, toolName, toolInput): Promise<HookResponse> => {
       return new Promise<HookResponse>((resolve) => {
         sessionStore?.process({
           hook_event_name: 'PermissionRequest',
           session_id: sessionId,
           cwd: '',
-          payload: { toolUseId: `pending_${Date.now()}`, tool: toolName, input: toolInput }
+          payload: { toolUseId, tool: toolName, input: toolInput }
         } as HookEvent)
         setTimeout(() => resolve({ decision: 'allow' }), 5000)
       })

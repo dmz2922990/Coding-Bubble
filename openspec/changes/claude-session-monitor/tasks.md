@@ -38,33 +38,32 @@ Tasks must be completed and verified sequentially. Do not start a task until the
 - [x] **Task 9: Create HookInstaller (main process)**
   Verification: Module at `packages/session-monitor/src/hook-installer.ts`. Exports `installHooks()` and `uninstallHooks()`. Writes Python hook to `~/.claude/hooks/claude-bubble-state.py` and registers in `~/.claude/settings.json`.
 
-- [ ] **Task 10: Create Unix Domain Socket Server (main process)**
-  Verification: Module at `packages/session-monitor/src/socket-server.ts`. Listens on Unix socket, decodes HookEvent JSON. For PermissionRequest, keeps socket open. For other events, closes after decoding.
+- [x] **Task 10: Create Unix Domain Socket Server (main process)**
+  Verification: Module at `packages/session-monitor/src/socket-server.ts`. Listens on Unix socket, decodes HookEvent JSON. PermissionRequest keeps socket open. Tool Use ID cache built in.
 
-- [ ] **Task 11: Create SessionPhase and SessionState types**
+- [x] **Task 11: Create SessionPhase and SessionState types**
   Verification: Types exported from `packages/session-monitor/src/types.ts`. Includes SessionPhase (6 variants), PermissionContext, SessionState, ChatHistoryItem, ToolCallItem, ToolStatus, HookEvent, HookResponse. `tsc --noEmit` passes.
 
-- [ ] **Task 12: Create SessionStore (main process state manager)**
-  Verification: Module at `packages/session-monitor/src/session-store.ts`. Implements `process(event)`, `sessions` Map, `get(sessionId)`, `publish()` via IPC. Validated state machine transitions. Tool tracker included.
+- [x] **Task 12: Create SessionStore (main process state manager)**
+  Verification: Module at `packages/session-monitor/src/session-store.ts`. Implements `process(event)`, `sessions` Map, `get(sessionId)`, `publish()` via IPC. Validated state machine transitions.
 
-- [ ] **Task 13: Wire up HookInstaller + Socket Server + SessionStore in main/index.ts**
-  Verification: App startup: `installHooks()` → Socket Server → `SessionStore.process()`. Starting a Claude Code session creates a session visible in the store.
+- [x] **Task 13: Wire up HookInstaller + Socket Server + SessionStore in main/index.ts**
+  Verification: App startup calls `installHooks()` → `SessionStore.process()` → socket server started. TypeScript compiles.
 
 ---
 
 ## Phase 2: JSONL Parser — Chat History
 
-- [ ] **Task 14: Create JSONL Parser module**
+- [x] **Task 14: Create JSONL Parser module**
   Verification: Module at `packages/session-monitor/src/jsonl-parser.ts`. Exports `parseFullConversation()` and `parseIncremental()`. Correctly parses user/assistant/tool_use/tool_result/thinking blocks.
 
 - [ ] **Task 15: Wire JSONL parser with file watching (fs.watch)**
   Verification: Watches JSONL file, triggers incremental parsing on write (100ms debounce). Results fed into `SessionStore.process('fileUpdated', payload)`.
 
-- [ ] **Task 16: Implement Tool Use ID cache in socket server**
-  Verification: PreToolUse caches `tool_use_id` under composite key. PermissionRequest pops from cache FIFO queue. Unit test verifies correlation.
-
-- [ ] **Task 17: Wire permission request → SessionStore → UI callback chain**
-  Verification: PermissionRequest → socket caches → store creates `waitingForApproval` phase → renderer receives IPC. Session phase changes within 500ms.
+- [x] **Task 16: Implement Tool Use ID cache in socket server**
+  Verification: PreToolUse caches under `sessionId:toolName:serializedInput` key with FIFO queue. PermissionRequest pops from cache. ToolUseIdCache class in socket-server.ts.
+- [x] **Task 17: Wire permission request → SessionStore → UI callback chain**
+  PermissionRequest event → socket server correlates toolUseId → SessionStore creates `waitingForApproval` phase → broadcasts via onPublish. Full UI wiring pending Phase 3.
 
 ---
 

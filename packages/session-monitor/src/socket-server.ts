@@ -4,11 +4,42 @@ import type { HookEvent, HookResponse } from './types'
 
 const DEFAULT_SOCKET_PATH = '/tmp/claude-bubble.sock'
 
+/**
+ * Tool Use ID Cache
+ * PermissionRequest events don't include tool_use_id. We cache it from the
+ * preceding PreToolUse event using a composite key so we can correlate them.
+ */
+class ToolUseIdCache {
+  /** Map<"sessionId:toolName:serializedInput", string[]> */
+  private _cache = new Map<string, string[]>()
+
+  push(key: string, toolUseId: string): void {
+    const queue = this._cache.get(key) ?? []
+    queue.push(toolUseId)
+    this._cache.set(key, queue)
+  }
+
+  pop(key: string): string | undefined {
+    const queue = this._cache.get(key)
+    if (!queue?.length) return undefined
+    const id = queue.shift()!
+    if (queue.length === 0) this._cache.delete(key)
+    return id
+  }
+
+  /** Build a deterministic cache key from session + tool metadata */
+  static makeKey(sessionId: string, toolName: string, input: Record<string, unknown> | null): string {
+    const serialized = input ? JSON.stringify(input, Object.keys(input).sort()) : ''
+    return `${sessionId}:${toolName}:${serialized}`
+  }
+}
+
 export interface SocketServerOptions {
   socketPath?: string
   onEvent: (event: HookEvent) => void
   onPermissionRequest: (
     sessionId: string,
+    toolUseId: string | undefined,
     toolName: string,
     toolInput: Record<string, unknown> | null
   ) => Promise<HookResponse>
@@ -20,6 +51,7 @@ export interface SocketServer {
 
 export function createSocketServer(options: SocketServerOptions): SocketServer {
   const socketPath = options.socketPath ?? DEFAULT_SOCKET_PATH
+  const cache = new ToolUseIdCache()
 
   // Remove stale socket if it exists
   try {
@@ -34,19 +66,20 @@ export function createSocketServer(options: SocketServerOptions): SocketServer {
     socket.on('data', (chunk: Buffer) => {
       buffer += chunk.toString('utf-8')
 
-      // For PermissionRequest, we keep the connection open and wait for renderer decision
-      // For other events, process immediately and close
       try {
         const event: HookEvent = JSON.parse(buffer.trim())
+        const payload = event.payload as Record<string, unknown> | undefined
 
         if (event.hook_event_name === 'PermissionRequest') {
-          // Keep socket open; store it for later decision
-          const payload = event.payload as Record<string, unknown> | undefined
+          // Keep socket open; wait for renderer decision
           const toolName = (payload?.tool as string) ?? 'unknown'
           const toolInput = (payload?.input as Record<string, unknown>) ?? null
+          const key = ToolUseIdCache.makeKey(event.session_id, toolName, toolInput)
+          const toolUseId = cache.pop(key)
 
           options.onPermissionRequest(
             event.session_id,
+            toolUseId,
             toolName,
             toolInput
           ).then((response) => {
@@ -58,11 +91,19 @@ export function createSocketServer(options: SocketServerOptions): SocketServer {
             socket.end()
           })
         } else {
+          // Cache tool_use_id from PreToolUse for later PermissionRequest correlation
+          if (event.hook_event_name === 'PreToolUse' && payload?.tool_use_id) {
+            const toolName = (payload.tool as string) ?? ''
+            const toolInput = (payload.input as Record<string, unknown>) ?? null
+            const key = ToolUseIdCache.makeKey(event.session_id, toolName, toolInput)
+            cache.push(key, payload.tool_use_id as string)
+          }
+
           options.onEvent(event)
           socket.end()
         }
       } catch {
-        // Incomplete data not yet — wait for more
+        // Incomplete JSON — wait for more data
         if (buffer.length > 65536) {
           socket.end()
         }
