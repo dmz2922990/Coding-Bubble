@@ -101,6 +101,32 @@ body,
   pointer-events: none;
 }
 
+/* ── Badge: red dot for pending approvals ── */
+.ball__badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ff3b30;
+  border: 1.5px solid rgba(0, 0, 0, 0.3);
+  z-index: 5;
+  pointer-events: none;
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+
+@keyframes badge-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.85;
+  }
+}
+
 /* ══════════════════════════════════════════════
    情绪层样式映射 — 通过 data-emotion 属性驱动
    状态：idle / busy / done / night

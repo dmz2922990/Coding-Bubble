@@ -77,12 +77,21 @@ export function FloatingBall(): React.JSX.Element {
   const [bubbles, setBubbles] = useState<BubbleItem[]>([])
   const [notificationVisible, setNotificationVisible] = useState(false)
   const [interventions, setInterventions] = useState<InterventionItem[]>([])
+  const [bubbleDismissed, setBubbleDismissed] = useState(false)
   const movedRef = useRef(false)
   const isDraggingRef = useRef(false)
   const bubbleIdRef = useRef(0)
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const ballRef = useRef<HTMLDivElement>(null)
   const bubbleDismissedAtRef = useRef(0)
+  const bubbleDismissedRef = useRef(false)
+
+  // Keep ref in sync for IPC callback access
+  useEffect(() => {
+    bubbleDismissedRef.current = bubbleDismissed
+  }, [bubbleDismissed])
+
+  const showBadge = bubbleDismissed && interventions.some(i => i.phase === 'waitingForApproval')
 
   const pushBubble = useCallback((text: string) => {
     bubbleIdRef.current += 1
@@ -122,10 +131,13 @@ export function FloatingBall(): React.JSX.Element {
   useEffect(() => {
     const cleanupShow = window.electronAPI.onBubbleShow((_event, data) => {
       setInterventions(data as InterventionItem[])
-      setNotificationVisible(true)
+      if (!bubbleDismissedRef.current) {
+        setNotificationVisible(true)
+      }
     })
     const cleanupHide = window.electronAPI.onBubbleHide(() => {
       setNotificationVisible(false)
+      setBubbleDismissed(false)
     })
     return () => {
       cleanupShow()
@@ -135,6 +147,11 @@ export function FloatingBall(): React.JSX.Element {
 
   const handleNotificationRowClick = useCallback((sessionId: string) => {
     window.electronAPI.navigateToSession(sessionId)
+  }, [])
+
+  const handleNotificationClose = useCallback(() => {
+    setNotificationVisible(false)
+    setBubbleDismissed(true)
   }, [])
 
   const handleMouseEnter = useCallback(() => {
@@ -228,6 +245,7 @@ export function FloatingBall(): React.JSX.Element {
             interventions={interventions}
             visible={notificationVisible}
             onRowClick={handleNotificationRowClick}
+            onClose={handleNotificationClose}
           />
           <div
             ref={ballRef}
@@ -240,6 +258,7 @@ export function FloatingBall(): React.JSX.Element {
           >
             <span className="ball__icon">💬</span>
           </div>
+          {showBadge && <span className="ball__badge" />}
         </div>
       </div>
     </div>
