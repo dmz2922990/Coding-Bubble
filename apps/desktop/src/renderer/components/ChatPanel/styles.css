@@ -565,6 +565,14 @@
   margin-top: 4px;
 }
 
+.approval-detail__json--old {
+  border-left: 3px solid rgba(244, 67, 54, 0.5);
+}
+
+.approval-detail__json--new {
+  border-left: 3px solid rgba(76, 175, 80, 0.5);
+}
+
 /* ── Permission Bar ──────────────────────────────────────── */
 
 .permission-bar {

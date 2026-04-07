@@ -218,7 +218,13 @@ function ThinkingItem({ content }: { content: string }): React.JSX.Element {
 }
 
 function ApprovalDetail({ toolName, toolInput }: { toolName: string; toolInput?: Record<string, unknown> | null }): React.JSX.Element {
+  const filePath = typeof toolInput?.file_path === 'string' ? toolInput.file_path : ''
   const command = typeof toolInput?.command === 'string' ? toolInput.command : ''
+  const oldString = typeof toolInput?.old_string === 'string' ? toolInput.old_string : ''
+  const newString = typeof toolInput?.new_string === 'string' ? toolInput.new_string : ''
+
+  const fileName = filePath ? filePath.split('/').pop() ?? filePath : ''
+
   return (
     <div className="approval-detail">
       <div className="approval-detail__title">工具请求授权</div>
@@ -226,10 +232,28 @@ function ApprovalDetail({ toolName, toolInput }: { toolName: string; toolInput?:
         <span className="approval-detail__label">工具</span>
         <code className="approval-detail__value">{toolName}</code>
       </div>
+      {filePath && (
+        <div className="approval-detail__row">
+          <span className="approval-detail__label">文件</span>
+          <code className="approval-detail__value" title={filePath}>{fileName}</code>
+        </div>
+      )}
       {command && (
         <div className="approval-detail__row approval-detail__row--col">
           <span className="approval-detail__label">命令</span>
           <pre className="approval-detail__json">{command}</pre>
+        </div>
+      )}
+      {oldString && (
+        <div className="approval-detail__row approval-detail__row--col">
+          <span className="approval-detail__label">替换前</span>
+          <pre className="approval-detail__json approval-detail__json--old">{oldString.length > 300 ? oldString.slice(0, 300) + '...' : oldString}</pre>
+        </div>
+      )}
+      {newString && (
+        <div className="approval-detail__row approval-detail__row--col">
+          <span className="approval-detail__label">替换后</span>
+          <pre className="approval-detail__json approval-detail__json--new">{newString.length > 300 ? newString.slice(0, 300) + '...' : newString}</pre>
         </div>
       )}
     </div>
