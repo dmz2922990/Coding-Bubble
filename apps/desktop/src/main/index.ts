@@ -297,7 +297,7 @@ ipcMain.on('contextmenu:show', () => {
     },
     { type: 'separator' },
     {
-      label: '退出 Claw',
+      label: '退出',
       click: () => {
         app.quit()
       }
