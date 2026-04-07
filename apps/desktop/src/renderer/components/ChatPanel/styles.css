@@ -565,12 +565,63 @@
   margin-top: 4px;
 }
 
-.approval-detail__json--old {
-  border-left: 3px solid rgba(244, 67, 54, 0.5);
+/* ── Diff View ─────────────────────────────────────────────── */
+
+.diff-view {
+  margin: 8px 0 0;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  overflow-x: auto;
+  max-height: 300px;
+  overflow-y: auto;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 11px;
+  line-height: 1.5;
 }
 
-.approval-detail__json--new {
-  border-left: 3px solid rgba(76, 175, 80, 0.5);
+.diff-view__line {
+  display: flex;
+  padding: 0 8px;
+  min-height: 18px;
+}
+
+.diff-view__line--remove {
+  background: rgba(244, 67, 54, 0.15);
+}
+
+.diff-view__line--add {
+  background: rgba(76, 175, 80, 0.15);
+}
+
+.diff-view__line--context {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.diff-view__marker {
+  display: inline-block;
+  width: 14px;
+  flex-shrink: 0;
+  text-align: center;
+  user-select: none;
+}
+
+.diff-view__line--remove .diff-view__marker {
+  color: rgba(244, 67, 54, 0.8);
+}
+
+.diff-view__line--add .diff-view__marker {
+  color: rgba(76, 175, 80, 0.8);
+}
+
+.diff-view__text {
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.diff-view__line--context .diff-view__text {
+  color: rgba(255, 255, 255, 0.4);
 }
 
 /* ── Permission Bar ──────────────────────────────────────── */

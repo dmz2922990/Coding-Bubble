@@ -217,13 +217,77 @@ function ThinkingItem({ content }: { content: string }): React.JSX.Element {
   )
 }
 
+function DiffView({ oldString, newString, maxLines }: { oldString: string; newString: string; maxLines?: number }): React.JSX.Element {
+  const oldLines = oldString.split('\n')
+  const newLines = newString.split('\n')
+  const limit = maxLines ?? 50
+  const truncated = oldLines.length + newLines.length > limit
+
+  // Simple line-level diff: show removals then additions
+  const lines: Array<{ type: 'context' | 'remove' | 'add'; text: string }> = []
+
+  // Find common prefix
+  let prefixLen = 0
+  while (prefixLen < oldLines.length && prefixLen < newLines.length && oldLines[prefixLen] === newLines[prefixLen]) {
+    prefixLen++
+  }
+
+  // Find common suffix
+  let oldSuffixStart = oldLines.length - 1
+  let newSuffixStart = newLines.length - 1
+  while (oldSuffixStart > prefixLen && newSuffixStart > prefixLen && oldLines[oldSuffixStart] === newLines[newSuffixStart]) {
+    oldSuffixStart--
+    newSuffixStart--
+  }
+
+  const maxOld = Math.min(prefixLen + (truncated ? 3 : prefixLen), oldLines.length)
+  const contextBefore = oldLines.slice(Math.max(0, prefixLen - 2), prefixLen)
+  const contextAfter = oldLines.slice(oldSuffixStart + 1, Math.min(oldSuffixStart + 3, oldLines.length))
+
+  const removedLines = oldLines.slice(prefixLen, oldSuffixStart + 1)
+  const addedLines = newLines.slice(prefixLen, newSuffixStart + 1)
+
+  // Build diff output
+  for (const line of contextBefore) {
+    lines.push({ type: 'context', text: line })
+  }
+  for (const line of removedLines.slice(0, truncated ? 20 : removedLines.length)) {
+    lines.push({ type: 'remove', text: line })
+  }
+  if (truncated && removedLines.length > 20) {
+    lines.push({ type: 'context', text: `... (${removedLines.length - 20} more lines)` })
+  }
+  for (const line of addedLines.slice(0, truncated ? 20 : addedLines.length)) {
+    lines.push({ type: 'add', text: line })
+  }
+  if (truncated && addedLines.length > 20) {
+    lines.push({ type: 'context', text: `... (${addedLines.length - 20} more lines)` })
+  }
+  for (const line of contextAfter) {
+    lines.push({ type: 'context', text: line })
+  }
+
+  return (
+    <pre className="diff-view">
+      {lines.map((line, i) => (
+        <div key={i} className={`diff-view__line diff-view__line--${line.type}`}>
+          <span className="diff-view__marker">{line.type === 'remove' ? '-' : line.type === 'add' ? '+' : ' '}</span>
+          <span className="diff-view__text">{line.text}</span>
+        </div>
+      ))}
+    </pre>
+  )
+}
+
 function ApprovalDetail({ toolName, toolInput }: { toolName: string; toolInput?: Record<string, unknown> | null }): React.JSX.Element {
   const filePath = typeof toolInput?.file_path === 'string' ? toolInput.file_path : ''
   const command = typeof toolInput?.command === 'string' ? toolInput.command : ''
   const oldString = typeof toolInput?.old_string === 'string' ? toolInput.old_string : ''
   const newString = typeof toolInput?.new_string === 'string' ? toolInput.new_string : ''
+  const replaceAll = toolInput?.replace_all === true
 
   const fileName = filePath ? filePath.split('/').pop() ?? filePath : ''
+  const isEdit = toolName === 'Edit' || toolName === 'edit'
 
   return (
     <div className="approval-detail">
@@ -238,24 +302,14 @@ function ApprovalDetail({ toolName, toolInput }: { toolName: string; toolInput?:
           <code className="approval-detail__value" title={filePath}>{fileName}</code>
         </div>
       )}
-      {command && (
+      {isEdit && oldString && newString ? (
+        <DiffView oldString={oldString} newString={newString} />
+      ) : command ? (
         <div className="approval-detail__row approval-detail__row--col">
           <span className="approval-detail__label">命令</span>
           <pre className="approval-detail__json">{command}</pre>
         </div>
-      )}
-      {oldString && (
-        <div className="approval-detail__row approval-detail__row--col">
-          <span className="approval-detail__label">替换前</span>
-          <pre className="approval-detail__json approval-detail__json--old">{oldString.length > 300 ? oldString.slice(0, 300) + '...' : oldString}</pre>
-        </div>
-      )}
-      {newString && (
-        <div className="approval-detail__row approval-detail__row--col">
-          <span className="approval-detail__label">替换后</span>
-          <pre className="approval-detail__json approval-detail__json--new">{newString.length > 300 ? newString.slice(0, 300) + '...' : newString}</pre>
-        </div>
-      )}
+      ) : null}
     </div>
   )
 }
