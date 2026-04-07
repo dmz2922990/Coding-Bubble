@@ -5,7 +5,7 @@ import './styles.css'
 /** 按时段分组的启动开场语 */
 const STARTUP_GREETINGS: Record<string, string[]> = {
   morning: [
-    '早～今天也一起加油 🐾',
+    '早～今天也一起加油 💬',
     '早安，新的一天开始啦',
     '早上好呀，今天有什么计划？',
     '早！精神怎么样？'
@@ -14,13 +14,13 @@ const STARTUP_GREETINGS: Record<string, string[]> = {
     '下午好呀，在忙什么呢？',
     '下午好～需要帮忙随时叫我',
     '午后时光，状态怎么样？',
-    '下午好，我在呢 🐾'
+    '下午好，我在呢 💬'
   ],
   evening: [
     '晚上好～有什么需要帮忙的吗',
     '晚上好呀，今天辛苦了',
     '晚上好，还在忙吗？',
-    '嗨～晚上好 🐾'
+    '嗨～晚上好 💬'
   ],
   latenight: [
     '这么晚了，注意休息哦 🌙',
@@ -60,7 +60,7 @@ const CLICK_PHRASES = [
   '有什么需要帮忙的吗？',
   '今天怎么样？',
   '嗨～',
-  '我在这里 🐾',
+  '我在这里 💬',
   '要不要聊聊天？',
   '你好呀～',
   '陪着你呢'
@@ -207,9 +207,9 @@ export function FloatingBall(): React.JSX.Element {
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
           onContextMenu={handleContextMenu}
-          title="Claw 🐾"
+          title="Coding-bubble 💬"
         >
-          <span className="ball__icon">🐾</span>
+          <span className="ball__icon">💬</span>
         </div>
       </div>
     </div>
