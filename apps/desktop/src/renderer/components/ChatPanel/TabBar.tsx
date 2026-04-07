@@ -22,6 +22,9 @@ interface Props {
 export function TabBar({ tabs, chatTab, activeTabId, onTabSelect, onTabClose }: Props): React.JSX.Element {
   const [showScrollBtns, setShowScrollBtns] = useState({ left: false, right: false })
   const tabsRef = useRef<HTMLDivElement>(null)
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isDraggingRef = useRef(false)
+  const LONG_PRESS_DURATION = 100
 
   const updateScrollButtons = useCallback(() => {
     const el = tabsRef.current
@@ -42,8 +45,51 @@ export function TabBar({ tabs, chatTab, activeTabId, onTabSelect, onTabClose }: 
       el?.removeEventListener('scroll', updateScrollButtons)
       window.removeEventListener('resize', updateScrollButtons)
       observer.disconnect()
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current)
+      }
     }
   }, [updateScrollButtons])
+
+  // Long press handlers for window dragging
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    // Only left mouse button
+    if (e.button !== 0) return
+
+    isDraggingRef.current = false
+    longPressTimerRef.current = setTimeout(() => {
+      isDraggingRef.current = true
+      window.electronAPI.dragStart()
+    }, LONG_PRESS_DURATION)
+  }, [])
+
+  const handleMouseMove = useCallback(() => {
+    if (isDraggingRef.current) {
+      window.electronAPI.dragMove()
+    }
+  }, [])
+
+  const handleMouseUp = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+    if (isDraggingRef.current) {
+      window.electronAPI.dragEnd()
+      isDraggingRef.current = false
+    }
+  }, [])
+
+  const handleMouseLeave = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+    if (isDraggingRef.current) {
+      window.electronAPI.dragEnd()
+      isDraggingRef.current = false
+    }
+  }, [])
 
   const handleScroll = useCallback((direction: 'left' | 'right') => {
     const el = tabsRef.current
@@ -65,7 +111,13 @@ export function TabBar({ tabs, chatTab, activeTabId, onTabSelect, onTabClose }: 
     (showScrollBtns.left || showScrollBtns.right)
 
   return (
-    <div className="tab-bar-wrapper">
+    <div
+      className="tab-bar-wrapper"
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
+    >
       {chatTab && !scrollableTabs.length ? (
         <button
           className={`tab-bar__tab${activeTabId === chatTab.id ? ' tab-bar__tab--active' : ''}`}

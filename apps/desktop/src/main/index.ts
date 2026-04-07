@@ -117,28 +117,34 @@ function createBallWindow(): void {
   }
 }
 
-// ── IPC: 悬浮球拖拽 ────────────────────────────────────────
-ipcMain.on('drag:start', () => {
-  if (!ballWin) return
+// ── IPC: 窗口拖拽 ────────────────────────────────────────
+ipcMain.on('drag:start', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
+  if (!win) return
   const cursor = screen.getCursorScreenPoint()
-  const [wx, wy] = ballWin.getPosition()
+  const [wx, wy] = win.getPosition()
   dragOffset = { x: cursor.x - wx, y: cursor.y - wy }
 })
 
-ipcMain.on('drag:move', () => {
-  if (!ballWin) return
+ipcMain.on('drag:move', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
+  if (!win) return
   const { x, y } = screen.getCursorScreenPoint()
-  ballWin.setPosition(
+  win.setPosition(
     Math.round(x - dragOffset.x),
     Math.round(y - dragOffset.y)
   )
 })
 
-ipcMain.on('drag:end', () => {
-  if (!ballWin) return
-  const [bx, by] = ballWin.getPosition()
-  const existing = readConfig()
-  writeConfig({ ...existing, ballPosition: { x: bx, y: by } })
+ipcMain.on('drag:end', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
+  if (!win) return
+  // Only save position for ball window
+  if (win === ballWin) {
+    const [bx, by] = win.getPosition()
+    const existing = readConfig()
+    writeConfig({ ...existing, ballPosition: { x: bx, y: by } })
+  }
 })
 
 // ── IPC: 透明区域点击穿透 ──────────────────────────────────
