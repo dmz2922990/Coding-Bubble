@@ -177,6 +177,13 @@ function MessageItem({ item }: { item: ChatItem }): React.JSX.Element {
         </div>
       )
 
+    case 'system':
+      return (
+        <div className="chat-msg chat-msg--system">
+          <div className="chat-msg__system" dangerouslySetInnerHTML={{ __html: item.content }} />
+        </div>
+      )
+
     default:
       return null
   }

@@ -8,7 +8,21 @@ let panelWin: BrowserWindow | null = null
 let settingsWin: BrowserWindow | null = null
 
 /** Pending permission resolvers keyed by sessionId */
-const pendingPermissionResolvers = new Map<string, { toolUseId: string | undefined; toolInput?: Record<string, unknown> | null; resolve: (response: HookResponse) => void }>()
+const pendingPermissionResolvers = new Map<string, { toolUseId: string | undefined; toolName?: string; toolInput?: Record<string, unknown> | null; resolve: (response: HookResponse) => void }>()
+
+function formatToolDetail(toolName?: string, toolInput?: Record<string, unknown> | null): string {
+  if (!toolName) return '已允许未知工具'
+  const input = toolInput ?? {}
+  switch (toolName) {
+    case 'Bash':
+      return `已允许: Bash <code>${(input.command as string ?? '').slice(0, 100)}</code>`
+    case 'Edit':
+    case 'Write':
+      return `已允许: ${toolName} <code>${(input.file_path as string ?? '').split('/').pop()}</code>`
+    default:
+      return `已允许: ${toolName}`
+  }
+}
 
 /** 拖拽时记录光标相对于窗口左上角的偏移量 */
 let dragOffset = { x: 0, y: 0 }
@@ -399,6 +413,8 @@ ipcMain.handle('session:approve', async (_event, sessionId: string) => {
   const response: HookResponse = { decision: 'allow' }
   console.log('[main] Resolving with response:', JSON.stringify(response))
 
+  sessionStore?.addSystemMessage(sessionId, formatToolDetail(entry.toolName, entry.toolInput))
+
   // Update sessionStore phase state
   if (entry.toolUseId) {
     console.log('[main] calling sessionStore.resolvePermission for toolUseId:', entry.toolUseId)
@@ -449,6 +465,8 @@ ipcMain.handle('session:always-allow', async (_event, sessionId: string) => {
   const response: HookResponse = { decision: 'allow' }
   console.log('[main] Resolving with response:', JSON.stringify(response))
 
+  sessionStore?.addSystemMessage(sessionId, formatToolDetail(entry.toolName, entry.toolInput))
+
   try {
     console.log('[main] About to call entry.resolve()...')
     entry.resolve(response)
@@ -497,6 +515,8 @@ ipcMain.handle('session:answer', async (_event, sessionId: string, answer: strin
   }
 
   console.log('[main] Resolving with response:', JSON.stringify(response))
+
+  sessionStore?.addSystemMessage(sessionId, formatToolDetail(entry.toolName, entry.toolInput))
 
   if (entry.toolUseId) {
     await sessionStore?.resolvePermission(entry.toolUseId, response)
@@ -645,7 +665,7 @@ app.whenReady().then(() => {
 
       // Wait for user approval
       return new Promise<HookResponse>((resolve) => {
-        pendingPermissionResolvers.set(sessionId, { toolUseId, toolInput, resolve })
+        pendingPermissionResolvers.set(sessionId, { toolUseId, toolName, toolInput, resolve })
         sessionStore?.process({
           hook_event_name: 'PermissionRequest',
           session_id: sessionId,

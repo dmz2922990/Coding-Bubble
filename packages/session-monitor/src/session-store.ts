@@ -305,6 +305,20 @@ export class SessionStore {
     this._publish('session:history', { sessionId, items: session.chatItems })
   }
 
+  addSystemMessage(sessionId: string, content: string): void {
+    const session = this._sessions.get(sessionId)
+    if (!session) return
+
+    const item: ChatHistoryItem = {
+      id: `system_${Date.now()}`,
+      type: 'system',
+      content,
+      timestamp: now()
+    }
+    session.chatItems.push(item)
+    this._publish('session:history', { sessionId, items: session.chatItems })
+  }
+
   transition(session: SessionState, newType: SessionPhase['type'], context?: Partial<SessionState['phase']>): void {
     const currentType = session.phase.type
     const allowed = VALID_TRANSITIONS[currentType]

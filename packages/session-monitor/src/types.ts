@@ -50,6 +50,7 @@ export type ChatHistoryItem =
   | { id: string; type: 'toolCall'; tool: ToolCallItem; timestamp: number }
   | { id: string; type: 'thinking'; content: string; timestamp: number }
   | { id: string; type: 'interrupted'; timestamp: number }
+  | { id: string; type: 'system'; content: string; timestamp: number }
 
 // ═─ Session State ───────────────────────────────────────────
 
