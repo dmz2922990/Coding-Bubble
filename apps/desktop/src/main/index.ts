@@ -503,16 +503,19 @@ ipcMain.handle('session:install-hooks', () => {
 // ── IPC: Bubble Navigation ─────────────────────────────────
 
 ipcMain.on('panel:navigate-to-session', (_event, sessionId: string) => {
-  // Ensure panel is visible
-  if (!panelWin || panelWin.isDestroyed()) {
-    createPanelWindow()
-  } else if (!panelWin.isVisible()) {
-    panelWin.show()
+  const sendNavigate = (): void => {
+    if (panelWin && !panelWin.isDestroyed()) {
+      panelWin.webContents.send('navigate-to-tab', sessionId)
+    }
   }
 
-  // Forward navigation to panel renderer
-  if (panelWin && !panelWin.isDestroyed()) {
-    panelWin.webContents.send('navigate-to-tab', sessionId)
+  if (!panelWin || panelWin.isDestroyed()) {
+    createPanelWindow()
+    // Wait for renderer to load before sending navigation command
+    panelWin?.webContents.once('did-finish-load', () => sendNavigate())
+  } else {
+    if (!panelWin.isVisible()) panelWin.show()
+    sendNavigate()
   }
 
   // Hide bubble after navigation

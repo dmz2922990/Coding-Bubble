@@ -32,8 +32,20 @@ export function NotificationBubble({ interventions, visible, onRowClick }: Notif
     onRowClick(sessionId)
   }, [onRowClick])
 
+  const handleMouseEnter = useCallback(() => {
+    window.electronAPI.setIgnoreMouseEvents(false)
+  }, [])
+
+  const handleMouseLeave = useCallback(() => {
+    window.electronAPI.setIgnoreMouseEvents(true)
+  }, [])
+
   return (
-    <div className="notification-bubble">
+    <div
+      className="notification-bubble"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       <div className="notification-bubble__list">
         {displayItems.map((item) => {
           const config = PHASE_CONFIG[item.phase]
