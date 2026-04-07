@@ -4,6 +4,7 @@ import { TabBar } from './TabBar'
 import { SessionListView } from './SessionListView'
 import { SessionTab } from './SessionTab'
 import type { TabItem, SessionInfo, ChatItem } from './types'
+import type { SessionPhase } from '@coding-bubble/session-monitor'
 import './styles.css'
 
 export function ChatPanel(): React.JSX.Element {

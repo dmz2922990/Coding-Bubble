@@ -347,7 +347,7 @@ ipcMain.handle('config:set', (_event, config: Record<string, unknown>) => {
 // ── Session Monitor ──────────────────────────────────────────
 
 import { SessionStore, createSocketServer, installHooks, hooksInstalled, watchJsonlFile, parseFullConversation } from '@coding-bubble/session-monitor'
-import type { HookEvent, HookResponse } from '@coding-bubble/session-monitor'
+import type { HookEvent } from '@coding-bubble/session-monitor'
 
 let sessionStore: SessionStore | null = null
 const jsonlWatchers = new Map<string, ReturnType<typeof watchJsonlFile>>()
@@ -497,7 +497,7 @@ app.whenReady().then(() => {
   }
 
   sessionStore = new SessionStore()
-  sessionStore.onPublish((channel, data) => broadcastToRenderer(channel, data))
+  sessionStore.onPublish((channel: string, data: unknown) => broadcastToRenderer(channel, data))
 
   createSocketServer({
     onEvent: (event: HookEvent) => {
@@ -522,7 +522,7 @@ app.whenReady().then(() => {
       // Start JSONL watcher on session start
       if (event.hook_event_name === 'SessionStart' && event.session_id) {
         if (!jsonlWatchers.has(event.session_id) && event.cwd) {
-          const watcher = watchJsonlFile(event.session_id, event.cwd, (sessionId, items) => {
+          const watcher = watchJsonlFile(event.session_id, event.cwd, (sessionId: string, items: unknown[]) => {
             sessionStore?.process({
               hook_event_name: 'fileUpdated',
               session_id: sessionId,
@@ -554,7 +554,7 @@ app.whenReady().then(() => {
         }
       }
     },
-    onPermissionRequest: async (sessionId, toolUseId, toolName, toolInput): Promise<HookResponse> => {
+    onPermissionRequest: async (sessionId: string, toolUseId: string, toolName: string, toolInput: Record<string, unknown> | null): Promise<HookResponse> => {
       // Check session permission mode - only prompt user if mode is 'default'
       const session = sessionStore?.sessions.get(sessionId)
       const permissionMode = session?.permissionMode ?? 'auto'
