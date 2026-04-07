@@ -10,17 +10,52 @@ let settingsWin: BrowserWindow | null = null
 /** Pending permission resolvers keyed by sessionId */
 const pendingPermissionResolvers = new Map<string, { toolUseId: string | undefined; toolName?: string; toolInput?: Record<string, unknown> | null; resolve: (response: HookResponse) => void }>()
 
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 function formatToolDetail(toolName?: string, toolInput?: Record<string, unknown> | null): string {
   if (!toolName) return '已允许未知工具'
   const input = toolInput ?? {}
+
   switch (toolName) {
-    case 'Bash':
-      return `已允许: Bash <code>${(input.command as string ?? '').slice(0, 100)}</code>`
-    case 'Edit':
-    case 'Write':
-      return `已允许: ${toolName} <code>${(input.file_path as string ?? '').split('/').pop()}</code>`
-    default:
-      return `已允许: ${toolName}`
+    case 'Bash': {
+      const cmd = escapeHtml((input.command as string ?? '').slice(0, 200))
+      return `已允许: Bash<br/><code>${cmd}</code>`
+    }
+    case 'Edit': {
+      const file = escapeHtml((input.file_path as string ?? ''))
+      const oldStr = escapeHtml(((input.old_string as string) ?? '').slice(0, 80))
+      const newStr = escapeHtml(((input.new_string as string) ?? '').slice(0, 80))
+      return `已允许: Edit <code>${file.split('/').pop()}</code><br/><details><summary>变更详情</summary><pre>- ${oldStr}\n+ ${newStr}</pre></details>`
+    }
+    case 'Write': {
+      const file = escapeHtml((input.file_path as string ?? ''))
+      const content = escapeHtml(((input.content as string) ?? '').slice(0, 100))
+      return `已允许: Write <code>${file.split('/').pop()}</code><br/><pre>${content}</pre>`
+    }
+    case 'Read': {
+      const file = escapeHtml((input.file_path as string ?? ''))
+      return `已允许: Read <code>${file}</code>`
+    }
+    case 'Grep': {
+      const pattern = escapeHtml((input.pattern as string ?? ''))
+      const path = escapeHtml((input.path as string ?? ''))
+      return `已允许: Grep <code>${pattern}</code> in <code>${path || '(default)'}</code>`
+    }
+    case 'Glob': {
+      const pattern = escapeHtml((input.pattern as string ?? ''))
+      return `已允许: Glob <code>${pattern}</code>`
+    }
+    case 'AskUserQuestion': {
+      const questions = input.questions as Array<Record<string, unknown>> | undefined
+      const q = questions?.[0]?.question as string ?? ''
+      return `已允许: AskUserQuestion<br/><pre>${escapeHtml(q)}</pre>`
+    }
+    default: {
+      const json = escapeHtml(JSON.stringify(input).slice(0, 150))
+      return `已允许: ${toolName}<br/><pre>${json}</pre>`
+    }
   }
 }
 

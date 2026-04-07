@@ -515,7 +515,7 @@
 
 .chat-msg--system {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   padding: 2px 0;
 }
 
