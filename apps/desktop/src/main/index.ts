@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, Menu, screen } from 'electron'
 import { join } from 'path'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
-import type { HookResponse } from '@coding-bubble/session-monitor'
+import type { HookResponse, Intervention } from '@coding-bubble/session-monitor'
 
 let ballWin: BrowserWindow | null = null
 let panelWin: BrowserWindow | null = null
@@ -228,8 +228,14 @@ function createPanelWindow(): void {
   } else {
     panelWin.setAlwaysOnTop(true)
   }
-  panelWin.on('ready-to-show', () => panelWin?.show())
-  panelWin.on('closed', () => { panelWin = null })
+  panelWin.on('ready-to-show', () => {
+    panelWin?.show()
+    bubbleControllerSync()
+  })
+  panelWin.on('closed', () => {
+    panelWin = null
+    bubbleControllerSync()
+  })
 
   const panelParam = '?view=panel'
   if (process.env['NODE_ENV'] === 'development' && process.env['ELECTRON_RENDERER_URL']) {
@@ -494,6 +500,41 @@ ipcMain.handle('session:install-hooks', () => {
   console.log('[main] hooks installed')
 })
 
+// ── IPC: Bubble Navigation ─────────────────────────────────
+
+ipcMain.on('panel:navigate-to-session', (_event, sessionId: string) => {
+  // Ensure panel is visible
+  if (!panelWin || panelWin.isDestroyed()) {
+    createPanelWindow()
+  } else if (!panelWin.isVisible()) {
+    panelWin.show()
+  }
+
+  // Forward navigation to panel renderer
+  if (panelWin && !panelWin.isDestroyed()) {
+    panelWin.webContents.send('navigate-to-tab', sessionId)
+  }
+
+  // Hide bubble after navigation
+  if (ballWin && !ballWin.isDestroyed()) {
+    ballWin.webContents.send('bubble:hide')
+  }
+})
+
+// ── BubbleController ──────────────────────────────────────────
+
+function bubbleControllerSync(): void {
+  if (!ballWin || ballWin.isDestroyed()) return
+  const interventions = sessionStore?.getPendingInterventions() ?? []
+  const panelVisible = panelWin !== null && !panelWin.isDestroyed() && panelWin.isVisible()
+
+  if (!panelVisible && interventions.length > 0) {
+    ballWin.webContents.send('bubble:show', interventions)
+  } else {
+    ballWin.webContents.send('bubble:hide')
+  }
+}
+
 // ── App 生命周期 ───────────────────────────────────────────
 app.whenReady().then(() => {
   try {
@@ -504,6 +545,10 @@ app.whenReady().then(() => {
 
   sessionStore = new SessionStore()
   sessionStore.onPublish((channel: string, data: unknown) => broadcastToRenderer(channel, data))
+
+  sessionStore.onInterventionChange(() => {
+    bubbleControllerSync()
+  })
 
   createSocketServer({
     onEvent: (event: HookEvent) => {

@@ -4,7 +4,9 @@ import type {
   HookEvent,
   HookResponse,
   PendingPermission,
-  ChatHistoryItem
+  ChatHistoryItem,
+  Intervention,
+  InterventionPhase
 } from './types'
 import { VALID_TRANSITIONS } from './types'
 
@@ -34,6 +36,8 @@ export class SessionStore {
   private _sessions = new Map<string, SessionState>()
   private _pendingPermissions = new Map<string, PendingPermission[]>() // key: toolUseId
   private _invalidTransitions: Array<{ sessionId: string; from: string; to: string }> = []
+  private _interventions = new Map<string, Intervention>() // key: sessionId
+  private _onInterventionChange?: (interventions: Intervention[]) => void
 
   get sessions(): ReadonlyMap<string, SessionState> {
     return this._sessions
@@ -141,6 +145,7 @@ export class SessionStore {
     const session = this._sessions.get(sessionId)
     if (!session) return
     this.transition(session, 'ended')
+    this._removeIntervention(sessionId)
     setTimeout(() => this._sessions.delete(sessionId), 0)
   }
 
@@ -321,6 +326,7 @@ export class SessionStore {
       }
     }
     session.lastActivity = now()
+    this._updateInterventions(session.sessionId, session.phase)
   }
 
   private _publish(channel: string, data: unknown): void {
@@ -333,5 +339,52 @@ export class SessionStore {
 
   onPublish(cb: (channel: string, data: unknown) => void): void {
     this._onPublish = cb
+  }
+
+  getPendingInterventions(): Intervention[] {
+    return Array.from(this._interventions.values())
+  }
+
+  onInterventionChange(cb: (interventions: Intervention[]) => void): void {
+    this._onInterventionChange = cb
+  }
+
+  private _updateInterventions(sessionId: string, phase: SessionPhase): void {
+    const isIntervention = phase.type === 'waitingForApproval' || phase.type === 'waitingForInput'
+    const existing = this._interventions.get(sessionId)
+
+    if (isIntervention && !existing) {
+      const session = this._sessions.get(sessionId)
+      if (!session) return
+      const intervention: Intervention = {
+        sessionId,
+        projectName: session.projectName,
+        phase: phase.type as InterventionPhase,
+        toolName: phase.type === 'waitingForApproval' ? (phase as { type: 'waitingForApproval'; context: { toolName: string } }).context?.toolName : undefined
+      }
+      this._interventions.set(sessionId, intervention)
+      this._notifyInterventionChange()
+    } else if (isIntervention && existing) {
+      const session = this._sessions.get(sessionId)
+      if (!session) return
+      existing.phase = phase.type as InterventionPhase
+      existing.projectName = session.projectName
+      existing.toolName = phase.type === 'waitingForApproval' ? (phase as { type: 'waitingForApproval'; context: { toolName: string } }).context?.toolName : undefined
+      this._notifyInterventionChange()
+    } else if (!isIntervention && existing) {
+      this._interventions.delete(sessionId)
+      this._notifyInterventionChange()
+    }
+  }
+
+  private _removeIntervention(sessionId: string): void {
+    if (this._interventions.has(sessionId)) {
+      this._interventions.delete(sessionId)
+      this._notifyInterventionChange()
+    }
+  }
+
+  private _notifyInterventionChange(): void {
+    this._onInterventionChange?.(this.getPendingInterventions())
   }
 }

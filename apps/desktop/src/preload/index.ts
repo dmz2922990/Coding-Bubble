@@ -22,6 +22,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getConfig: (): Promise<Record<string, unknown>> => ipcRenderer.invoke('config:get'),
   /** 写入配置 */
   setConfig: (config: Record<string, unknown>): Promise<void> => ipcRenderer.invoke('config:set', config),
+  /** Notification bubble: show/hide listeners (Main → Ball) */
+  onBubbleShow: (cb: (event: unknown, interventions: unknown[]) => void) => {
+    ipcRenderer.on('bubble:show', cb)
+    return () => ipcRenderer.removeListener('bubble:show', cb)
+  },
+  onBubbleHide: (cb: (event: unknown) => void) => {
+    ipcRenderer.on('bubble:hide', cb)
+    return () => ipcRenderer.removeListener('bubble:hide', cb)
+  },
+  /** Navigate to session tab (Ball → Main) */
+  navigateToSession: (sessionId: string): void => {
+    ipcRenderer.send('panel:navigate-to-session', sessionId)
+  },
+  /** Tab navigation listener (Main → Panel) */
+  onNavigateToTab: (cb: (event: unknown, sessionId: string) => void) => {
+    ipcRenderer.on('navigate-to-tab', cb)
+    return () => ipcRenderer.removeListener('navigate-to-tab', cb)
+  },
   /** 会话管理 */
   session: {
     list: (): Promise<unknown[]> => ipcRenderer.invoke('session:list'),

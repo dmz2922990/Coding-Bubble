@@ -1,0 +1,95 @@
+/* ── Notification Bubble ──────────────────────────────── */
+
+.notification-bubble {
+  position: absolute;
+  bottom: calc(56px + 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 220px;
+  max-height: 260px;
+  background: rgba(24, 24, 28, 0.95);
+  border-radius: 12px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  z-index: 10;
+  animation: bubble-in 0.2s ease-out;
+}
+
+@keyframes bubble-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.notification-bubble__list {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  max-height: 220px;
+}
+
+.notification-bubble__list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.notification-bubble__list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+.notification-bubble__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.notification-bubble__row:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.notification-bubble__indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.notification-bubble__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-bubble__name {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notification-bubble__status {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.notification-bubble__overflow {
+  padding: 8px 14px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}

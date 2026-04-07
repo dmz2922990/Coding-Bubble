@@ -93,6 +93,25 @@ export function ChatPanel(): React.JSX.Element {
     return () => cleanup()
   }, [loadSessions])
 
+  // Listen for tab navigation from main process (bubble click navigation)
+  useEffect(() => {
+    const cleanup = window.electronAPI.onNavigateToTab((_event: unknown, sessionId: string) => {
+      const existing = tabManager.tabs.find(t => t.id === sessionId)
+      if (existing) {
+        tabManager.setActiveTabId(sessionId)
+      } else {
+        // Tab doesn't exist yet, load sessions first then activate
+        loadSessions().then(() => {
+          // Give time for tabs to sync
+          setTimeout(() => {
+            tabManager.setActiveTabId(sessionId)
+          }, 100)
+        })
+      }
+    })
+    return () => cleanup()
+  }, [tabManager, loadSessions])
+
   useEffect(() => {
     // Check hook status on mount
     window.electronAPI.session.hooksStatus().then(setHookStatus).catch(() => {})

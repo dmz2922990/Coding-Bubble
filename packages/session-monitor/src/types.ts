@@ -91,3 +91,14 @@ export interface PendingPermission {
   resolve: (response: HookResponse) => void
   receivedAt: number
 }
+
+// ═─ Intervention ──────────────────────────────────────────────
+
+export type InterventionPhase = 'waitingForApproval' | 'waitingForInput'
+
+export interface Intervention {
+  sessionId: string
+  projectName: string
+  phase: InterventionPhase
+  toolName?: string
+}

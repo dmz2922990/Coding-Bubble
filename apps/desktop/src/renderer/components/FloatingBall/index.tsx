@@ -1,5 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { ChatBubble } from '../ChatBubble'
+import { NotificationBubble } from './NotificationBubble'
+import type { InterventionItem } from './NotificationBubble'
 import './styles.css'
 
 /** 按时段分组的启动开场语 */
@@ -73,6 +75,8 @@ interface BubbleItem {
 
 export function FloatingBall(): React.JSX.Element {
   const [bubbles, setBubbles] = useState<BubbleItem[]>([])
+  const [notificationVisible, setNotificationVisible] = useState(false)
+  const [interventions, setInterventions] = useState<InterventionItem[]>([])
   const movedRef = useRef(false)
   const isDraggingRef = useRef(false)
   const bubbleIdRef = useRef(0)
@@ -112,6 +116,25 @@ export function FloatingBall(): React.JSX.Element {
   const handleBubbleDismiss = useCallback((id: number) => {
     bubbleDismissedAtRef.current = Date.now()
     setBubbles((prev) => prev.filter((b) => b.id !== id))
+  }, [])
+
+  // Subscribe to notification bubble IPC events
+  useEffect(() => {
+    const cleanupShow = window.electronAPI.onBubbleShow((_event, data) => {
+      setInterventions(data as InterventionItem[])
+      setNotificationVisible(true)
+    })
+    const cleanupHide = window.electronAPI.onBubbleHide(() => {
+      setNotificationVisible(false)
+    })
+    return () => {
+      cleanupShow()
+      cleanupHide()
+    }
+  }, [])
+
+  const handleNotificationRowClick = useCallback((sessionId: string) => {
+    window.electronAPI.navigateToSession(sessionId)
   }, [])
 
   const handleMouseEnter = useCallback(() => {
@@ -200,16 +223,23 @@ export function FloatingBall(): React.JSX.Element {
         ))}
       </div>
       <div className="bottom-section">
-        <div
-          ref={ballRef}
-          className="ball"
-          onMouseDown={handleMouseDown}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-          onContextMenu={handleContextMenu}
-          title="Coding-bubble 💬"
-        >
-          <span className="ball__icon">💬</span>
+        <div className="ball-container">
+          <NotificationBubble
+            interventions={interventions}
+            visible={notificationVisible}
+            onRowClick={handleNotificationRowClick}
+          />
+          <div
+            ref={ballRef}
+            className="ball"
+            onMouseDown={handleMouseDown}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+            onContextMenu={handleContextMenu}
+            title="Coding-bubble 💬"
+          >
+            <span className="ball__icon">💬</span>
+          </div>
         </div>
       </div>
     </div>

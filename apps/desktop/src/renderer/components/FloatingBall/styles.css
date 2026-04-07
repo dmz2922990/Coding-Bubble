@@ -64,6 +64,13 @@ body,
   flex-shrink: 0;
 }
 
+.ball-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* ── 悬浮球 ──────────────────────────────── */
 .ball {
   width: 56px;
