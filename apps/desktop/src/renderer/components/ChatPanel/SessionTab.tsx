@@ -37,20 +37,20 @@ export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onA
 
   useEffect(() => {
     if (listRef.current && autoScroll) {
-      listRef.current.scrollTop = listRef.current.scrollHeight
+      listRef.current.scrollTop = 0
     }
   }, [items, autoScroll])
 
   const handleScroll = useCallback(() => {
     const el = listRef.current
     if (!el) return
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 30
-    setAutoScroll(atBottom)
-    if (atBottom) setNewCount(0)
+    const atTop = el.scrollTop < 30
+    setAutoScroll(atTop)
+    if (atTop) setNewCount(0)
   }, [])
 
-  const scrollToBottom = useCallback(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
+  const scrollToLatest = useCallback(() => {
+    listRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
     setAutoScroll(true)
     setNewCount(0)
   }, [])
@@ -78,15 +78,15 @@ export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onA
         {items.length === 0 && session.phase !== 'waitingForApproval' ? (
           <div className="session-tab__empty">暂无对话记录</div>
         ) : (
-          items.map((item) => (
+          [...items].reverse().map((item) => (
             <MessageItem key={item.id} item={item} />
           ))
         )}
       </div>
 
       {!autoScroll && newCount > 0 && (
-        <button className="session-tab__new-indicator" onClick={scrollToBottom}>
-          ↓ {newCount} 条新消息
+        <button className="session-tab__new-indicator" onClick={scrollToLatest}>
+          ↑ {newCount} 条新消息
         </button>
       )}
 
