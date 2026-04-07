@@ -117,8 +117,8 @@
 }
 
 .chat-msg--user .chat-msg__bubble {
-  background: linear-gradient(145deg, #ff9441, #e8550a);
-  color: #fff;
+  background: rgba(255, 148, 65, 0.15);
+  color: #f0f0f0;
   border-bottom-right-radius: 4px;
 }
 

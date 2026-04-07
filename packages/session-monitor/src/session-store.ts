@@ -161,12 +161,25 @@ export class SessionStore {
     session.lastActivity = now()
 
     switch (eventName) {
-      case 'UserPromptSubmit':
-        // Update permission mode from UserPromptSubmit payload
+      case 'UserPromptSubmit': {
         const permissionMode = (event.payload?.permission_mode as string) ?? session.permissionMode
         session.permissionMode = permissionMode
+
+        const prompt = event.payload?.prompt as string | undefined
+        if (prompt) {
+          const item: ChatHistoryItem = {
+            id: `user_${Date.now()}`,
+            type: 'user',
+            content: prompt,
+            timestamp: now()
+          }
+          session.chatItems.push(item)
+          this._publish('session:history', { sessionId, items: session.chatItems })
+        }
+
         this.transition(session, 'processing')
         break
+      }
       case 'PreToolUse':
         // Don't transition - stay in current state (likely processing)
         break
