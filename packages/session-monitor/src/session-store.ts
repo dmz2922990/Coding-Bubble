@@ -174,7 +174,13 @@ export class SessionStore {
         if (toolUseId) {
           this._updateToolResult(sessionId, toolUseId, toolResponse)
         }
-        // Don't transition - stay in current state
+
+        // If session was waiting for approval and tool is now complete,
+        // transition to processing (user approved/denied in Claude Code terminal)
+        if (session.phase.type === 'waitingForApproval') {
+          console.log('[SessionStore] PostToolUse: auto-transition from waitingForApproval to processing')
+          this.transition(session, 'processing')
+        }
         break
       }
       case 'Notification':
