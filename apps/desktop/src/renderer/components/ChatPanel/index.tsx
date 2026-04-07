@@ -29,10 +29,10 @@ export function ChatPanel(): React.JSX.Element {
 
       for (const s of (list as Record<string, unknown>[])) {
         const sessionId = s.sessionId as string
-        const phaseObj = s.phase as Record<string, unknown> | undefined
-        const phase = (phaseObj?.type as string) ?? 'idle'
+        const sessionPhase = s.phase as SessionPhase | undefined
+        const phase = sessionPhase?.type ?? 'idle'
         // For waitingForApproval, toolName and toolInput are in phase.context
-        const context = phaseObj?.context as Record<string, unknown> | undefined
+        const context = sessionPhase?.type === 'waitingForApproval' ? sessionPhase.context : undefined
         const toolName = context?.toolName as string | undefined
         const toolInput = context?.toolInput as Record<string, unknown> | null | undefined
 
