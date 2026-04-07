@@ -78,6 +78,7 @@ export interface HookEvent {
 export interface HookResponse {
   decision: 'allow' | 'deny'
   reason?: string | null
+  updatedInput?: Record<string, unknown>
 }
 
 // ═─ Pending Permission ──────────────────────────────────────

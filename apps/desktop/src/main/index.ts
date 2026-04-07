@@ -8,7 +8,7 @@ let panelWin: BrowserWindow | null = null
 let settingsWin: BrowserWindow | null = null
 
 /** Pending permission resolvers keyed by sessionId */
-const pendingPermissionResolvers = new Map<string, { toolUseId: string | undefined; resolve: (response: HookResponse) => void }>()
+const pendingPermissionResolvers = new Map<string, { toolUseId: string | undefined; toolInput?: Record<string, unknown> | null; resolve: (response: HookResponse) => void }>()
 
 /** 拖拽时记录光标相对于窗口左上角的偏移量 */
 let dragOffset = { x: 0, y: 0 }
@@ -473,7 +473,29 @@ ipcMain.handle('session:answer', async (_event, sessionId: string, answer: strin
   console.log('[main] Found entry:', { toolUseId: entry.toolUseId })
   pendingPermissionResolvers.delete(sessionId)
 
-  const response: HookResponse = { decision: 'allow', reason: answer }
+  const response: HookResponse = { decision: 'allow' }
+
+  // Build updatedInput with answers for AskUserQuestion
+  if (entry.toolInput && Array.isArray(entry.toolInput.questions)) {
+    let answerValue: string
+    try {
+      const parsed = JSON.parse(answer)
+      answerValue = Array.isArray(parsed) ? parsed.join(',') : String(parsed)
+    } catch {
+      answerValue = answer
+    }
+
+    const answers: Record<string, string> = {}
+    for (const q of entry.toolInput.questions as Array<Record<string, unknown>>) {
+      answers[q.question as string] = answerValue
+    }
+
+    response.updatedInput = {
+      questions: entry.toolInput.questions,
+      answers
+    }
+  }
+
   console.log('[main] Resolving with response:', JSON.stringify(response))
 
   if (entry.toolUseId) {
@@ -623,7 +645,7 @@ app.whenReady().then(() => {
 
       // Wait for user approval
       return new Promise<HookResponse>((resolve) => {
-        pendingPermissionResolvers.set(sessionId, { toolUseId, resolve })
+        pendingPermissionResolvers.set(sessionId, { toolUseId, toolInput, resolve })
         sessionStore?.process({
           hook_event_name: 'PermissionRequest',
           session_id: sessionId,

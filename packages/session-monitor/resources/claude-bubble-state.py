@@ -64,12 +64,16 @@ def main():
                 log(f'[hook] PermissionRequest decision={decision} reason={reason}')
 
                 if decision == 'allow':
-                    print(json.dumps({
+                    output = {
                         'hookSpecificOutput': {
                             'hookEventName': 'PermissionRequest',
                             'decision': {'behavior': 'allow'}
                         }
-                    }))
+                    }
+                    updated_input = response.get('updatedInput')
+                    if updated_input:
+                        output['hookSpecificOutput']['decision']['updatedInput'] = updated_input
+                    print(json.dumps(output))
                     sys.exit(0)
                 elif decision == 'deny':
                     decision_obj = {'behavior': 'deny'}
