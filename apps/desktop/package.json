@@ -21,16 +21,6 @@
     "files": [
       "out/**/*"
     ],
-    "extraResources": [
-      {
-        "from": "resources/persona",
-        "to": "persona"
-      },
-      {
-        "from": "resources/skills",
-        "to": "skills"
-      }
-    ],
     "mac": {
       "icon": "resources/icon.icns",
       "target": [

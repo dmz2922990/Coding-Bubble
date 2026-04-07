@@ -1,7 +1,0 @@
-{
-  "name": "@coding-bubble/backend",
-  "version": "0.0.2",
-  "private": true,
-  "main": "src/index.ts",
-  "types": "src/index.ts"
-}
