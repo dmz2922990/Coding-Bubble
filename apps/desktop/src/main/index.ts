@@ -502,22 +502,22 @@ app.whenReady().then(() => {
   createSocketServer({
     onEvent: (event: HookEvent) => {
       console.log('[main] socket onEvent:', JSON.stringify(event))
-      sessionStore?.process(event)
 
-      // After processing any event, check if pending permissions are stale
-      // This handles the case where user handles permission directly in Claude Code terminal
+      // Before processing the event, check if pending permissions are stale
+      // This handles the case where Stop event arrives while waiting for permission
       if (event.session_id) {
         const session = sessionStore?.get(event.session_id)
         const pending = pendingPermissionResolvers.get(event.session_id)
         if (pending && session && session.phase.type !== 'waitingForApproval') {
           console.log('[main] clearing stale pending permission for session:', event.session_id, 'due to:', event.hook_event_name, 'phase:', session.phase.type)
           pendingPermissionResolvers.delete(event.session_id)
+          // Only resolve the pending callback, don't call sessionStore.resolvePermission
+          // Let the event processing handle the state transition naturally
           pending.resolve({ decision: 'allow' })
-          if (pending.toolUseId) {
-            sessionStore?.resolvePermission(pending.toolUseId, { decision: 'allow' })
-          }
         }
       }
+
+      sessionStore?.process(event)
 
       // Start JSONL watcher on session start
       if (event.hook_event_name === 'SessionStart' && event.session_id) {
