@@ -31,9 +31,24 @@ function generateId(): string {
   return `gen_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 }
 
+function extractSummaryFromNotification(content: string): string | null {
+  const match = content.match(/<summary>([\s\S]*?)<\/summary>/)
+  return match ? match[1].trim() : null
+}
+
 function parseMessage(msg: Record<string, unknown>, index: number): ChatHistoryItem[] {
   const role = msg.role as string | undefined
   const type = msg.type as string | undefined
+
+  // System task notifications: origin.kind === 'task-notification'
+  const origin = msg.origin as Record<string, unknown> | undefined
+  if (origin?.kind === 'task-notification') {
+    const message = msg.message as Record<string, unknown> | undefined
+    const raw = typeof message?.content === 'string' ? message.content : ''
+    const summary = extractSummaryFromNotification(raw)
+    if (!summary) return []
+    return [{ id: extractId(msg, index), type: 'system', content: summary, timestamp: extractTimestamp(msg) }]
+  }
 
   switch (role) {
     case 'user': {

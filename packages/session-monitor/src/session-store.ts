@@ -167,11 +167,23 @@ export class SessionStore {
 
         const prompt = event.payload?.prompt as string | undefined
         if (prompt) {
-          const item: ChatHistoryItem = {
-            id: `user_${Date.now()}`,
-            type: 'user',
-            content: prompt,
-            timestamp: now()
+          const isTaskNotification = prompt.includes('<task-notification>')
+          let item: ChatHistoryItem
+          if (isTaskNotification) {
+            const summaryMatch = prompt.match(/<summary>([\s\S]*?)<\/summary>/)
+            item = {
+              id: `sys_${Date.now()}`,
+              type: 'system',
+              content: summaryMatch ? summaryMatch[1].trim() : prompt,
+              timestamp: now()
+            }
+          } else {
+            item = {
+              id: `user_${Date.now()}`,
+              type: 'user',
+              content: prompt,
+              timestamp: now()
+            }
           }
           session.chatItems.push(item)
           this._publish('session:history', { sessionId, items: session.chatItems })
