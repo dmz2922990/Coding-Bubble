@@ -91,13 +91,7 @@ def main():
                     log('[hook] unknown decision, exiting without output')
                     sys.exit(0)
             else:
-                log('[hook] PermissionRequest no response, auto-allow')
-                print(json.dumps({
-                    'hookSpecificOutput': {
-                        'hookEventName': 'PermissionRequest',
-                        'decision': {'behavior': 'allow'}
-                    }
-                }))
+                log('[hook] PermissionRequest no response, exiting without decision')
                 sys.exit(0)
         # All other events: fire-and-forget, no output needed (auto-allow by default)
     except Exception as e:
