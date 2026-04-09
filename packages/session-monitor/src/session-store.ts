@@ -324,7 +324,7 @@ export class SessionStore {
     const item: ChatHistoryItem = {
       id: `assistant_${Date.now()}`,
       type: 'assistant',
-      content,
+      content: content.replace(/\n\n+/g, '\n'),
       timestamp: now()
     }
     session.chatItems.push(item)

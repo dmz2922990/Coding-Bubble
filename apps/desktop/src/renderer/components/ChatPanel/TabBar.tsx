@@ -97,6 +97,13 @@ export function TabBar({ tabs, chatTab, activeTabId, onTabSelect, onTabClose }: 
     el.scrollBy({ left: direction === 'left' ? -120 : 120, behavior: 'smooth' })
   }, [])
 
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    const el = tabsRef.current
+    if (!el) return
+    e.preventDefault()
+    el.scrollBy({ left: e.deltaY > 0 ? 120 : -120, behavior: 'smooth' })
+  }, [])
+
   const handleTabClick = (id: string) => {
     onTabSelect(id)
   }
@@ -138,7 +145,7 @@ export function TabBar({ tabs, chatTab, activeTabId, onTabSelect, onTabClose }: 
           {scrollableTabs.length > 0 && (
             <>
               {!hasScroll && (
-                <div className="tab-bar" ref={tabsRef}>
+                <div className="tab-bar" ref={tabsRef} onWheel={handleWheel}>
                   {scrollableTabs.map((tab) => (
                     <button
                       key={tab.id}
@@ -174,7 +181,7 @@ export function TabBar({ tabs, chatTab, activeTabId, onTabSelect, onTabClose }: 
                       ‹
                     </button>
                   )}
-                  <div className="tab-bar" ref={tabsRef} onScroll={updateScrollButtons}>
+                  <div className="tab-bar" ref={tabsRef} onScroll={updateScrollButtons} onWheel={handleWheel}>
                     {scrollableTabs.map((tab) => (
                       <button
                         key={tab.id}
