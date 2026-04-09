@@ -49,6 +49,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     answer: (sessionId: string, answer: string): Promise<void> => ipcRenderer.invoke('session:answer', sessionId, answer),
     hooksStatus: (): Promise<{ installed: boolean }> => ipcRenderer.invoke('session:hooks-status'),
     installHooks: (): Promise<void> => ipcRenderer.invoke('session:install-hooks'),
+    jumpToTerminal: (sessionId: string): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('session:jump-to-terminal', sessionId),
     onUpdate: (cb: (event: unknown, data: unknown) => void) => {
       ipcRenderer.on('session:update', cb)
       return () => ipcRenderer.removeListener('session:update', cb)

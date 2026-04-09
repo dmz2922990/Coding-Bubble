@@ -73,6 +73,7 @@ export interface HookEvent {
   hook_event_name: string
   session_id: string
   cwd: string
+  pid?: number
   payload: Record<string, unknown>
 }
 

@@ -40,6 +40,7 @@ def main():
             'hook_event_name': hook_name,
             'session_id': session_id,
             'cwd': cwd,
+            'pid': os.getppid(),
             'payload': event
         }
         sock.sendall((json.dumps(message) + '\n').encode('utf-8'))
