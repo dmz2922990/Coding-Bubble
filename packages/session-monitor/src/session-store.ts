@@ -124,7 +124,17 @@ export class SessionStore {
         if (session) {
           session.chatItems = items
           session.lastActivity = now()
-          this._publish('session:history', { sessionId, items })
+          // Reset staleness timer on file update
+          if (ONESHOT_TIMEOUTS[session.phase.type]) {
+            this._setupOneshotRevert(session, ONESHOT_TIMEOUTS[session.phase.type]!)
+          }
+          // Detect interrupted state from chat history (e.g. Ctrl+C)
+          const lastItem = items[items.length - 1]
+          if (lastItem?.type === 'interrupted' && session.phase.type !== 'idle' && session.phase.type !== 'ended') {
+            this.transition(session, 'idle')
+          }
+          this._publish('session:history', { sessionId, items: session.chatItems })
+          this._publish('session:update', { sessionId, phase: session.phase })
         }
         break
       }
@@ -174,6 +184,10 @@ export class SessionStore {
       session.pid = event.pid
     }
     session.lastActivity = now()
+    // Reset staleness timer on any event
+    if (ONESHOT_TIMEOUTS[session.phase.type]) {
+      this._setupOneshotRevert(session, ONESHOT_TIMEOUTS[session.phase.type]!)
+    }
 
     switch (eventName) {
       case 'UserPromptSubmit': {

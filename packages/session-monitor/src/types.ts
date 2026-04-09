@@ -55,7 +55,9 @@ export const STATE_PRIORITY: Record<SessionPhaseType, number> = {
 
 export const ONESHOT_TIMEOUTS: Partial<Record<SessionPhaseType, number>> = {
   done: 3000,
-  error: 5000
+  error: 5000,
+  thinking: 120_000,
+  processing: 300_000,
 }
 
 // ═─ Chat History Items ──────────────────────────────────────
