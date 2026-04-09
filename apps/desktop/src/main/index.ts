@@ -273,7 +273,20 @@ ipcMain.handle('ipc:ping', () => {
 
 // ── IPC: 打开对话面板 ─────────────────────────────────────
 ipcMain.on('panel:open', () => {
+  const alreadyOpen = panelWin && !panelWin.isDestroyed()
   createPanelWindow()
+  const navigateToChat = (): void => {
+    if (panelWin && !panelWin.isDestroyed()) {
+      panelWin.webContents.send('navigate-to-tab', 'chat')
+    }
+  }
+  if (alreadyOpen) {
+    navigateToChat()
+  } else {
+    panelWin?.webContents.once('did-finish-load', () => {
+      setTimeout(navigateToChat, 100)
+    })
+  }
 })
 
 // ── IPC: 右键上下文菜单 ───────────────────────────────────
