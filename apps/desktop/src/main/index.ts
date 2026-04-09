@@ -8,7 +8,7 @@ let panelWin: BrowserWindow | null = null
 let settingsWin: BrowserWindow | null = null
 
 /** Pending permission resolvers keyed by sessionId */
-const pendingPermissionResolvers = new Map<string, { toolUseId: string | undefined; toolName?: string; toolInput?: Record<string, unknown> | null; resolve: (response: HookResponse) => void }>()
+const pendingPermissionResolvers = new Map<string, { toolUseId: string | undefined; toolName?: string; toolInput?: Record<string, unknown> | null; formattedDetail: string; resolve: (response: HookResponse) => void }>()
 
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -17,22 +17,81 @@ function escapeHtml(text: string): string {
 function formatToolDetail(toolName?: string, toolInput?: Record<string, unknown> | null): string {
   if (!toolName) return '已允许未知工具'
   const input = toolInput ?? {}
+  const COLLAPSE_THRESHOLD = 200
+
+  function fmtBody(text: string): string {
+    const escaped = escapeHtml(text)
+    if (text.length <= COLLAPSE_THRESHOLD) {
+      return `<pre class="sys-detail">${escaped}</pre>`
+    }
+    return `<details><summary>变更详情</summary><pre class="sys-detail">${escaped}</pre></details>`
+  }
+
+  /** Build unified diff from old/new strings, matching ApprovalDetail's DiffView */
+  function fmtDiff(oldStr: string, newStr: string): string {
+    const oldLines = oldStr.split('\n')
+    const newLines = newStr.split('\n')
+
+    // Find common prefix
+    let prefix = 0
+    while (prefix < oldLines.length && prefix < newLines.length && oldLines[prefix] === newLines[prefix]) {
+      prefix++
+    }
+
+    // Find common suffix
+    let oEnd = oldLines.length - 1
+    let nEnd = newLines.length - 1
+    while (oEnd > prefix && nEnd > prefix && oldLines[oEnd] === newLines[nEnd]) {
+      oEnd--
+      nEnd--
+    }
+
+    const lines: Array<{ type: 'ctx' | 'rm' | 'add'; text: string }> = []
+    // Show all prefix context lines
+    for (let i = 0; i < prefix; i++) {
+      lines.push({ type: 'ctx', text: oldLines[i] })
+    }
+    // Removed lines
+    for (let i = prefix; i <= oEnd; i++) {
+      lines.push({ type: 'rm', text: oldLines[i] })
+    }
+    // Added lines
+    for (let i = prefix; i <= nEnd; i++) {
+      lines.push({ type: 'add', text: newLines[i] })
+    }
+    // Show all suffix context lines
+    for (let i = oEnd + 1; i < oldLines.length; i++) {
+      lines.push({ type: 'ctx', text: oldLines[i] })
+    }
+
+    const diffHtml = lines.map(l => {
+      const marker = l.type === 'rm' ? '-' : l.type === 'add' ? '+' : ' '
+      const escaped = escapeHtml(l.text)
+      return `<span class="diff-${l.type === 'rm' ? 'rm' : l.type === 'add' ? 'add' : 'ctx'}">${marker} ${escaped}</span>`
+    }).join('\n')
+
+    const totalLen = lines.reduce((s, l) => s + l.text.length + 2, 0)
+    if (totalLen <= COLLAPSE_THRESHOLD) {
+      return `<pre class="sys-detail sys-detail--diff">${diffHtml}</pre>`
+    }
+    return `<details><summary>变更详情</summary><pre class="sys-detail sys-detail--diff">${diffHtml}</pre></details>`
+  }
 
   switch (toolName) {
     case 'Bash': {
-      const cmd = escapeHtml((input.command as string ?? '').slice(0, 200))
-      return `已允许: Bash<br/><code>${cmd}</code>`
+      const cmd = input.command as string ?? ''
+      return `已允许: Bash${fmtBody(cmd)}`
     }
     case 'Edit': {
-      const file = escapeHtml((input.file_path as string ?? ''))
-      const oldStr = escapeHtml(((input.old_string as string) ?? '').slice(0, 80))
-      const newStr = escapeHtml(((input.new_string as string) ?? '').slice(0, 80))
-      return `已允许: Edit <code>${file.split('/').pop()}</code><br/><details><summary>变更详情</summary><pre>- ${oldStr}\n+ ${newStr}</pre></details>`
+      const file = escapeHtml((input.file_path as string ?? '').split('/').pop() ?? '')
+      const oldStr = input.old_string as string ?? ''
+      const newStr = input.new_string as string ?? ''
+      return `已允许: Edit <code>${file}</code>${fmtDiff(oldStr, newStr)}`
     }
     case 'Write': {
-      const file = escapeHtml((input.file_path as string ?? ''))
-      const content = escapeHtml(((input.content as string) ?? '').slice(0, 100))
-      return `已允许: Write <code>${file.split('/').pop()}</code><br/><pre>${content}</pre>`
+      const file = escapeHtml((input.file_path as string ?? '').split('/').pop() ?? '')
+      const content = input.content as string ?? ''
+      return `已允许: Write <code>${file}</code>${fmtBody(content)}`
     }
     case 'Read': {
       const file = escapeHtml((input.file_path as string ?? ''))
@@ -50,11 +109,11 @@ function formatToolDetail(toolName?: string, toolInput?: Record<string, unknown>
     case 'AskUserQuestion': {
       const questions = input.questions as Array<Record<string, unknown>> | undefined
       const q = questions?.[0]?.question as string ?? ''
-      return `已允许: AskUserQuestion<br/><pre>${escapeHtml(q)}</pre>`
+      return `已允许: AskUserQuestion${fmtBody(q)}`
     }
     default: {
-      const json = escapeHtml(JSON.stringify(input).slice(0, 150))
-      return `已允许: ${toolName}<br/><pre>${json}</pre>`
+      const json = JSON.stringify(input)
+      return `已允许: ${toolName}${fmtBody(json)}`
     }
   }
 }
@@ -214,7 +273,20 @@ ipcMain.handle('ipc:ping', () => {
 
 // ── IPC: 打开对话面板 ─────────────────────────────────────
 ipcMain.on('panel:open', () => {
+  const alreadyOpen = panelWin && !panelWin.isDestroyed()
   createPanelWindow()
+  const navigateToChat = (): void => {
+    if (panelWin && !panelWin.isDestroyed()) {
+      panelWin.webContents.send('navigate-to-tab', 'chat')
+    }
+  }
+  if (alreadyOpen) {
+    navigateToChat()
+  } else {
+    panelWin?.webContents.once('did-finish-load', () => {
+      setTimeout(navigateToChat, 100)
+    })
+  }
 })
 
 // ── IPC: 右键上下文菜单 ───────────────────────────────────
@@ -450,7 +522,7 @@ ipcMain.handle('session:approve', async (_event, sessionId: string) => {
   const response: HookResponse = { decision: 'allow' }
   console.log('[main] Resolving with response:', JSON.stringify(response))
 
-  sessionStore?.addSystemMessage(sessionId, formatToolDetail(entry.toolName, entry.toolInput))
+  sessionStore?.addSystemMessage(sessionId, entry.formattedDetail)
 
   // Update sessionStore phase state
   if (entry.toolUseId) {
@@ -502,7 +574,7 @@ ipcMain.handle('session:always-allow', async (_event, sessionId: string) => {
   const response: HookResponse = { decision: 'allow' }
   console.log('[main] Resolving with response:', JSON.stringify(response))
 
-  sessionStore?.addSystemMessage(sessionId, formatToolDetail(entry.toolName, entry.toolInput))
+  sessionStore?.addSystemMessage(sessionId, entry.formattedDetail)
 
   try {
     console.log('[main] About to call entry.resolve()...')
@@ -553,7 +625,7 @@ ipcMain.handle('session:answer', async (_event, sessionId: string, answer: strin
 
   console.log('[main] Resolving with response:', JSON.stringify(response))
 
-  sessionStore?.addSystemMessage(sessionId, formatToolDetail(entry.toolName, entry.toolInput))
+  sessionStore?.addSystemMessage(sessionId, entry.formattedDetail)
 
   if (entry.toolUseId) {
     await sessionStore?.resolvePermission(entry.toolUseId, response)
@@ -709,7 +781,7 @@ app.whenReady().then(() => {
 
       // Wait for user approval
       return new Promise<HookResponse>((resolve) => {
-        pendingPermissionResolvers.set(sessionId, { toolUseId, toolName, toolInput, resolve })
+        pendingPermissionResolvers.set(sessionId, { toolUseId, toolName, toolInput, formattedDetail: formatToolDetail(toolName, toolInput), resolve })
         sessionStore?.process({
           hook_event_name: 'PermissionRequest',
           session_id: sessionId,
