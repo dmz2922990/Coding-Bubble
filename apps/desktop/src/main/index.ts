@@ -8,7 +8,7 @@ let panelWin: BrowserWindow | null = null
 let settingsWin: BrowserWindow | null = null
 
 /** Pending permission resolvers keyed by sessionId */
-const pendingPermissionResolvers = new Map<string, { toolUseId: string | undefined; toolName?: string; toolInput?: Record<string, unknown> | null; resolve: (response: HookResponse) => void }>()
+const pendingPermissionResolvers = new Map<string, { toolUseId: string | undefined; toolName?: string; toolInput?: Record<string, unknown> | null; formattedDetail: string; resolve: (response: HookResponse) => void }>()
 
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -509,7 +509,7 @@ ipcMain.handle('session:approve', async (_event, sessionId: string) => {
   const response: HookResponse = { decision: 'allow' }
   console.log('[main] Resolving with response:', JSON.stringify(response))
 
-  sessionStore?.addSystemMessage(sessionId, formatToolDetail(entry.toolName, entry.toolInput))
+  sessionStore?.addSystemMessage(sessionId, entry.formattedDetail)
 
   // Update sessionStore phase state
   if (entry.toolUseId) {
@@ -561,7 +561,7 @@ ipcMain.handle('session:always-allow', async (_event, sessionId: string) => {
   const response: HookResponse = { decision: 'allow' }
   console.log('[main] Resolving with response:', JSON.stringify(response))
 
-  sessionStore?.addSystemMessage(sessionId, formatToolDetail(entry.toolName, entry.toolInput))
+  sessionStore?.addSystemMessage(sessionId, entry.formattedDetail)
 
   try {
     console.log('[main] About to call entry.resolve()...')
@@ -612,7 +612,7 @@ ipcMain.handle('session:answer', async (_event, sessionId: string, answer: strin
 
   console.log('[main] Resolving with response:', JSON.stringify(response))
 
-  sessionStore?.addSystemMessage(sessionId, formatToolDetail(entry.toolName, entry.toolInput))
+  sessionStore?.addSystemMessage(sessionId, entry.formattedDetail)
 
   if (entry.toolUseId) {
     await sessionStore?.resolvePermission(entry.toolUseId, response)
@@ -768,7 +768,7 @@ app.whenReady().then(() => {
 
       // Wait for user approval
       return new Promise<HookResponse>((resolve) => {
-        pendingPermissionResolvers.set(sessionId, { toolUseId, toolName, toolInput, resolve })
+        pendingPermissionResolvers.set(sessionId, { toolUseId, toolName, toolInput, formattedDetail: formatToolDetail(toolName, toolInput), resolve })
         sessionStore?.process({
           hook_event_name: 'PermissionRequest',
           session_id: sessionId,
