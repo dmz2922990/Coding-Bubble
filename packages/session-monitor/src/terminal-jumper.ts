@@ -21,6 +21,7 @@ export interface PlatformTerminalJumper {
 
 const TERMINAL_REGISTRY = new Map<string, string>([
   ['Ghostty', 'com.mitchellh.ghostty'],
+  ['ghostty', 'com.mitchellh.ghostty'],
   ['iTerm2', 'com.googlecode.iterm2'],
   ['Terminal', 'com.apple.Terminal'],
   ['Warp', 'dev.warp.Warp-Stable'],
@@ -51,8 +52,11 @@ function runAppleScript(script: string): Promise<string> {
 
 function findTerminalInPath(comm: string): TerminalInfo | null {
   const basename = comm.split('/').pop() ?? ''
+  const lowerBasename = basename.toLowerCase()
+  const lowerComm = comm.toLowerCase()
   for (const [name, bundleId] of TERMINAL_REGISTRY) {
-    if (basename === name || comm.endsWith(`/${name}`)) {
+    const lowerName = name.toLowerCase()
+    if (lowerBasename === lowerName || lowerComm.endsWith(`/${lowerName}`)) {
       return { name, bundleId }
     }
   }
@@ -233,20 +237,33 @@ async function activateGhostty(cwd: string): Promise<boolean> {
   const escapedCwd = cwd.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
   const script = `
 tell application "Ghostty"
-  activate
+  repeat with aWin in windows
+    repeat with aTab in tabs of aWin
+      repeat with aTerm in terminals of aTab
+        if working directory of aTerm is "${escapedCwd}" then
+          activate window aWin
+          select tab aTab
+          focus aTerm
+          return true
+        end if
+      end repeat
+    end repeat
+  end repeat
 end tell
-tell application "System Events"
-  tell process "Ghostty"
-    set frontmost to true
-  end tell
-end tell`
+return false`
   try {
-    await runAppleScript(script)
-    // Ghostty doesn't expose per-tab AppleScript API for precise tab matching,
-    // so we activate the app and rely on cwd being recent
+    const result = await runAppleScript(script)
+    if (result === 'true') return true
+    // Fallback: activate Ghostty without tab selection
+    await execFileAsync('open', ['-a', 'Ghostty'], { timeout: 3000 })
     return true
   } catch {
-    return false
+    try {
+      await execFileAsync('open', ['-a', 'Ghostty'], { timeout: 3000 })
+      return true
+    } catch {
+      return false
+    }
   }
 }
 
