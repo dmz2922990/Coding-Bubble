@@ -253,34 +253,32 @@ end tell`
 // ═─ Terminal.app Strategy ────────────────────────────────────
 
 async function activateTerminalApp(tty: string | undefined): Promise<boolean> {
+  if (!tty) {
+    try {
+      await runAppleScript('tell application "Terminal" to activate')
+      return true
+    } catch {
+      return false
+    }
+  }
+  const ttyBasename = tty.replace(/^\/dev\//, '')
   const script = `
 tell application "Terminal"
   activate
-end tell`
-  try {
-    await runAppleScript(script)
-    if (tty) {
-      const ttyBasename = tty.replace(/^\/dev\//, '')
-      const selectScript = `
-tell application "Terminal"
   repeat with aWin in windows
     repeat with aTab in tabs of aWin
-      if tty of (selected session of aTab) contains "${ttyBasename}" then
+      if tty of aTab contains "${ttyBasename}" then
         set miniaturized of aWin to false
         set index of aWin to 1
-        tell aTab to select
+        set selected tab of aWin to aTab
         return true
       end if
     end repeat
   end repeat
 end tell
 return false`
-      try {
-        await runAppleScript(selectScript)
-      } catch {
-        // Tab selection best-effort
-      }
-    }
+  try {
+    await runAppleScript(script)
     return true
   } catch {
     return false
