@@ -76,7 +76,7 @@ body,
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: linear-gradient(145deg, #ff9441, #e8550a);
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -96,7 +96,7 @@ body,
 }
 
 .ball__icon {
-  font-size: 26px;
+  font-size: 56px;
   line-height: 1;
   pointer-events: none;
 }
