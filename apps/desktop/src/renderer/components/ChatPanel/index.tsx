@@ -183,7 +183,7 @@ export function ChatPanel(): React.JSX.Element {
   const renderActiveTabContent = (): React.ReactNode => {
     if (tabManager.activeTabId === 'chat') {
       const sessionList = Array.from(sessions.values()).map((s) => s.session)
-      return <SessionListView sessions={sessionList} onSessionClick={handleSessionClick} />
+      return <SessionListView sessions={sessionList} onSessionClick={handleSessionClick} onJumpToTerminal={handleJumpToTerminal} />
     }
 
     const sessionData = sessions.get(tabManager.activeTabId)

@@ -255,10 +255,41 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
+.session-card__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.session-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-card__jump-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: rgba(240, 240, 240, 0.3);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.session-card__jump-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(240, 240, 240, 0.9);
+}
+
 .session-card__header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 6px;
   margin-bottom: 4px;
 }
 
