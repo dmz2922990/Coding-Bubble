@@ -31,6 +31,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('bubble:hide', cb)
     return () => ipcRenderer.removeListener('bubble:hide', cb)
   },
+  /** Status dot: display state listener (Main → Ball) */
+  onBubbleStatus: (cb: (event: unknown, state: string | null) => void) => {
+    ipcRenderer.on('bubble:status', cb)
+    return () => ipcRenderer.removeListener('bubble:status', cb)
+  },
   /** Navigate to session tab (Ball → Main) */
   navigateToSession: (sessionId: string): void => {
     ipcRenderer.send('panel:navigate-to-session', sessionId)

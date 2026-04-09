@@ -22,6 +22,15 @@ declare global {
       getConfig: () => Promise<Record<string, unknown>>
       /** 写入配置 */
       setConfig: (config: Record<string, unknown>) => Promise<void>
+      /** Notification bubble listeners */
+      onBubbleShow: (cb: (event: unknown, data: unknown[]) => void) => () => void
+      onBubbleHide: (cb: (event: unknown) => void) => () => void
+      /** Status dot listener */
+      onBubbleStatus: (cb: (event: unknown, state: string | null) => void) => () => void
+      /** Navigate to session */
+      navigateToSession: (sessionId: string) => void
+      /** Tab navigation listener */
+      onNavigateToTab: (cb: (event: unknown, sessionId: string) => void) => () => void
       /** 会话管理 */
       session: {
         list: () => Promise<unknown[]>

@@ -694,6 +694,14 @@ function bubbleControllerSync(): void {
   } else {
     ballWin.webContents.send('bubble:hide')
   }
+
+  // Send display state for status dot
+  const displayState = sessionStore?.resolveDisplayState()
+  if (!panelVisible && displayState && displayState.type !== 'idle' && displayState.type !== 'ended') {
+    ballWin.webContents.send('bubble:status', displayState.type)
+  } else {
+    ballWin.webContents.send('bubble:status', null)
+  }
 }
 
 // ── App 生命周期 ───────────────────────────────────────────

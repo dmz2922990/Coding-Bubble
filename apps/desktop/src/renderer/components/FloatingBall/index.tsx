@@ -78,6 +78,7 @@ export function FloatingBall(): React.JSX.Element {
   const [notificationVisible, setNotificationVisible] = useState(false)
   const [notifications, setNotifications] = useState<BubbleNotification[]>([])
   const [bubbleDismissed, setBubbleDismissed] = useState(false)
+  const [displayState, setDisplayState] = useState<string | null>(null)
   const movedRef = useRef(false)
   const isDraggingRef = useRef(false)
   const bubbleIdRef = useRef(0)
@@ -139,9 +140,13 @@ export function FloatingBall(): React.JSX.Element {
       setNotificationVisible(false)
       setBubbleDismissed(false)
     })
+    const cleanupStatus = window.electronAPI.onBubbleStatus((_event, state) => {
+      setDisplayState(state)
+    })
     return () => {
       cleanupShow()
       cleanupHide()
+      cleanupStatus()
     }
   }, [])
 
@@ -259,6 +264,7 @@ export function FloatingBall(): React.JSX.Element {
             <span className="ball__icon">💬</span>
           </div>
           {showBadge && <span className="ball__badge" />}
+          {displayState && <span className={`ball__status-dot ball__status-dot--${displayState}`} />}
         </div>
       </div>
     </div>

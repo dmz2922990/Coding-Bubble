@@ -127,6 +127,70 @@ body,
   }
 }
 
+/* ── Status Dot: session state indicator ── */
+.ball__status-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0, 0, 0, 0.3);
+  z-index: 5;
+  pointer-events: none;
+  transition: background 0.3s ease;
+}
+
+.ball__status-dot--thinking {
+  background: #ab47bc;
+}
+
+.ball__status-dot--processing {
+  background: #4caf50;
+}
+
+.ball__status-dot--done {
+  background: #66bb6a;
+}
+
+.ball__status-dot--error {
+  background: #f44336;
+  animation: status-blink 1s ease-in-out infinite;
+}
+
+.ball__status-dot--waitingForApproval {
+  background: #ff9800;
+  animation: status-pulse 1.5s ease-in-out infinite;
+}
+
+.ball__status-dot--waitingForInput {
+  background: #78909c;
+}
+
+.ball__status-dot--compacting {
+  background: #2196f3;
+}
+
+@keyframes status-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+}
+
+@keyframes status-blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
 /* ══════════════════════════════════════════════
    情绪层样式映射 — 通过 data-emotion 属性驱动
    状态：idle / busy / done / night
