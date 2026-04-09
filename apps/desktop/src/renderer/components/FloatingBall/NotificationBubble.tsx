@@ -1,45 +1,63 @@
 import React, { useCallback, useEffect, useRef } from 'react'
 import './NotificationBubble.css'
 
-export interface InterventionItem {
+export type NotificationType = 'approval' | 'input' | 'done' | 'error'
+
+export interface BubbleNotification {
   sessionId: string
   projectName: string
-  phase: 'waitingForApproval' | 'waitingForInput'
+  type: NotificationType
   toolName?: string
+  timestamp: number
+  autoCloseMs: number
 }
 
 interface NotificationBubbleProps {
-  interventions: InterventionItem[]
+  notifications: BubbleNotification[]
   visible: boolean
   onRowClick: (sessionId: string) => void
   onClose: () => void
-  autoCloseTimeout?: number
 }
 
 const MAX_ROWS = 5
-const DEFAULT_AUTO_CLOSE = 15_000
 
-const PHASE_CONFIG = {
-  waitingForApproval: { label: 'Approval', color: '#ff9800' },
-  waitingForInput: { label: 'Input', color: '#2196f3' }
-} as const
+const NOTIFICATION_CONFIG: Record<NotificationType, { label: string; color: string; icon: string }> = {
+  approval: { label: '请求授权', color: '#ff9800', icon: '🔐' },
+  input: { label: '等待输入', color: '#78909c', icon: '💬' },
+  done: { label: '任务完成', color: '#66bb6a', icon: '✅' },
+  error: { label: '执行出错', color: '#f44336', icon: '❌' },
+}
 
-export function NotificationBubble({ interventions, visible, onRowClick, onClose, autoCloseTimeout = DEFAULT_AUTO_CLOSE }: NotificationBubbleProps): React.JSX.Element | null {
+// Priority: approval > error > input > done
+const TYPE_PRIORITY: Record<NotificationType, number> = {
+  approval: 4,
+  error: 3,
+  input: 2,
+  done: 1,
+}
+
+export function NotificationBubble({ notifications, visible, onRowClick, onClose }: NotificationBubbleProps): React.JSX.Element | null {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Auto-close timer: only when all items are Input type
+  // Sort by priority
+  const sorted = [...notifications].sort(
+    (a, b) => (TYPE_PRIORITY[b.type] ?? 0) - (TYPE_PRIORITY[a.type] ?? 0)
+  )
+
+  // Auto-close timer
   useEffect(() => {
     if (timerRef.current) {
       clearTimeout(timerRef.current)
       timerRef.current = null
     }
 
-    if (!visible || interventions.length === 0) return
+    if (!visible || sorted.length === 0) return
 
-    const hasApproval = interventions.some(i => i.phase === 'waitingForApproval')
-    if (!hasApproval) {
-      timerRef.current = setTimeout(onClose, autoCloseTimeout)
-    }
+    const hasNeverClose = sorted.some(n => n.autoCloseMs === 0)
+    if (hasNeverClose) return
+
+    const minAutoClose = Math.min(...sorted.map(n => n.autoCloseMs))
+    timerRef.current = setTimeout(onClose, minAutoClose)
 
     return () => {
       if (timerRef.current) {
@@ -47,7 +65,7 @@ export function NotificationBubble({ interventions, visible, onRowClick, onClose
         timerRef.current = null
       }
     }
-  }, [visible, interventions, autoCloseTimeout, onClose])
+  }, [visible, sorted, onClose])
 
   const handleClick = useCallback((sessionId: string) => (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -67,10 +85,10 @@ export function NotificationBubble({ interventions, visible, onRowClick, onClose
     window.electronAPI.setIgnoreMouseEvents(true)
   }, [])
 
-  if (!visible || interventions.length === 0) return null
+  if (!visible || sorted.length === 0) return null
 
-  const displayItems = interventions.slice(0, MAX_ROWS)
-  const overflowCount = interventions.length - MAX_ROWS
+  const displayItems = sorted.slice(0, MAX_ROWS)
+  const overflowCount = sorted.length - MAX_ROWS
 
   return (
     <div
@@ -85,7 +103,7 @@ export function NotificationBubble({ interventions, visible, onRowClick, onClose
       </button>
       <div className="notification-bubble__list">
         {displayItems.map((item) => {
-          const config = PHASE_CONFIG[item.phase]
+          const config = NOTIFICATION_CONFIG[item.type]
           return (
             <div
               key={item.sessionId}
@@ -96,7 +114,8 @@ export function NotificationBubble({ interventions, visible, onRowClick, onClose
               <div className="notification-bubble__info">
                 <span className="notification-bubble__name">{item.projectName}</span>
                 <span className="notification-bubble__status" style={{ color: config.color }}>
-                  {config.label}
+                  {config.icon} {config.label}
+                  {item.toolName && <span className="notification-bubble__tool"> {item.toolName}</span>}
                 </span>
               </div>
             </div>

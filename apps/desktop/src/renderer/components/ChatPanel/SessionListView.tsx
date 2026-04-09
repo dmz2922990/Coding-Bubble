@@ -4,7 +4,10 @@ import './styles.css'
 
 const PHASE_LABELS: Record<string, string> = {
   idle: '空闲',
+  thinking: '思考中',
   processing: '处理中',
+  done: '已完成',
+  error: '出错',
   waitingForInput: '等待输入',
   waitingForApproval: '等待授权',
   compacting: '压缩中',
@@ -13,11 +16,14 @@ const PHASE_LABELS: Record<string, string> = {
 
 const PHASE_COLORS: Record<string, string> = {
   idle: '#888',
+  thinking: '#ab47bc',
   processing: '#4caf50',
-  waitingForInput: '#888',
+  done: '#66bb6a',
+  error: '#f44336',
+  waitingForInput: '#78909c',
   waitingForApproval: '#ff9800',
   compacting: '#2196f3',
-  ended: '#f44336'
+  ended: '#9e9e9e'
 }
 
 interface Props {

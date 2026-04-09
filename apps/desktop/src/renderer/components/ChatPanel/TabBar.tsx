@@ -4,11 +4,14 @@ import './TabBar.css'
 
 const TAB_PHASE_COLORS: Record<SessionPhaseType, string> = {
   idle: '#888',
+  thinking: '#ab47bc',
   processing: '#4caf50',
-  waitingForInput: '#888',
+  done: '#66bb6a',
+  error: '#f44336',
+  waitingForInput: '#78909c',
   waitingForApproval: '#ff9800',
   compacting: '#2196f3',
-  ended: '#f44336'
+  ended: '#9e9e9e'
 }
 
 interface Props {

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { ChatBubble } from '../ChatBubble'
 import { NotificationBubble } from './NotificationBubble'
-import type { InterventionItem } from './NotificationBubble'
+import type { BubbleNotification } from './NotificationBubble'
 import './styles.css'
 
 /** 按时段分组的启动开场语 */
@@ -76,7 +76,7 @@ interface BubbleItem {
 export function FloatingBall(): React.JSX.Element {
   const [bubbles, setBubbles] = useState<BubbleItem[]>([])
   const [notificationVisible, setNotificationVisible] = useState(false)
-  const [interventions, setInterventions] = useState<InterventionItem[]>([])
+  const [notifications, setNotifications] = useState<BubbleNotification[]>([])
   const [bubbleDismissed, setBubbleDismissed] = useState(false)
   const movedRef = useRef(false)
   const isDraggingRef = useRef(false)
@@ -91,7 +91,7 @@ export function FloatingBall(): React.JSX.Element {
     bubbleDismissedRef.current = bubbleDismissed
   }, [bubbleDismissed])
 
-  const showBadge = bubbleDismissed && interventions.some(i => i.phase === 'waitingForApproval')
+  const showBadge = bubbleDismissed && notifications.some(n => n.type === 'approval')
 
   const pushBubble = useCallback((text: string) => {
     bubbleIdRef.current += 1
@@ -130,7 +130,7 @@ export function FloatingBall(): React.JSX.Element {
   // Subscribe to notification bubble IPC events
   useEffect(() => {
     const cleanupShow = window.electronAPI.onBubbleShow((_event, data) => {
-      setInterventions(data as InterventionItem[])
+      setNotifications(data as BubbleNotification[])
       if (!bubbleDismissedRef.current) {
         setNotificationVisible(true)
       }
@@ -242,7 +242,7 @@ export function FloatingBall(): React.JSX.Element {
       <div className="bottom-section">
         <div className="ball-container">
           <NotificationBubble
-            interventions={interventions}
+            notifications={notifications}
             visible={notificationVisible}
             onRowClick={handleNotificationRowClick}
             onClose={handleNotificationClose}

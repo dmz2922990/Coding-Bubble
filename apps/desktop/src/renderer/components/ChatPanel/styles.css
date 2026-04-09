@@ -365,15 +365,31 @@
   color: rgba(158, 158, 158, 0.8);
 }
 
+.session-tab__phase-badge--thinking {
+  background: rgba(171, 71, 188, 0.15);
+  color: rgba(171, 71, 188, 0.9);
+  animation: tool-pulse 2s ease infinite;
+}
+
 .session-tab__phase-badge--processing {
   background: rgba(76, 175, 80, 0.15);
   color: rgba(76, 175, 80, 0.9);
   animation: tool-pulse 1.5s ease infinite;
 }
 
+.session-tab__phase-badge--done {
+  background: rgba(102, 187, 106, 0.15);
+  color: rgba(102, 187, 106, 0.9);
+}
+
+.session-tab__phase-badge--error {
+  background: rgba(244, 67, 54, 0.15);
+  color: rgba(244, 67, 54, 0.9);
+}
+
 .session-tab__phase-badge--waitingForInput {
-  background: rgba(158, 158, 158, 0.15);
-  color: rgba(158, 158, 158, 0.8);
+  background: rgba(120, 144, 156, 0.15);
+  color: rgba(120, 144, 156, 0.8);
 }
 
 .session-tab__phase-badge--waitingForApproval {
@@ -387,8 +403,8 @@
 }
 
 .session-tab__phase-badge--ended {
-  background: rgba(244, 67, 54, 0.15);
-  color: rgba(244, 67, 54, 0.8);
+  background: rgba(158, 158, 158, 0.15);
+  color: rgba(158, 158, 158, 0.8);
 }
 
 .session-tab__header-actions {

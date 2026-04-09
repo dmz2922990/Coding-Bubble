@@ -14,7 +14,10 @@ const TOOL_STATUS_COLORS: Record<string, string> = {
 
 const PHASE_LABELS: Record<string, string> = {
   idle: '空闲',
+  thinking: '思考中',
   processing: '处理中',
+  done: '已完成',
+  error: '出错',
   waitingForInput: '等待输入',
   waitingForApproval: '等待授权',
   compacting: '压缩中',

@@ -8,7 +8,8 @@ import type {
   Intervention,
   InterventionPhase
 } from './types'
-import { VALID_TRANSITIONS } from './types'
+import { VALID_TRANSITIONS, STATE_PRIORITY, ONESHOT_TIMEOUTS } from './types'
+import type { BubbleNotification, NotificationType } from './types'
 
 /** Derive project name from cwd */
 function projectNameFromCwd(cwd: string): string {
@@ -23,7 +24,10 @@ function now(): number {
 function newPhase(id: string): SessionPhase {
   switch (id) {
     case 'idle': return { type: 'idle' }
+    case 'thinking': return { type: 'thinking' }
     case 'processing': return { type: 'processing' }
+    case 'done': return { type: 'done' }
+    case 'error': return { type: 'error' }
     case 'waitingForInput': return { type: 'waitingForInput' }
     case 'waitingForApproval': return { type: 'waitingForApproval', context: { toolUseId: '', toolName: '', toolInput: null, receivedAt: now() } }
     case 'compacting': return { type: 'compacting' }
@@ -37,7 +41,10 @@ export class SessionStore {
   private _pendingPermissions = new Map<string, PendingPermission[]>() // key: toolUseId
   private _invalidTransitions: Array<{ sessionId: string; from: string; to: string }> = []
   private _interventions = new Map<string, Intervention>() // key: sessionId
+  private _notifications = new Map<string, BubbleNotification>() // key: sessionId
+  private _oneshotTimers = new Map<string, ReturnType<typeof setTimeout>>() // key: sessionId
   private _onInterventionChange?: (interventions: Intervention[]) => void
+  private _onNotificationChange?: (notifications: BubbleNotification[]) => void
 
   get sessions(): ReadonlyMap<string, SessionState> {
     return this._sessions
@@ -91,10 +98,14 @@ export class SessionStore {
       case 'UserPromptSubmit':
       case 'PreToolUse':
       case 'PostToolUse':
-      case 'Notification':
+      case 'PostToolUseFailure':
       case 'Stop':
+      case 'StopFailure':
+      case 'SubagentStart':
       case 'SubagentStop':
       case 'PreCompact':
+      case 'PostCompact':
+      case 'Notification':
         this._handleGeneralEvent(event)
         break
 
@@ -193,11 +204,13 @@ export class SessionStore {
           this._publish('session:history', { sessionId, items: session.chatItems })
         }
 
-        this.transition(session, 'processing')
+        this.transition(session, 'thinking')
         break
       }
       case 'PreToolUse':
-        // Don't transition - stay in current state (likely processing)
+        if (session.phase.type === 'thinking') {
+          this.transition(session, 'processing')
+        }
         break
       case 'PostToolUse': {
         const payload = event.payload as Record<string, unknown> | undefined
@@ -225,14 +238,31 @@ export class SessionStore {
         if (lastMessage && lastMessage.length > 0) {
           this._addAssistantMessage(sessionId, lastMessage)
         }
-        this.transition(session, 'waitingForInput')
+        this.transition(session, 'done')
         break
       }
       case 'SubagentStop':
-        this.transition(session, 'waitingForInput')
         break
       case 'PreCompact':
         this.transition(session, 'compacting')
+        break
+      case 'PostCompact':
+        if (session.phase.type === 'compacting') {
+          this.transition(session, 'processing')
+        }
+        break
+      case 'PostToolUseFailure':
+        this.transition(session, 'error')
+        break
+      case 'StopFailure':
+        this.transition(session, 'error')
+        break
+      case 'SubagentStart':
+        if (session.phase.type === 'thinking' || session.phase.type === 'idle') {
+          this.transition(session, 'processing')
+        }
+        break
+      case 'Notification':
         break
     }
 
@@ -370,6 +400,41 @@ export class SessionStore {
     }
     session.lastActivity = now()
     this._updateInterventions(session.sessionId, session.phase)
+    this._updateNotifications(session)
+
+    // ONESHOT auto-revert
+    const timeout = ONESHOT_TIMEOUTS[newType]
+    if (timeout) {
+      this._setupOneshotRevert(session, timeout)
+    } else {
+      this._clearOneshotTimer(session.sessionId)
+    }
+  }
+
+  private _setupOneshotRevert(session: SessionState, timeoutMs: number): void {
+    const sessionId = session.sessionId
+    this._clearOneshotTimer(sessionId)
+
+    const timer = setTimeout(() => {
+      this._oneshotTimers.delete(sessionId)
+      const s = this._sessions.get(sessionId)
+      if (!s) return
+      // Only revert if still in the same ONESHOT state
+      if (s.phase.type === session.phase.type) {
+        this.transition(s, 'idle')
+        this._publish('session:update', { sessionId, phase: s.phase })
+      }
+    }, timeoutMs)
+
+    this._oneshotTimers.set(sessionId, timer)
+  }
+
+  private _clearOneshotTimer(sessionId: string): void {
+    const existing = this._oneshotTimers.get(sessionId)
+    if (existing) {
+      clearTimeout(existing)
+      this._oneshotTimers.delete(sessionId)
+    }
   }
 
   private _publish(channel: string, data: unknown): void {
@@ -388,8 +453,62 @@ export class SessionStore {
     return Array.from(this._interventions.values())
   }
 
+  resolveDisplayState(): SessionPhase {
+    let best: SessionPhase = { type: 'idle' }
+    let bestPriority = 0
+
+    for (const session of this._sessions.values()) {
+      if (session.phase.type === 'ended') continue
+      const priority = STATE_PRIORITY[session.phase.type] ?? 0
+      if (priority > bestPriority) {
+        bestPriority = priority
+        best = session.phase
+      }
+    }
+
+    return best
+  }
+
   onInterventionChange(cb: (interventions: Intervention[]) => void): void {
     this._onInterventionChange = cb
+  }
+
+  getPendingNotifications(): BubbleNotification[] {
+    return Array.from(this._notifications.values())
+  }
+
+  onNotificationChange(cb: (notifications: BubbleNotification[]) => void): void {
+    this._onNotificationChange = cb
+  }
+
+  private _updateNotifications(session: SessionState): void {
+    const phaseToType: Partial<Record<SessionPhase['type'], { type: NotificationType; autoCloseMs: number }>> = {
+      done: { type: 'done', autoCloseMs: 4000 },
+      error: { type: 'error', autoCloseMs: 8000 },
+      waitingForApproval: { type: 'approval', autoCloseMs: 0 },
+      waitingForInput: { type: 'input', autoCloseMs: 15000 },
+    }
+
+    const config = phaseToType[session.phase.type]
+    if (config) {
+      this._notifications.set(session.sessionId, {
+        sessionId: session.sessionId,
+        projectName: session.projectName,
+        type: config.type,
+        toolName: session.phase.type === 'waitingForApproval'
+          ? (session.phase as { type: 'waitingForApproval'; context: { toolName: string } }).context?.toolName
+          : undefined,
+        timestamp: now(),
+        autoCloseMs: config.autoCloseMs,
+      })
+    } else {
+      this._notifications.delete(session.sessionId)
+    }
+    this._notifyNotificationChange()
+  }
+
+  private _notifyNotificationChange(): void {
+    this._onNotificationChange?.(this.getPendingNotifications())
   }
 
   private _updateInterventions(sessionId: string, phase: SessionPhase): void {

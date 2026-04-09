@@ -686,11 +686,11 @@ ipcMain.on('panel:navigate-to-session', (_event, sessionId: string) => {
 
 function bubbleControllerSync(): void {
   if (!ballWin || ballWin.isDestroyed()) return
-  const interventions = sessionStore?.getPendingInterventions() ?? []
+  const notifications = sessionStore?.getPendingNotifications() ?? []
   const panelVisible = panelWin !== null && !panelWin.isDestroyed() && panelWin.isVisible()
 
-  if (!panelVisible && interventions.length > 0) {
-    ballWin.webContents.send('bubble:show', interventions)
+  if (!panelVisible && notifications.length > 0) {
+    ballWin.webContents.send('bubble:show', notifications)
   } else {
     ballWin.webContents.send('bubble:hide')
   }
@@ -708,6 +708,10 @@ app.whenReady().then(() => {
   sessionStore.onPublish((channel: string, data: unknown) => broadcastToRenderer(channel, data))
 
   sessionStore.onInterventionChange(() => {
+    bubbleControllerSync()
+  })
+
+  sessionStore.onNotificationChange(() => {
     bubbleControllerSync()
   })
 

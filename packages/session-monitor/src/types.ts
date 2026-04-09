@@ -2,7 +2,10 @@
 
 export type SessionPhaseType =
   | 'idle'
+  | 'thinking'
   | 'processing'
+  | 'done'
+  | 'error'
   | 'waitingForInput'
   | 'waitingForApproval'
   | 'compacting'
@@ -17,19 +20,42 @@ export interface PermissionContext {
 
 export type SessionPhase =
   | { type: 'idle' }
+  | { type: 'thinking' }
   | { type: 'processing' }
+  | { type: 'done' }
+  | { type: 'error' }
   | { type: 'waitingForInput' }
   | { type: 'waitingForApproval', context: PermissionContext }
   | { type: 'compacting' }
   | { type: 'ended' }
 
 export const VALID_TRANSITIONS: Record<SessionPhaseType, SessionPhaseType[]> = {
-  idle: ['processing', 'waitingForApproval', 'compacting'],
-  processing: ['waitingForInput', 'waitingForApproval', 'compacting', 'idle'],
-  waitingForInput: ['processing', 'idle', 'compacting'],
+  idle: ['thinking', 'processing', 'waitingForApproval', 'compacting'],
+  thinking: ['processing', 'done', 'error', 'waitingForApproval', 'compacting'],
+  processing: ['thinking', 'done', 'error', 'waitingForInput', 'waitingForApproval', 'compacting'],
+  done: ['idle', 'thinking'],
+  error: ['idle', 'thinking'],
+  waitingForInput: ['thinking', 'processing', 'idle', 'compacting'],
   waitingForApproval: ['processing', 'idle', 'waitingForInput'],
   compacting: ['processing', 'idle', 'waitingForInput'],
   ended: []
+}
+
+export const STATE_PRIORITY: Record<SessionPhaseType, number> = {
+  error: 8,
+  waitingForApproval: 7,
+  done: 6,
+  waitingForInput: 5,
+  compacting: 4,
+  processing: 3,
+  thinking: 2,
+  idle: 1,
+  ended: 0
+}
+
+export const ONESHOT_TIMEOUTS: Partial<Record<SessionPhaseType, number>> = {
+  done: 3000,
+  error: 5000
 }
 
 // ═─ Chat History Items ──────────────────────────────────────
@@ -104,4 +130,17 @@ export interface Intervention {
   projectName: string
   phase: InterventionPhase
   toolName?: string
+}
+
+// ═─ Bubble Notification ────────────────────────────────────
+
+export type NotificationType = 'approval' | 'input' | 'done' | 'error'
+
+export interface BubbleNotification {
+  sessionId: string
+  projectName: string
+  type: NotificationType
+  toolName?: string
+  timestamp: number
+  autoCloseMs: number
 }

@@ -19,7 +19,10 @@ export interface TabManager {
 /** Session phase type for UI rendering */
 export type SessionPhaseType =
   | 'idle'
+  | 'thinking'
   | 'processing'
+  | 'done'
+  | 'error'
   | 'waitingForInput'
   | 'waitingForApproval'
   | 'compacting'
