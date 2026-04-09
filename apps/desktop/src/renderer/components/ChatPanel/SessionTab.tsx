@@ -28,9 +28,10 @@ interface Props {
   onDeny?: () => void
   onAlwaysAllow?: () => void
   onAnswer?: (answer: string) => void
+  onJumpToTerminal?: () => void
 }
 
-export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onAnswer }: Props): React.JSX.Element {
+export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onAnswer, onJumpToTerminal }: Props): React.JSX.Element {
   const listRef = useRef<HTMLDivElement>(null)
   const [autoScroll, setAutoScroll] = useState(true)
   const [newCount, setNewCount] = useState(0)
@@ -59,9 +60,22 @@ export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onA
     <div className="session-tab">
       <div className="session-tab__header">
         <span className="session-tab__name">{session.projectName}</span>
-        <span className={`session-tab__phase-badge session-tab__phase-badge--${session.phase}`}>
-          {PHASE_LABELS[session.phase] ?? session.phase}
-        </span>
+        <div className="session-tab__header-actions">
+          <span className={`session-tab__phase-badge session-tab__phase-badge--${session.phase}`}>
+            {PHASE_LABELS[session.phase] ?? session.phase}
+          </span>
+          {onJumpToTerminal && (
+            <button
+              className="session-tab__jump-btn"
+              onClick={onJumpToTerminal}
+              title="跳转到终端"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 3L11 8L6 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="session-tab__details">

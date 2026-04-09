@@ -409,8 +409,10 @@ ipcMain.handle('config:set', (_event, config: Record<string, unknown>) => {
 
 import { SessionStore, createSocketServer, installHooks, hooksInstalled, watchJsonlFile, parseFullConversation } from '@coding-bubble/session-monitor'
 import type { HookEvent } from '@coding-bubble/session-monitor'
+import { TerminalJumper } from '@coding-bubble/session-monitor'
 
 let sessionStore: SessionStore | null = null
+const terminalJumper = new TerminalJumper()
 const jsonlWatchers = new Map<string, ReturnType<typeof watchJsonlFile>>()
 
 function broadcastToRenderer(channel: string, data: unknown): void {
@@ -575,6 +577,13 @@ ipcMain.handle('session:hooks-status', () => {
 ipcMain.handle('session:install-hooks', () => {
   installHooks()
   console.log('[main] hooks installed')
+})
+
+ipcMain.handle('session:jump-to-terminal', async (_event, sessionId: string) => {
+  if (!sessionStore) return { success: false, error: 'Session store not initialized' }
+  const session = sessionStore.get(sessionId)
+  if (!session) return { success: false, error: 'Session not found' }
+  return terminalJumper.jump(session)
 })
 
 // ── IPC: Bubble Navigation ─────────────────────────────────

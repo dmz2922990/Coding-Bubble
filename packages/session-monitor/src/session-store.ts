@@ -75,11 +75,11 @@ export class SessionStore {
   }
 
   process(event: HookEvent): void {
-    const { hook_event_name: eventName, session_id: sessionId, cwd } = event
+    const { hook_event_name: eventName, session_id: sessionId, cwd, pid } = event
 
     switch (eventName) {
       case 'SessionStart':
-        this._createSession(sessionId, cwd)
+        this._createSession(sessionId, cwd, pid)
         this._publish('session:new', { sessionId })
         break
 
@@ -125,7 +125,7 @@ export class SessionStore {
 
   // ── Private ──────────────────────────────────────────────
 
-  private _createSession(sessionId: string, cwd: string): void {
+  private _createSession(sessionId: string, cwd: string, pid?: number): void {
     if (this._sessions.has(sessionId)) return
 
     const t = now()
@@ -135,6 +135,7 @@ export class SessionStore {
       projectName: projectNameFromCwd(cwd),
       phase: { type: 'idle' },
       chatItems: [],
+      pid,
       lastActivity: t,
       createdAt: t,
       permissionMode: 'auto' // Default to auto-allow
@@ -154,10 +155,13 @@ export class SessionStore {
     let session = this._sessions.get(sessionId)
 
     if (!session) {
-      this._createSession(sessionId, event.cwd)
+      this._createSession(sessionId, event.cwd, event.pid)
       session = this._sessions.get(sessionId)!
     }
 
+    if (event.pid != null) {
+      session.pid = event.pid
+    }
     session.lastActivity = now()
 
     switch (eventName) {

@@ -29,6 +29,7 @@ declare global {
         deny: (sessionId: string, reason?: string) => Promise<void>
         hooksStatus: () => Promise<{ installed: boolean }>
         installHooks: () => Promise<void>
+        jumpToTerminal: (sessionId: string) => Promise<{ success: boolean; error?: string }>
         onUpdate: (cb: (event: unknown, data: unknown) => void) => () => void
       }
     }

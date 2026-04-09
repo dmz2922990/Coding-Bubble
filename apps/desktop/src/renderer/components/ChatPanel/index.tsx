@@ -174,6 +174,10 @@ export function ChatPanel(): React.JSX.Element {
     }
   }, [tabManager.activeTabId])
 
+  const handleJumpToTerminal = useCallback((sessionId: string) => {
+    window.electronAPI.session.jumpToTerminal(sessionId)
+  }, [])
+
   const activeTab = tabManager.tabs.find((t) => t.id === tabManager.activeTabId)
 
   const renderActiveTabContent = (): React.ReactNode => {
@@ -193,6 +197,7 @@ export function ChatPanel(): React.JSX.Element {
           onDeny={handleDeny}
           onAlwaysAllow={handleAlwaysAllow}
           onAnswer={handleAnswer}
+          onJumpToTerminal={() => handleJumpToTerminal(tabManager.activeTabId)}
         />
       )
     }
