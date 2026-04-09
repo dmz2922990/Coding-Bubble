@@ -886,12 +886,11 @@
 
 /* Inline code */
 .chat-msg__inline-code {
-  padding: 2px 6px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
-  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-  font-size: 12px;
-  color: #ff79c6;
+  padding: 0;
+  background: none;
+  font-family: inherit;
+  font-size: inherit;
+  color: #58a6ff;
 }
 
 /* Links */

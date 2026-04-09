@@ -150,8 +150,9 @@ function MessageItem({ item }: { item: ChatItem }): React.JSX.Element {
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
-                code({ node, inline, className, children, ...props }) {
-                  return !inline ? (
+                code({ className, children, ...props }) {
+                  const isBlock = className?.includes('language-')
+                  return isBlock ? (
                     <pre className="chat-msg__code-block">
                       <code className={className} {...props}>
                         {children}
