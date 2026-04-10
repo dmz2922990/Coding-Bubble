@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, screen } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, nativeImage, screen, Tray } from 'electron'
 import { join } from 'path'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import type { HookResponse, Intervention } from '@coding-bubble/session-monitor'
@@ -6,6 +6,7 @@ import type { HookResponse, Intervention } from '@coding-bubble/session-monitor'
 let ballWin: BrowserWindow | null = null
 let panelWin: BrowserWindow | null = null
 let settingsWin: BrowserWindow | null = null
+let tray: Tray | null = null
 
 /** Pending permission resolvers keyed by sessionId */
 const pendingPermissionResolvers = new Map<string, { toolUseId: string | undefined; toolName?: string; toolInput?: Record<string, unknown> | null; formattedDetail: string; resolve: (response: HookResponse) => void }>()
@@ -291,6 +292,24 @@ ipcMain.on('panel:open', () => {
 
 // ── IPC: 右键上下文菜单 ───────────────────────────────────
 
+function buildAppMenu(): Menu {
+  return Menu.buildFromTemplate([
+    {
+      label: '打开面板',
+      click: () => createPanelWindow()
+    },
+    {
+      label: '设置',
+      click: () => createSettingsWindow()
+    },
+    { type: 'separator' },
+    {
+      label: '退出',
+      click: () => app.quit()
+    }
+  ])
+}
+
 const PANEL_W = 400
 const PANEL_H = 600
 const SETTINGS_W = 360
@@ -414,30 +433,7 @@ function createSettingsWindow(): void {
 
 ipcMain.on('contextmenu:show', () => {
   if (!ballWin) return
-
-  const menu = Menu.buildFromTemplate([
-    {
-      label: '打开面板',
-      click: () => {
-        createPanelWindow()
-      }
-    },
-    {
-      label: '设置',
-      click: () => {
-        createSettingsWindow()
-      }
-    },
-    { type: 'separator' },
-    {
-      label: '退出',
-      click: () => {
-        app.quit()
-      }
-    }
-  ])
-
-  menu.popup({ window: ballWin })
+  buildAppMenu().popup({ window: ballWin })
 })
 
 // ── IPC: 关闭当前窗口 ─────────────────────────────────────
@@ -804,7 +800,21 @@ app.whenReady().then(() => {
     }
   })
 
+  // Hide Dock icon at runtime (LSUIElement handles packaged app)
+  if (process.platform === 'darwin' && !app.isPackaged) {
+    app.dock.hide()
+  }
+
   createBallWindow()
+
+  // Create system tray
+  const trayIconPath = app.isPackaged
+    ? join(process.resourcesPath, 'tray-iconTemplate.png')
+    : join(__dirname, '../../resources/tray-iconTemplate.png')
+  const trayIcon = nativeImage.createFromPath(trayIconPath)
+  tray = new Tray(trayIcon)
+  tray.setToolTip('Coding-bubble')
+  tray.setContextMenu(buildAppMenu())
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createBallWindow()

@@ -21,6 +21,16 @@
     "files": [
       "out/**/*"
     ],
+    "extraResources": [
+      {
+        "from": "resources/tray-iconTemplate.png",
+        "to": "tray-iconTemplate.png"
+      },
+      {
+        "from": "resources/tray-iconTemplate@2x.png",
+        "to": "tray-iconTemplate@2x.png"
+      }
+    ],
     "mac": {
       "icon": "resources/icon.icns",
       "target": [
@@ -28,7 +38,10 @@
         "zip"
       ],
       "category": "public.app-category.productivity",
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "extendInfo": {
+        "LSUIElement": true
+      }
     },
     "dmg": {
       "title": "${productName} ${version}"
