@@ -54,7 +54,7 @@ export function SessionListView({ sessions, onSessionClick, onJumpToTerminal, on
           </div>
         ) : (
           sessions.map((s) => (
-            <SessionCard key={s.sessionId} session={s} onClick={() => onSessionClick(s.sessionId)} onJumpToTerminal={onJumpToTerminal ? () => onJumpToTerminal(s.sessionId) : undefined} />
+            <SessionCard key={s.sessionId} session={s} onClick={() => onSessionClick(s.sessionId)} onJumpToTerminal={s.source !== 'stream' && onJumpToTerminal ? () => onJumpToTerminal(s.sessionId) : undefined} />
           ))
         )}
       </div>

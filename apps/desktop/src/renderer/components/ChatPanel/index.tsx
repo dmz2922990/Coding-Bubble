@@ -255,7 +255,7 @@ export function ChatPanel(): React.JSX.Element {
             onDeny={handleDeny}
             onAlwaysAllow={handleAlwaysAllow}
             onAnswer={handleAnswer}
-            onJumpToTerminal={() => handleJumpToTerminal(tabManager.activeTabId)}
+            onJumpToTerminal={isStream ? undefined : () => handleJumpToTerminal(tabManager.activeTabId)}
           />
           {isStream && (
             <MessageInput
