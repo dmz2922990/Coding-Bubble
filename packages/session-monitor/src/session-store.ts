@@ -6,7 +6,8 @@ import type {
   PendingPermission,
   ChatHistoryItem,
   Intervention,
-  InterventionPhase
+  InterventionPhase,
+  PermissionContext
 } from './types'
 import { VALID_TRANSITIONS, STATE_PRIORITY, ONESHOT_TIMEOUTS } from './types'
 import type { BubbleNotification, NotificationType } from './types'
@@ -156,10 +157,29 @@ export class SessionStore {
       projectName: projectNameFromCwd(cwd),
       phase: { type: 'idle' },
       chatItems: [],
+      source: 'hook',
       pid,
       lastActivity: t,
       createdAt: t,
       permissionMode: 'auto' // Default to auto-allow
+    })
+  }
+
+  /** Create a stream-json sourced session */
+  createStreamSession(sessionId: string, cwd: string): void {
+    if (this._sessions.has(sessionId)) return
+
+    const t = now()
+    this._sessions.set(sessionId, {
+      sessionId,
+      cwd,
+      projectName: projectNameFromCwd(cwd),
+      phase: { type: 'idle' },
+      chatItems: [],
+      source: 'stream',
+      lastActivity: t,
+      createdAt: t,
+      permissionMode: 'default'
     })
   }
 

@@ -60,5 +60,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.on('session:update', cb)
       return () => ipcRenderer.removeListener('session:update', cb)
     }
-  }
+  },
+  /** Stream session management */
+  stream: {
+    create: (cwd: string): Promise<{ sessionId?: string; error?: string }> =>
+      ipcRenderer.invoke('stream:create', cwd),
+    send: (sessionId: string, text: string): Promise<{ success?: boolean; error?: string }> =>
+      ipcRenderer.invoke('stream:send', sessionId, text),
+    destroy: (sessionId: string): Promise<void> =>
+      ipcRenderer.invoke('stream:destroy', sessionId),
+    resume: (claudeSessionId: string, cwd: string): Promise<{ sessionId?: string; error?: string }> =>
+      ipcRenderer.invoke('stream:resume', claudeSessionId, cwd),
+    onEvent: (cb: (event: unknown, data: unknown) => void) => {
+      ipcRenderer.on('session:update', cb)
+      return () => ipcRenderer.removeListener('session:update', cb)
+    }
+  },
+  /** Directory picker dialog */
+  showOpenDialog: (options: Record<string, unknown>): Promise<unknown> =>
+    ipcRenderer.invoke('dialog:showOpenDialog', options),
 })

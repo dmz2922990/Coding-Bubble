@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, nativeImage, screen, Tray } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, screen, Tray } from 'electron'
 import { join } from 'path'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import type { HookResponse, Intervention } from '@coding-bubble/session-monitor'
@@ -473,13 +473,20 @@ ipcMain.handle('config:set', (_event, config: Record<string, unknown>) => {
   writeConfig({ ...existing, ...config })
 })
 
+ipcMain.handle('dialog:showOpenDialog', async (_event, options: Electron.OpenDialogOptions) => {
+  return dialog.showOpenDialog(options)
+})
+
 // ── Session Monitor ──────────────────────────────────────────
 
 import { SessionStore, createSocketServer, installHooks, hooksInstalled, watchJsonlFile, parseFullConversation } from '@coding-bubble/session-monitor'
 import type { HookEvent } from '@coding-bubble/session-monitor'
 import { TerminalJumper } from '@coding-bubble/session-monitor'
+import { StreamAdapterManager } from './stream-adapter'
+import type { PermissionResult } from '@coding-bubble/stream-json'
 
 let sessionStore: SessionStore | null = null
+let streamManager: StreamAdapterManager | null = null
 const terminalJumper = new TerminalJumper()
 const jsonlWatchers = new Map<string, ReturnType<typeof watchJsonlFile>>()
 
@@ -654,6 +661,43 @@ ipcMain.handle('session:jump-to-terminal', async (_event, sessionId: string) => 
   return terminalJumper.jump(session)
 })
 
+// ── IPC: Stream Session Management ────────────────────────────
+
+ipcMain.handle('stream:create', async (_event, cwd: string) => {
+  if (!streamManager) return { error: 'Stream manager not initialized' }
+  try {
+    const sessionId = await streamManager.create(cwd)
+    return { sessionId }
+  } catch (err) {
+    return { error: String(err) }
+  }
+})
+
+ipcMain.handle('stream:send', async (_event, sessionId: string, text: string) => {
+  if (!streamManager) return { error: 'Stream manager not initialized' }
+  try {
+    streamManager.send(sessionId, text)
+    return { success: true }
+  } catch (err) {
+    return { error: String(err) }
+  }
+})
+
+ipcMain.handle('stream:destroy', async (_event, sessionId: string) => {
+  if (!streamManager) return
+  await streamManager.destroy(sessionId)
+})
+
+ipcMain.handle('stream:resume', async (_event, claudeSessionId: string, cwd: string) => {
+  if (!streamManager) return { error: 'Stream manager not initialized' }
+  try {
+    const sessionId = await streamManager.resume(claudeSessionId, cwd)
+    return { sessionId }
+  } catch (err) {
+    return { error: String(err) }
+  }
+})
+
 // ── IPC: Bubble Navigation ─────────────────────────────────
 
 ipcMain.on('panel:navigate-to-session', (_event, sessionId: string) => {
@@ -711,6 +755,29 @@ app.whenReady().then(() => {
   sessionStore = new SessionStore()
   sessionStore.onPublish((channel: string, data: unknown) => broadcastToRenderer(channel, data))
 
+  streamManager = new StreamAdapterManager({
+    sessionStore,
+    broadcastToRenderer,
+    onPermissionRequest: async (sessionId, requestId, toolName, toolInput) => {
+      // Stream sessions use the same pending permission flow as hook sessions
+      return new Promise((resolve) => {
+        pendingPermissionResolvers.set(sessionId, {
+          toolUseId: requestId,
+          toolName,
+          toolInput,
+          formattedDetail: formatToolDetail(toolName, toolInput),
+          resolve,
+        })
+        sessionStore?.process({
+          hook_event_name: 'PermissionRequest',
+          session_id: sessionId,
+          cwd: '',
+          payload: { toolUseId: requestId, tool: toolName, input: toolInput },
+        } as HookEvent)
+      })
+    },
+  })
+
   sessionStore.onInterventionChange(() => {
     bubbleControllerSync()
   })
@@ -722,6 +789,12 @@ app.whenReady().then(() => {
   createSocketServer({
     onEvent: (event: HookEvent) => {
       console.log('[main] socket onEvent:', JSON.stringify(event))
+
+      // Ignore hook events from stream-managed processes to avoid duplicate sessions
+      if (event.pid && streamManager?.isManagedPid(event.pid)) {
+        console.log('[main] ignoring hook event from stream-managed PID:', event.pid)
+        return
+      }
 
       sessionStore?.process(event)
 
@@ -821,4 +894,8 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+})
+
+app.on('before-quit', () => {
+  streamManager?.closeAll()
 })

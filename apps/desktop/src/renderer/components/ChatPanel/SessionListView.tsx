@@ -30,22 +30,39 @@ interface Props {
   sessions: SessionInfo[]
   onSessionClick: (sessionId: string) => void
   onJumpToTerminal?: (sessionId: string) => void
+  onCreateStreamSession?: (cwd: string) => void
 }
 
-export function SessionListView({ sessions, onSessionClick, onJumpToTerminal }: Props): React.JSX.Element {
-  if (sessions.length === 0) {
-    return (
-      <div className="chat-panel__empty">
-        没有活跃的 Claude 会话
-      </div>
-    )
-  }
+export function SessionListView({ sessions, onSessionClick, onJumpToTerminal, onCreateStreamSession }: Props): React.JSX.Element {
+  const handleCreate = useCallback(async () => {
+    if (!onCreateStreamSession) return
+    const result = await window.electronAPI.showOpenDialog({
+      properties: ['openDirectory'],
+      title: 'Select working directory',
+    }) as { canceled: boolean; filePaths: string[] }
+    if (!result.canceled && result.filePaths[0]) {
+      onCreateStreamSession(result.filePaths[0])
+    }
+  }, [onCreateStreamSession])
 
   return (
-    <div className="session-list">
-      {sessions.map((s) => (
-        <SessionCard key={s.sessionId} session={s} onClick={() => onSessionClick(s.sessionId)} onJumpToTerminal={onJumpToTerminal ? () => onJumpToTerminal(s.sessionId) : undefined} />
-      ))}
+    <div className="session-list-wrapper">
+      <div className="session-list">
+        {sessions.length === 0 ? (
+          <div className="chat-panel__empty">
+            没有活跃的 Claude 会话
+          </div>
+        ) : (
+          sessions.map((s) => (
+            <SessionCard key={s.sessionId} session={s} onClick={() => onSessionClick(s.sessionId)} onJumpToTerminal={onJumpToTerminal ? () => onJumpToTerminal(s.sessionId) : undefined} />
+          ))
+        )}
+      </div>
+      {onCreateStreamSession && (
+        <button className="session-list__create-btn" onClick={handleCreate}>
+          + 新建对话
+        </button>
+      )}
     </div>
   )
 }
@@ -53,13 +70,18 @@ export function SessionListView({ sessions, onSessionClick, onJumpToTerminal }: 
 function SessionCard({ session, onClick, onJumpToTerminal }: { session: SessionInfo; onClick: () => void; onJumpToTerminal?: () => void }): React.JSX.Element {
   const statusDotColor = PHASE_COLORS[session.phase] ?? '#888'
   const isWaitingApproval = session.phase === 'waitingForApproval'
+  const isStream = session.source === 'stream'
 
   return (
-    <div className="session-card" onClick={onClick}>
+    <div className={`session-card${isStream ? ' session-card--stream' : ''}`} onClick={onClick}>
       <div className="session-card__row">
         <div className="session-card__info">
           <div className="session-card__header">
-            <span className="session-card__dot" style={{ backgroundColor: statusDotColor }} />
+            {isStream ? (
+              <span className="session-card__lightning">⚡</span>
+            ) : (
+              <span className="session-card__dot" style={{ backgroundColor: statusDotColor }} />
+            )}
             <span className="session-card__name">{session.projectName}</span>
           </div>
           <div className="session-card__path">{session.cwd}</div>

@@ -286,6 +286,52 @@
   color: rgba(240, 240, 240, 0.9);
 }
 
+/* Stream session card accent */
+.session-card--stream {
+  border-left: 3px solid #4fc3f7;
+}
+
+.session-card__lightning {
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* Session list wrapper with create button */
+.session-list-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.session-list-wrapper .session-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.session-list__create-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 8px 12px 12px;
+  padding: 10px 0;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(240, 240, 240, 0.5);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.session-list__create-btn:hover {
+  border-color: rgba(79, 195, 247, 0.5);
+  color: #4fc3f7;
+  background: rgba(79, 195, 247, 0.05);
+}
+
 .session-card__header {
   display: flex;
   align-items: center;
@@ -1154,4 +1200,93 @@
 .aqu-btn-deny:hover {
   border-color: rgba(244, 67, 54, 0.5);
   color: rgba(244, 98, 86, 0.8);
+}
+
+/* ── Message Input ──────────────────────────────────────── */
+
+.message-input {
+  flex-shrink: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 8px 12px 12px;
+  background: rgba(24, 24, 28, 0.95);
+}
+
+.message-input__wrapper {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 8px 8px 8px 12px;
+  transition: border-color 0.15s ease;
+}
+
+.message-input__wrapper:focus-within {
+  border-color: rgba(79, 195, 247, 0.4);
+}
+
+.message-input__textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #f0f0f0;
+  font-size: 13px;
+  font-family: inherit;
+  line-height: 1.4;
+  resize: none;
+  max-height: 120px;
+  min-height: 20px;
+}
+
+.message-input__textarea::placeholder {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.message-input__textarea:disabled {
+  opacity: 0.4;
+}
+
+.message-input__send-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(79, 195, 247, 0.2);
+  color: #4fc3f7;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.message-input__send-btn:hover:not(:disabled) {
+  background: rgba(79, 195, 247, 0.35);
+}
+
+.message-input__send-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.message-input__spinner {
+  display: flex;
+  justify-content: center;
+  padding-top: 6px;
+}
+
+.message-input__spinner-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4fc3f7;
+  animation: message-input-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes message-input-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
 }

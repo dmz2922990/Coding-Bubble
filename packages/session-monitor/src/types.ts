@@ -88,6 +88,7 @@ export interface SessionState {
   projectName: string
   phase: SessionPhase
   chatItems: ChatHistoryItem[]
+  source: 'hook' | 'stream'
   pid?: number
   tty?: string
   lastActivity: number
