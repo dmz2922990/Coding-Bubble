@@ -886,6 +886,7 @@
 
 .chat-msg__markdown p {
   margin: 8px 0;
+  overflow-wrap: anywhere;
 }
 
 .chat-msg__markdown ul,
@@ -896,6 +897,10 @@
 
 .chat-msg__markdown li {
   margin: 4px 0;
+}
+
+.chat-msg__markdown li > p {
+  margin: 0;
 }
 
 .chat-msg__markdown blockquote {
@@ -922,6 +927,8 @@
   background: rgba(0, 0, 0, 0.3);
   border-radius: 6px;
   overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 .chat-msg__code-block code {
@@ -929,6 +936,8 @@
   font-size: 11px;
   line-height: 1.5;
   color: #d4d4d4;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 /* Inline code */
@@ -938,6 +947,7 @@
   font-family: inherit;
   font-size: inherit;
   color: #58a6ff;
+  word-break: break-all;
 }
 
 /* Links */
