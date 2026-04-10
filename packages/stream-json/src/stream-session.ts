@@ -65,6 +65,8 @@ export class StreamSession {
         env[key] = value
       }
     }
+    // Signal hook scripts to skip processing — permissions handled via stream-json
+    env['CLAUDE_BUBBLE_SKIP_HOOK'] = '1'
 
     this._proc = spawn('claude', args, {
       cwd: options.cwd,
@@ -116,29 +118,27 @@ export class StreamSession {
   }
 
   respondPermission(requestId: string, result: PermissionResult): void {
-    const resp: Record<string, unknown> = {
+    const innerResponse: Record<string, unknown> = {
+      behavior: result.behavior,
+    }
+
+    if (result.behavior === 'allow') {
+      // Claude Code requires updatedInput — echo back original input or empty object
+      innerResponse.updatedInput = result.updatedInput ?? {}
+    } else if (result.behavior === 'deny') {
+      innerResponse.message = result.message ?? 'Permission denied.'
+    }
+
+    const resp = {
       type: 'control_response',
       response: {
         subtype: 'success',
         request_id: requestId,
-        response: {
-          behavior: result.behavior,
-        },
+        response: innerResponse,
       },
     }
 
-    if (result.behavior === 'allow' && result.updatedInput) {
-      (resp.response as Record<string, unknown>).response = {
-        behavior: 'allow',
-        updatedInput: result.updatedInput,
-      }
-    } else if (result.behavior === 'deny') {
-      (resp.response as Record<string, unknown>).response = {
-        behavior: 'deny',
-        message: result.message ?? 'Permission denied.',
-      }
-    }
-
+    console.log('[stream-json] sending control_response:', JSON.stringify(resp))
     this._writeJSON(resp)
   }
 
@@ -284,19 +284,21 @@ export class StreamSession {
 
   /** Serialized JSON write to stdin — prevents concurrent writes */
   private _writeJSON(obj: Record<string, unknown>): void {
-    this._writeQueue = this._writeQueue.then(() => {
-      return new Promise<void>((resolve, reject) => {
-        if (!this._proc?.stdin?.writable) {
-          reject(new Error('stdin not writable'))
-          return
-        }
-        const data = JSON.stringify(obj) + '\n'
-        this._proc.stdin!.write(data, (err) => {
-          if (err) reject(err)
-          else resolve()
+    this._writeQueue = this._writeQueue
+      .catch(() => {}) // recover from previous rejection to keep queue alive
+      .then(() => {
+        return new Promise<void>((resolve, reject) => {
+          if (!this._proc?.stdin?.writable) {
+            reject(new Error('stdin not writable'))
+            return
+          }
+          const data = JSON.stringify(obj) + '\n'
+          this._proc.stdin!.write(data, (err) => {
+            if (err) reject(err)
+            else resolve()
+          })
         })
       })
-    })
   }
 
   private _waitExit(timeoutMs: number): Promise<void> {

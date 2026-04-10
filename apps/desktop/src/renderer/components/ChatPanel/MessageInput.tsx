@@ -16,8 +16,8 @@ export function MessageInput({ onSend, phase }: Props): React.JSX.Element {
   const handleSend = useCallback(() => {
     const trimmed = text.trim()
     if (!trimmed || isBusy) return
-    onSend(trimmed)
     setText('')
+    onSend(trimmed)
   }, [text, isBusy, onSend])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {

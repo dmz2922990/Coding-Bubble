@@ -5,6 +5,11 @@ import os
 
 SOCKET_PATH = '/tmp/claude-bubble.sock'
 
+# Stream sessions handle permissions via stream-json protocol,
+# not hooks. Skip all hook processing for these processes.
+if os.environ.get('CLAUDE_BUBBLE_SKIP_HOOK') == '1':
+    sys.exit(0)
+
 def log(msg):
     with open('/tmp/claude-bubble-hook.log', 'a') as f:
         f.write(msg + '\n')

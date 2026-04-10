@@ -157,27 +157,47 @@ export function ChatPanel(): React.JSX.Element {
 
   const handleApprove = useCallback(() => {
     if (tabManager.activeTabId !== 'chat') {
-      window.electronAPI.session.approve(tabManager.activeTabId)
+      const session = sessions.get(tabManager.activeTabId)
+      if (session?.session.source === 'stream') {
+        window.electronAPI.stream.approve(tabManager.activeTabId)
+      } else {
+        window.electronAPI.session.approve(tabManager.activeTabId)
+      }
     }
-  }, [tabManager.activeTabId])
+  }, [tabManager.activeTabId, sessions])
 
   const handleDeny = useCallback(() => {
     if (tabManager.activeTabId !== 'chat') {
-      window.electronAPI.session.deny(tabManager.activeTabId)
+      const session = sessions.get(tabManager.activeTabId)
+      if (session?.session.source === 'stream') {
+        window.electronAPI.stream.deny(tabManager.activeTabId)
+      } else {
+        window.electronAPI.session.deny(tabManager.activeTabId)
+      }
     }
-  }, [tabManager.activeTabId])
+  }, [tabManager.activeTabId, sessions])
 
   const handleAlwaysAllow = useCallback(() => {
     if (tabManager.activeTabId !== 'chat') {
-      window.electronAPI.session.alwaysAllow(tabManager.activeTabId)
+      const session = sessions.get(tabManager.activeTabId)
+      if (session?.session.source === 'stream') {
+        window.electronAPI.stream.alwaysAllow(tabManager.activeTabId)
+      } else {
+        window.electronAPI.session.alwaysAllow(tabManager.activeTabId)
+      }
     }
-  }, [tabManager.activeTabId])
+  }, [tabManager.activeTabId, sessions])
 
   const handleAnswer = useCallback((answer: string) => {
     if (tabManager.activeTabId !== 'chat') {
-      window.electronAPI.session.answer(tabManager.activeTabId, answer)
+      const session = sessions.get(tabManager.activeTabId)
+      if (session?.session.source === 'stream') {
+        window.electronAPI.stream.answer(tabManager.activeTabId, answer)
+      } else {
+        window.electronAPI.session.answer(tabManager.activeTabId, answer)
+      }
     }
-  }, [tabManager.activeTabId])
+  }, [tabManager.activeTabId, sessions])
 
   const handleJumpToTerminal = useCallback((sessionId: string) => {
     window.electronAPI.session.jumpToTerminal(sessionId)

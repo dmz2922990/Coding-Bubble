@@ -30,14 +30,14 @@ export type SessionPhase =
   | { type: 'ended' }
 
 export const VALID_TRANSITIONS: Record<SessionPhaseType, SessionPhaseType[]> = {
-  idle: ['thinking', 'processing', 'waitingForApproval', 'compacting'],
+  idle: ['thinking', 'processing', 'waitingForApproval', 'done', 'compacting'],
   thinking: ['processing', 'done', 'error', 'waitingForApproval', 'compacting'],
   processing: ['thinking', 'done', 'error', 'waitingForInput', 'waitingForApproval', 'compacting'],
   done: ['idle', 'thinking'],
-  error: ['idle', 'thinking'],
-  waitingForInput: ['thinking', 'processing', 'idle', 'compacting'],
-  waitingForApproval: ['processing', 'idle', 'waitingForInput'],
-  compacting: ['processing', 'idle', 'waitingForInput'],
+  error: ['idle', 'thinking', 'done'],
+  waitingForInput: ['thinking', 'processing', 'idle', 'done', 'compacting'],
+  waitingForApproval: ['processing', 'idle', 'waitingForInput', 'done'],
+  compacting: ['processing', 'idle', 'waitingForInput', 'done'],
   ended: []
 }
 
