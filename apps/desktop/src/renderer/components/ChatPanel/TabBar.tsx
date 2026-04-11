@@ -15,10 +15,16 @@ const TAB_PHASE_COLORS: Record<SessionPhaseType, string> = {
 }
 
 function getTabStyle(tab: TabItem): React.CSSProperties {
-  const phaseColor = tab.phase ? (TAB_PHASE_COLORS[tab.phase] ?? '#888') : 'transparent'
+  if (!tab.phase || tab.phase === 'idle' || tab.phase === 'ended') {
+    return {
+      '--tab-indicator-color': 'transparent',
+      '--tab-mode-color': 'transparent',
+    } as React.CSSProperties
+  }
+  const phaseColor = TAB_PHASE_COLORS[tab.phase] ?? '#888'
   return {
     '--tab-indicator-color': phaseColor,
-    '--tab-mode-color': tab.source === 'stream' ? '#4fc3f7' : 'transparent',
+    '--tab-mode-color': tab.source === 'stream' ? '#4fc3f7' : phaseColor,
   } as React.CSSProperties
 }
 
