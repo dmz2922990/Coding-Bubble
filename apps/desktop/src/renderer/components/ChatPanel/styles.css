@@ -19,7 +19,7 @@
   align-items: center;
   justify-content: space-between;
   min-height: 44px;
-  padding: 4px 8px 4px 4px;
+  padding: 8px 8px 4px 4px;
   background: rgba(30, 30, 34, 0.9);
   -webkit-app-region: drag;
   flex-shrink: 0;
@@ -410,6 +410,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.session-tab__header--stream {
+  border-left: 3px solid #4fc3f7;
+  margin-left: 2px;
 }
 
 .session-tab__name {

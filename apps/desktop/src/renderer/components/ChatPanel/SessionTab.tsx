@@ -74,7 +74,7 @@ export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onA
 
   return (
     <div className="session-tab">
-      <div className="session-tab__header">
+      <div className={`session-tab__header${onDisconnect ? ' session-tab__header--stream' : ''}`}>
         <span className="session-tab__name">{session.projectName}</span>
         <div className="session-tab__header-actions">
           <span className={`session-tab__phase-badge session-tab__phase-badge--${session.phase}`}>
