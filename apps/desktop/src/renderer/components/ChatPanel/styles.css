@@ -294,11 +294,16 @@
   height: 28px;
   border: none;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.3);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.25);
   cursor: pointer;
   transition: all 0.15s ease;
   flex-shrink: 0;
+  opacity: 0;
+}
+
+.session-card:hover .session-card__destroy-btn {
+  opacity: 1;
 }
 
 .session-card__destroy-btn:hover {
