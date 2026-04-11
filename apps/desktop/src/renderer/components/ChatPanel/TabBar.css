@@ -53,8 +53,8 @@
   border-radius: 1px;
   background: linear-gradient(
     to right,
-    var(--tab-mode-color, transparent) 3px,
-    var(--tab-indicator-color, transparent) 3px
+    var(--tab-mode-color, transparent) 9px,
+    var(--tab-indicator-color, transparent) 9px
   );
 }
 
