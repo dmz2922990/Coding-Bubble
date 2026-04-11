@@ -43,17 +43,7 @@
   flex-shrink: 0;
 }
 
-.tab-bar__tab:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(240, 240, 240, 0.8);
-}
-
-.tab-bar__tab--active {
-  color: #f0f0f0;
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.tab-bar__tab--active::after {
+.tab-bar__tab::after {
   content: '';
   position: absolute;
   bottom: 0;
@@ -64,8 +54,18 @@
   background: linear-gradient(
     to right,
     var(--tab-mode-color, transparent) 3px,
-    var(--tab-indicator-color, #ff9441) 3px
+    var(--tab-indicator-color, transparent) 3px
   );
+}
+
+.tab-bar__tab:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(240, 240, 240, 0.8);
+}
+
+.tab-bar__tab--active {
+  color: #f0f0f0;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .tab-bar__title {
