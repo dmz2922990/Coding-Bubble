@@ -238,6 +238,7 @@ export function ChatPanel(): React.JSX.Element {
           onSessionClick={handleSessionClick}
           onJumpToTerminal={handleJumpToTerminal}
           onCreateStreamSession={handleCreateStreamSession}
+          onDestroyStream={handleTabClose}
         />
       )
     }

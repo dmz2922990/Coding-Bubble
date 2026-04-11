@@ -286,6 +286,26 @@
   color: rgba(240, 240, 240, 0.9);
 }
 
+.session-card__destroy-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(244, 67, 54, 0.1);
+  color: rgba(244, 67, 54, 0.6);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.session-card__destroy-btn:hover {
+  background: rgba(244, 67, 54, 0.25);
+  color: rgba(244, 67, 54, 0.9);
+}
+
 /* Stream session card accent */
 .session-card--stream {
   border-left: 3px solid #4fc3f7;

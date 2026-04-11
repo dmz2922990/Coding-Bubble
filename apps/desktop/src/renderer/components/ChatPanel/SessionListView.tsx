@@ -31,9 +31,10 @@ interface Props {
   onSessionClick: (sessionId: string) => void
   onJumpToTerminal?: (sessionId: string) => void
   onCreateStreamSession?: (cwd: string) => void
+  onDestroyStream?: (sessionId: string) => void
 }
 
-export function SessionListView({ sessions, onSessionClick, onJumpToTerminal, onCreateStreamSession }: Props): React.JSX.Element {
+export function SessionListView({ sessions, onSessionClick, onJumpToTerminal, onCreateStreamSession, onDestroyStream }: Props): React.JSX.Element {
   const handleCreate = useCallback(async () => {
     if (!onCreateStreamSession) return
     const result = await window.electronAPI.showOpenDialog({
@@ -54,7 +55,7 @@ export function SessionListView({ sessions, onSessionClick, onJumpToTerminal, on
           </div>
         ) : (
           sessions.map((s) => (
-            <SessionCard key={s.sessionId} session={s} onClick={() => onSessionClick(s.sessionId)} onJumpToTerminal={s.source !== 'stream' && onJumpToTerminal ? () => onJumpToTerminal(s.sessionId) : undefined} />
+            <SessionCard key={s.sessionId} session={s} onClick={() => onSessionClick(s.sessionId)} onJumpToTerminal={s.source !== 'stream' && onJumpToTerminal ? () => onJumpToTerminal(s.sessionId) : undefined} onDestroy={s.source === 'stream' && onDestroyStream ? () => onDestroyStream(s.sessionId) : undefined} />
           ))
         )}
       </div>
@@ -67,7 +68,7 @@ export function SessionListView({ sessions, onSessionClick, onJumpToTerminal, on
   )
 }
 
-function SessionCard({ session, onClick, onJumpToTerminal }: { session: SessionInfo; onClick: () => void; onJumpToTerminal?: () => void }): React.JSX.Element {
+function SessionCard({ session, onClick, onJumpToTerminal, onDestroy }: { session: SessionInfo; onClick: () => void; onJumpToTerminal?: () => void; onDestroy?: () => void }): React.JSX.Element {
   const statusDotColor = PHASE_COLORS[session.phase] ?? '#888'
   const isWaitingApproval = session.phase === 'waitingForApproval'
   const isStream = session.source === 'stream'
@@ -101,6 +102,17 @@ function SessionCard({ session, onClick, onJumpToTerminal }: { session: SessionI
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M2 3L7 8L2 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M9 12H14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+          </button>
+        )}
+        {onDestroy && (
+          <button
+            className="session-card__destroy-btn"
+            onClick={(e) => { e.stopPropagation(); onDestroy() }}
+            title="断开会话"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
             </svg>
           </button>
         )}
