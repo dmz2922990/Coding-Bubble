@@ -294,15 +294,15 @@
   height: 28px;
   border: none;
   border-radius: 6px;
-  background: rgba(244, 67, 54, 0.1);
-  color: rgba(244, 67, 54, 0.6);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.3);
   cursor: pointer;
   transition: all 0.15s ease;
   flex-shrink: 0;
 }
 
 .session-card__destroy-btn:hover {
-  background: rgba(244, 67, 54, 0.25);
+  background: rgba(244, 67, 54, 0.2);
   color: rgba(244, 67, 54, 0.9);
 }
 
