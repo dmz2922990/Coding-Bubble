@@ -14,6 +14,14 @@ const TAB_PHASE_COLORS: Record<SessionPhaseType, string> = {
   ended: '#9e9e9e'
 }
 
+function getTabStyle(tab: TabItem): React.CSSProperties {
+  const phaseColor = tab.phase ? (TAB_PHASE_COLORS[tab.phase] ?? '#888') : 'transparent'
+  return {
+    '--tab-indicator-color': phaseColor,
+    '--tab-mode-color': tab.source === 'stream' ? '#4fc3f7' : 'transparent',
+  } as React.CSSProperties
+}
+
 interface Props {
   tabs: TabItem[]
   chatTab: TabItem | undefined
@@ -155,11 +163,9 @@ export function TabBar({ tabs, chatTab, activeTabId, onTabSelect, onTabClose }: 
                       className={`tab-bar__tab${activeTabId === tab.id ? ' tab-bar__tab--active' : ''}`}
                       onClick={() => handleTabClick(tab.id)}
                       title={tab.title}
+                      style={getTabStyle(tab)}
                     >
                       <span className="tab-bar__title">{tab.title}</span>
-                      {tab.phase && tab.phase !== 'idle' && (
-                        <span className="tab-bar__dot" style={{ backgroundColor: TAB_PHASE_COLORS[tab.phase] ?? '#888' }} />
-                      )}
                       {tab.closable !== false && (
                         <button
                           className="tab-bar__close"
@@ -191,11 +197,9 @@ export function TabBar({ tabs, chatTab, activeTabId, onTabSelect, onTabClose }: 
                         className={`tab-bar__tab${activeTabId === tab.id ? ' tab-bar__tab--active' : ''}`}
                         onClick={() => handleTabClick(tab.id)}
                         title={tab.title}
+                        style={getTabStyle(tab)}
                       >
                         <span className="tab-bar__title">{tab.title}</span>
-                        {tab.phase && tab.phase !== 'idle' && (
-                          <span className="tab-bar__dot" style={{ backgroundColor: TAB_PHASE_COLORS[tab.phase] ?? '#888' }} />
-                        )}
                         {tab.closable !== false && (
                           <button
                             className="tab-bar__close"

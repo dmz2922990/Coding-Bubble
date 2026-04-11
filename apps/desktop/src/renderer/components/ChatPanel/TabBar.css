@@ -60,8 +60,12 @@
   left: 8px;
   right: 8px;
   height: 2px;
-  background: #ff9441;
   border-radius: 1px;
+  background: linear-gradient(
+    to right,
+    var(--tab-mode-color, transparent) 3px,
+    var(--tab-indicator-color, #ff9441) 3px
+  );
 }
 
 .tab-bar__title {
@@ -69,13 +73,6 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.tab-bar__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
 }
 
 .tab-bar__close {
