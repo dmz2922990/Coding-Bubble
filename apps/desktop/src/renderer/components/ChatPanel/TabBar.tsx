@@ -16,16 +16,9 @@ const TAB_PHASE_COLORS: Record<SessionPhaseType, string> = {
 
 function getTabStyle(tab: TabItem): React.CSSProperties {
   if (!tab.phase || tab.phase === 'idle' || tab.phase === 'ended') {
-    return {
-      '--tab-indicator-color': 'transparent',
-      '--tab-mode-color': 'transparent',
-    } as React.CSSProperties
+    return { '--tab-indicator-color': 'transparent' } as React.CSSProperties
   }
-  const phaseColor = TAB_PHASE_COLORS[tab.phase] ?? '#888'
-  return {
-    '--tab-indicator-color': phaseColor,
-    '--tab-mode-color': tab.source === 'stream' ? '#4fc3f7' : phaseColor,
-  } as React.CSSProperties
+  return { '--tab-indicator-color': TAB_PHASE_COLORS[tab.phase] ?? '#888' } as React.CSSProperties
 }
 
 interface Props {
@@ -171,6 +164,7 @@ export function TabBar({ tabs, chatTab, activeTabId, onTabSelect, onTabClose }: 
                       title={tab.title}
                       style={getTabStyle(tab)}
                     >
+                      {tab.source === 'stream' && <span className="tab-bar__stream-dot" />}
                       <span className="tab-bar__title">{tab.title}</span>
                       {tab.closable !== false && (
                         <button
@@ -205,6 +199,7 @@ export function TabBar({ tabs, chatTab, activeTabId, onTabSelect, onTabClose }: 
                         title={tab.title}
                         style={getTabStyle(tab)}
                       >
+                        {tab.source === 'stream' && <span className="tab-bar__stream-dot" />}
                         <span className="tab-bar__title">{tab.title}</span>
                         {tab.closable !== false && (
                           <button

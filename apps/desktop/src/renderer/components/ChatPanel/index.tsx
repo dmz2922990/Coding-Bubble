@@ -135,7 +135,7 @@ export function ChatPanel(): React.JSX.Element {
     for (const id of sessionIds) {
       const info = sessions.get(id)!
       const isStream = info.session.source === 'stream'
-      const tabTitle = isStream ? `⚡ ${info.session.projectName}` : info.session.projectName
+      const tabTitle = info.session.projectName
       const existing = tabManager.tabs.find(t => t.id === id)
       if (!existing) {
         tabManager.addTab({
