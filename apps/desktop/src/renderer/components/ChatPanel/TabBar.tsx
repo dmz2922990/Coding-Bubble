@@ -109,7 +109,9 @@ export function TabBar({ tabs, chatTab, activeTabId, onTabSelect, onTabClose }: 
     const el = tabsRef.current
     if (!el) return
     el.scrollBy({ left: direction === 'left' ? -120 : 120, behavior: 'smooth' })
-  }, [])
+    // smooth scroll is async — re-check after animation settles
+    setTimeout(() => updateScrollButtons(), 400)
+  }, [updateScrollButtons])
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     const el = tabsRef.current
