@@ -61,6 +61,10 @@ export function TabBar({ tabs, chatTab, activeTabId, onTabSelect, onTabClose }: 
     }
   }, [updateScrollButtons])
 
+  useEffect(() => {
+    updateScrollButtons()
+  }, [activeTabId, updateScrollButtons])
+
   // Long press handlers for window dragging
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     // Only left mouse button
