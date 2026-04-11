@@ -316,12 +316,6 @@
   border-left: 3px solid #4fc3f7;
 }
 
-.session-card__lightning {
-  font-size: 14px;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
 /* Session list wrapper with create button */
 .session-list-wrapper {
   display: flex;

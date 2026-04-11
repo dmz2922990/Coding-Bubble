@@ -78,11 +78,7 @@ function SessionCard({ session, onClick, onJumpToTerminal, onDestroy }: { sessio
       <div className="session-card__row">
         <div className="session-card__info">
           <div className="session-card__header">
-            {isStream ? (
-              <span className="session-card__lightning">⚡</span>
-            ) : (
-              <span className="session-card__dot" style={{ backgroundColor: statusDotColor }} />
-            )}
+            <span className="session-card__dot" style={{ backgroundColor: isStream ? '#4fc3f7' : statusDotColor }} />
             <span className="session-card__name">{session.projectName}</span>
           </div>
           <div className="session-card__path">{session.cwd}</div>
