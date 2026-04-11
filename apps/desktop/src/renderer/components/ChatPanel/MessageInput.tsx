@@ -27,6 +27,18 @@ export function MessageInput({ onSend, phase }: Props): React.JSX.Element {
     }
   }, [handleSend])
 
+  // Auto-resize textarea to fit content
+  const adjustHeight = useCallback(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`
+  }, [])
+
+  useEffect(() => {
+    adjustHeight()
+  }, [text, adjustHeight])
+
   // Auto-focus when not busy
   useEffect(() => {
     if (!isBusy && textareaRef.current) {
@@ -36,33 +48,26 @@ export function MessageInput({ onSend, phase }: Props): React.JSX.Element {
 
   return (
     <div className="message-input">
+      <div className="message-input__line" />
       <div className="message-input__wrapper">
+        <span className="message-input__prompt">❯</span>
         <textarea
           ref={textareaRef}
           className="message-input__textarea"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={isBusy ? '等待回复中...' : '输入消息...'}
+          placeholder={isBusy ? '等待回复中...' : ''}
           disabled={isBusy}
           rows={1}
         />
-        <button
-          className="message-input__send-btn"
-          onClick={handleSend}
-          disabled={isBusy || !text.trim()}
-          title="发送"
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M2 8L14 2L10 8L14 14L2 8Z" fill="currentColor"/>
-          </svg>
-        </button>
       </div>
       {isBusy && (
         <div className="message-input__spinner">
           <span className="message-input__spinner-dot" />
         </div>
       )}
+      <div className="message-input__line" />
     </div>
   )
 }
