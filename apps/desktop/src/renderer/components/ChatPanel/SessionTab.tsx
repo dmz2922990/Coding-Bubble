@@ -102,9 +102,6 @@ export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onA
       </div>
 
       <div className="session-tab__messages" ref={listRef} onScroll={handleScroll}>
-        {session.phase === 'waitingForApproval' && session.toolName && (
-          <ApprovalDetail toolName={session.toolName} toolInput={session.toolInput} />
-        )}
         {items.length === 0 && session.phase !== 'waitingForApproval' ? (
           <div className="session-tab__empty">暂无对话记录</div>
         ) : (
@@ -118,6 +115,10 @@ export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onA
         <button className="session-tab__new-indicator" onClick={scrollToBottom}>
           ↓ {newCount} 条新消息
         </button>
+      )}
+
+      {session.phase === 'waitingForApproval' && session.toolName && session.toolName !== 'AskUserQuestion' && (
+        <ApprovalDetail toolName={session.toolName} toolInput={session.toolInput} />
       )}
 
       {session.phase === 'waitingForApproval' && session.toolName === 'AskUserQuestion' ? (
