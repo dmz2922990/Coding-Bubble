@@ -32,9 +32,10 @@ interface Props {
   onAlwaysAllow?: () => void
   onAnswer?: (answer: string) => void
   onJumpToTerminal?: () => void
+  onDisconnect?: () => void
 }
 
-export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onAnswer, onJumpToTerminal }: Props): React.JSX.Element {
+export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onAnswer, onJumpToTerminal, onDisconnect }: Props): React.JSX.Element {
   const listRef = useRef<HTMLDivElement>(null)
   const autoScrollRef = useRef(true)
   const [newCount, setNewCount] = useState(0)
@@ -88,6 +89,17 @@ export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onA
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M2 3L7 8L2 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                 <path d="M9 12H14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+            </button>
+          )}
+          {onDisconnect && (
+            <button
+              className="session-tab__jump-btn"
+              onClick={onDisconnect}
+              title="断开会话"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
               </svg>
             </button>
           )}

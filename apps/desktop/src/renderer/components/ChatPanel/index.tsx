@@ -142,7 +142,7 @@ export function ChatPanel(): React.JSX.Element {
           id,
           title: tabTitle,
           content: null,
-          closable: isStream,
+          closable: false,
           source: isStream ? 'stream' : 'hook',
         })
       } else if (existing.title !== tabTitle) {
@@ -257,6 +257,7 @@ export function ChatPanel(): React.JSX.Element {
             onAlwaysAllow={handleAlwaysAllow}
             onAnswer={handleAnswer}
             onJumpToTerminal={isStream ? undefined : () => handleJumpToTerminal(tabManager.activeTabId)}
+            onDisconnect={isStream ? () => handleTabClose(tabManager.activeTabId) : undefined}
           />
           {isStream && (
             <MessageInput
