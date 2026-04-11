@@ -120,6 +120,7 @@ export function TabBar({ tabs, chatTab, activeTabId, onTabSelect, onTabClose }: 
 
   const handleTabClick = (id: string) => {
     onTabSelect(id)
+    requestAnimationFrame(() => updateScrollButtons())
   }
 
   const handleCloseClick = (e: React.MouseEvent, id: string) => {
