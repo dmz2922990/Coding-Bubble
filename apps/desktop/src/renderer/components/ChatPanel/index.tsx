@@ -222,6 +222,8 @@ export function ChatPanel(): React.JSX.Element {
   const handleTabClose = useCallback((id: string) => {
     const session = sessions.get(id)
     if (session?.session.source === 'stream') {
+      const confirmed = window.confirm('确定断开该流式会话？')
+      if (!confirmed) return
       window.electronAPI.stream.destroy(id)
     }
     tabManager.removeTab(id)
