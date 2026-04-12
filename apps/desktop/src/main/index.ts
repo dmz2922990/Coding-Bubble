@@ -392,6 +392,16 @@ ipcMain.handle('dialog:showOpenDialog', async (_event, options: Electron.OpenDia
   return dialog.showOpenDialog(options)
 })
 
+ipcMain.handle('dialog:saveMarkdown', async (_event, content: string, defaultName: string) => {
+  const result = await dialog.showSaveDialog({
+    defaultPath: defaultName,
+    filters: [{ name: 'Markdown', extensions: ['md'] }],
+  })
+  if (result.canceled || !result.filePath) return { success: false }
+  writeFileSync(result.filePath, content, 'utf-8')
+  return { success: true, path: result.filePath }
+})
+
 // ── Session Monitor ──────────────────────────────────────────
 
 import { SessionStore, createSocketServer, installHooks, hooksInstalled, watchJsonlFile, parseFullConversation } from '@coding-bubble/session-monitor'

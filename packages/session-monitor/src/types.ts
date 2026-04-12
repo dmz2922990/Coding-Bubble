@@ -64,13 +64,24 @@ export const ONESHOT_TIMEOUTS: Partial<Record<SessionPhaseType, number>> = {
 
 export type ToolStatus = 'running' | 'success' | 'error' | 'interrupted' | 'waitingForApproval'
 
+export interface SubToolItem {
+  id: string
+  name: string
+  input: Record<string, string>
+  status: ToolStatus
+  result?: string
+}
+
 export interface ToolCallItem {
   name: string
   input: Record<string, string>
   status: ToolStatus
   result?: string
   structuredResult?: unknown
+  subTools?: SubToolItem[]
 }
+
+export type TaskNotificationPhase = 'started' | 'running' | 'completed' | 'failed'
 
 export type ChatHistoryItem =
   | { id: string; type: 'user'; content: string; timestamp: number }
@@ -80,6 +91,7 @@ export type ChatHistoryItem =
   | { id: string; type: 'interrupted'; timestamp: number }
   | { id: string; type: 'system'; content: string; timestamp: number }
   | { id: string; type: 'systemStatus'; statusKind: string; content: string; timestamp: number }
+  | { id: string; type: 'taskNotification'; taskId: string; phase: TaskNotificationPhase; description: string; progress: string[]; summary?: string; timestamp: number }
   | { id: string; type: 'resultSummary'; durationMs?: number; inputTokens?: number; outputTokens?: number; costUsd?: number; interrupted?: boolean; timestamp: number }
 
 // ═─ Session State ───────────────────────────────────────────

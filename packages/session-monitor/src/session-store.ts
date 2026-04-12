@@ -296,8 +296,6 @@ export class SessionStore {
           this.transition(session, 'processing')
         }
         break
-      case 'Notification':
-        break
     }
 
     this._publish('session:update', { sessionId, phase: session.phase })
@@ -388,7 +386,7 @@ export class SessionStore {
     const item: ChatHistoryItem = {
       id: `assistant_${Date.now()}`,
       type: 'assistant',
-      content: content.replace(/\n\n+/g, '\n'),
+      content: content.replace(/\n{3,}/g, '\n\n'),
       timestamp: now()
     }
     session.chatItems.push(item)
@@ -410,6 +408,171 @@ export class SessionStore {
     }
     session.chatItems.push(item)
     this._publish('session:history', { sessionId, items: session.chatItems })
+  }
+
+  addToolCall(sessionId: string, toolUseId: string, name: string, input: Record<string, unknown>): void {
+    const session = this._sessions.get(sessionId)
+    if (!session) return
+
+    const item: ChatHistoryItem = {
+      id: toolUseId,
+      type: 'toolCall',
+      tool: {
+        name,
+        input: input as Record<string, string>,
+        status: 'running',
+      },
+      timestamp: now(),
+    }
+    session.chatItems.push(item)
+    this._publish('session:history', { sessionId, items: session.chatItems })
+  }
+
+  addThinking(sessionId: string, content: string): void {
+    const session = this._sessions.get(sessionId)
+    if (!session) return
+
+    const item: ChatHistoryItem = {
+      id: `thinking_${Date.now()}`,
+      type: 'thinking',
+      content,
+      timestamp: now(),
+    }
+    session.chatItems.push(item)
+    this._publish('session:history', { sessionId, items: session.chatItems })
+  }
+
+  updateStreamToolCall(sessionId: string, toolUseId: string, status: 'success' | 'error', result?: string): void {
+    const session = this._sessions.get(sessionId)
+    if (!session) return
+
+    for (let i = session.chatItems.length - 1; i >= 0; i--) {
+      const item = session.chatItems[i]
+      if (item.id === toolUseId && item.type === 'toolCall') {
+        session.chatItems[i] = {
+          ...item,
+          tool: { ...item.tool, status, result },
+        }
+        this._publish('session:history', { sessionId, items: session.chatItems })
+        return
+      }
+    }
+  }
+
+  cleanupRunningToolCalls(sessionId: string): void {
+    const session = this._sessions.get(sessionId)
+    if (!session) return
+
+    let changed = false
+    for (let i = 0; i < session.chatItems.length; i++) {
+      const item = session.chatItems[i]
+      if (item.type === 'toolCall' && item.tool.status === 'running') {
+        session.chatItems[i] = {
+          ...item,
+          tool: { ...item.tool, status: 'success' },
+        }
+        changed = true
+      }
+    }
+    if (changed) {
+      this._publish('session:history', { sessionId, items: session.chatItems })
+    }
+  }
+
+  addTaskNotification(sessionId: string, taskId: string, description: string): void {
+    const session = this._sessions.get(sessionId)
+    if (!session) return
+
+    const item: ChatHistoryItem = {
+      id: `task_${taskId}`,
+      type: 'taskNotification',
+      taskId,
+      phase: 'started',
+      description,
+      progress: [],
+      timestamp: now(),
+    }
+    session.chatItems.push(item)
+    this._publish('session:history', { sessionId, items: session.chatItems })
+  }
+
+  updateTaskProgress(sessionId: string, taskId: string, description: string): void {
+    const session = this._sessions.get(sessionId)
+    if (!session) return
+
+    for (let i = session.chatItems.length - 1; i >= 0; i--) {
+      const item = session.chatItems[i]
+      if (item.type === 'taskNotification' && item.taskId === taskId) {
+        session.chatItems[i] = {
+          ...item,
+          phase: 'running',
+          progress: [...item.progress, description],
+        }
+        this._publish('session:history', { sessionId, items: session.chatItems })
+        return
+      }
+    }
+  }
+
+  completeTaskNotification(sessionId: string, taskId: string, phase: 'completed' | 'failed', summary: string): void {
+    const session = this._sessions.get(sessionId)
+    if (!session) return
+
+    for (let i = session.chatItems.length - 1; i >= 0; i--) {
+      const item = session.chatItems[i]
+      if (item.type === 'taskNotification' && item.taskId === taskId) {
+        session.chatItems[i] = {
+          ...item,
+          phase,
+          summary,
+        }
+        this._publish('session:history', { sessionId, items: session.chatItems })
+        return
+      }
+    }
+  }
+
+  addSubTool(sessionId: string, parentToolUseId: string, toolUseId: string, name: string, input: Record<string, unknown>): void {
+    const session = this._sessions.get(sessionId)
+    if (!session) return
+
+    for (let i = session.chatItems.length - 1; i >= 0; i--) {
+      const item = session.chatItems[i]
+      if (item.type === 'toolCall' && item.id === parentToolUseId) {
+        const subTools = [...(item.tool.subTools ?? []), {
+          id: toolUseId,
+          name,
+          input: input as Record<string, string>,
+          status: 'running' as const,
+        }]
+        session.chatItems[i] = {
+          ...item,
+          tool: { ...item.tool, subTools },
+        }
+        this._publish('session:history', { sessionId, items: session.chatItems })
+        return
+      }
+    }
+  }
+
+  updateSubTool(sessionId: string, parentToolUseId: string, toolUseId: string, status: 'success' | 'error', result?: string): void {
+    const session = this._sessions.get(sessionId)
+    if (!session) return
+
+    for (let i = session.chatItems.length - 1; i >= 0; i--) {
+      const item = session.chatItems[i]
+      if (item.type === 'toolCall' && item.id === parentToolUseId) {
+        const subTools = (item.tool.subTools ?? []).map(st =>
+          st.id === toolUseId ? { ...st, status, result } : st
+        )
+        session.chatItems[i] = {
+          ...item,
+          tool: { ...item.tool, subTools },
+        }
+        this._publish('session:history', { sessionId, items: session.chatItems })
+        return
+      }
+    }
   }
 
   addSystemStatus(sessionId: string, statusKind: string, content: string): void {

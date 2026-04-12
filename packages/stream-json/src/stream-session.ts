@@ -204,7 +204,7 @@ export class StreamSession {
         this._handleStreamEvent(raw)
         break
       case 'user':
-        // tool results from Claude Code — logged only
+        this._handleUser(raw)
         break
       case 'result':
         this._handleResult(raw)
@@ -263,6 +263,39 @@ export class StreamSession {
           delayMs: raw.retry_delay_ms as number,
         })
         break
+      case 'task_started':
+        this._emit({
+          type: 'task_lifecycle',
+          taskPhase: 'started',
+          taskId: raw.task_id as string,
+          content: raw.description as string,
+        })
+        break
+      case 'task_progress':
+        this._emit({
+          type: 'task_lifecycle',
+          taskPhase: 'progress',
+          taskId: raw.task_id as string,
+          content: raw.description as string,
+        })
+        break
+      case 'task_notification': {
+        const status = raw.status as string
+        this._emit({
+          type: 'task_lifecycle',
+          taskPhase: status === 'completed' ? 'completed' : 'failed',
+          taskId: raw.task_id as string,
+          content: raw.summary as string,
+        })
+        break
+      }
+      case 'post_turn_summary':
+        this._emit({
+          type: 'post_turn_summary',
+          title: raw.title as string,
+          content: raw.description as string,
+        })
+        break
       default:
         break
     }
@@ -273,6 +306,8 @@ export class StreamSession {
     const content = message?.content as Array<Record<string, unknown>> | undefined
     if (!content) return
 
+    const parentToolUseId = (raw.parent_tool_use_id ?? message?.parent_tool_use_id) as string | null | undefined
+
     for (const block of content) {
       const blockType = block.type as string
       switch (blockType) {
@@ -280,6 +315,7 @@ export class StreamSession {
           this._emit({
             type: 'text',
             content: block.text as string,
+            parentToolUseId,
           })
           break
         case 'tool_use':
@@ -288,14 +324,38 @@ export class StreamSession {
             toolName: block.name as string,
             toolInput: block.input as Record<string, unknown>,
             toolUseId: block.id as string,
+            parentToolUseId,
           })
           break
         case 'thinking':
           this._emit({
             type: 'thinking',
             content: block.thinking as string,
+            parentToolUseId,
           })
           break
+      }
+    }
+  }
+
+  private _handleUser(raw: Record<string, unknown>): void {
+    const message = raw.message as Record<string, unknown> | undefined
+    if (!message) return
+
+    const parentToolUseId = (raw.parent_tool_use_id ?? message.parent_tool_use_id) as string | null | undefined
+
+    const content = message.content as Array<Record<string, unknown>> | undefined
+    if (!Array.isArray(content)) return
+
+    for (const block of content) {
+      if (block.type === 'tool_result') {
+        this._emit({
+          type: 'tool_result',
+          toolUseId: block.tool_use_id as string,
+          content: typeof block.content === 'string' ? block.content : JSON.stringify(block.content),
+          isError: block.is_error === true,
+          parentToolUseId,
+        })
       }
     }
   }

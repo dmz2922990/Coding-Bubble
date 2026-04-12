@@ -26,6 +26,8 @@ export class StreamAdapterManager {
   private _pendingPermissions = new Map<string, PendingStreamPermission>()
   /** Sessions interrupted by user — keyed by internal session ID */
   private _interrupted = new Set<string>()
+  /** Sub-tool to parent mapping — keyed by sub-toolUseId */
+  private _subToolParents = new Map<string, string>()
 
   constructor(options: StreamAdapterOptions) {
     this._store = options.sessionStore
@@ -253,16 +255,27 @@ export class StreamAdapterManager {
       }
 
       case 'tool_use': {
-        this._store.process({
-          hook_event_name: 'PreToolUse',
-          session_id: sessionId,
-          cwd: '',
-          payload: {
-            tool_use_id: event.toolUseId,
-            tool_name: event.toolName,
-            tool_input: event.toolInput,
-          },
-        })
+        const toolUseId = event.toolUseId ?? ''
+        const parentToolUseId = event.parentToolUseId
+
+        if (parentToolUseId) {
+          // Subagent tool call — group under parent
+          this._subToolParents.set(toolUseId, parentToolUseId)
+          this._store.addSubTool(sessionId, parentToolUseId, toolUseId, event.toolName ?? 'unknown', event.toolInput ?? {})
+        } else {
+          // Top-level tool call
+          this._store.process({
+            hook_event_name: 'PreToolUse',
+            session_id: sessionId,
+            cwd: '',
+            payload: {
+              tool_use_id: toolUseId,
+              tool_name: event.toolName,
+              tool_input: event.toolInput,
+            },
+          })
+          this._store.addToolCall(sessionId, toolUseId, event.toolName ?? 'unknown', event.toolInput ?? {})
+        }
         break
       }
 
@@ -273,6 +286,46 @@ export class StreamAdapterManager {
           cwd: '',
           payload: { type: 'thinking', content: event.content },
         })
+        if (event.content) {
+          this._store.addThinking(sessionId, event.content)
+        }
+        break
+      }
+
+      case 'tool_result': {
+        const toolUseId = event.toolUseId
+        if (!toolUseId) break
+        const status = event.isError ? 'error' : 'success'
+
+        const parentToolUseId = this._subToolParents.get(toolUseId)
+        if (parentToolUseId) {
+          this._subToolParents.delete(toolUseId)
+          this._store.updateSubTool(sessionId, parentToolUseId, toolUseId, status, event.content)
+        } else {
+          this._store.updateStreamToolCall(sessionId, toolUseId, status, event.content)
+        }
+        break
+      }
+
+      case 'task_lifecycle': {
+        const phase = event.taskPhase
+        const taskId = event.taskId ?? ''
+        const content = event.content ?? ''
+
+        if (phase === 'started') {
+          this._store.addTaskNotification(sessionId, taskId, content)
+        } else if (phase === 'progress') {
+          this._store.updateTaskProgress(sessionId, taskId, content)
+        } else if (phase === 'completed' || phase === 'failed') {
+          this._store.completeTaskNotification(sessionId, taskId, phase, content)
+        }
+        break
+      }
+
+      case 'post_turn_summary': {
+        const title = event.title ?? ''
+        const desc = event.content ?? ''
+        this._store.addSystemMessage(sessionId, `📋 ${title}: ${desc}`)
         break
       }
 
@@ -281,6 +334,8 @@ export class StreamAdapterManager {
 
         const interrupted = this._interrupted.has(sessionId)
         this._interrupted.delete(sessionId)
+
+        this._store.cleanupRunningToolCalls(sessionId)
 
         this._store.process({
           hook_event_name: 'Stop',
