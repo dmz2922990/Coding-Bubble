@@ -296,17 +296,13 @@ export function ChatPanel(): React.JSX.Element {
   return (
     <div className="chat-panel">
       <div className="chat-panel__header">
-        {allTabs.length <= 1 ? (
-          <div className="chat-panel__title">{chatTab.title}</div>
-        ) : (
-          <TabBar
-            tabs={allTabs}
-            chatTab={allTabs.find((t) => t.id === 'chat')}
-            activeTabId={tabManager.activeTabId}
-            onTabSelect={tabManager.setActiveTabId}
-            onTabClose={handleTabClose}
-          />
-        )}
+        <TabBar
+          tabs={allTabs}
+          chatTab={allTabs.find((t) => t.id === 'chat')}
+          activeTabId={tabManager.activeTabId}
+          onTabSelect={tabManager.setActiveTabId}
+          onTabClose={handleTabClose}
+        />
         <button className="chat-panel__close" onClick={handleClose} title="关闭">×</button>
       </div>
 
