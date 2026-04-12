@@ -185,44 +185,7 @@ function MessageItem({ item }: { item: ChatItem }): React.JSX.Element {
       )
 
     case 'assistant':
-      return (
-        <div className="chat-msg chat-msg--assistant">
-          <div className="chat-msg__bubble chat-msg__markdown">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                pre({ children }) {
-                  return <>{children}</>
-                },
-                code({ className, children, ...props }) {
-                  const isBlock = className?.includes('language-') || String(children).includes('\n')
-                  return isBlock ? (
-                    <pre className="chat-msg__code-block">
-                      <code className={className} {...props}>
-                        {children}
-                      </code>
-                    </pre>
-                  ) : (
-                    <code className="chat-msg__inline-code" {...props}>
-                      {children}
-                    </code>
-                  )
-                },
-                a({ node, children, ...props }) {
-                  return (
-                    <a {...props} target="_blank" rel="noopener noreferrer">
-                      {children}
-                    </a>
-                  )
-                }
-              }}
-            >
-              {item.content}
-            </ReactMarkdown>
-            {item.streaming && <span className="chat-msg__cursor" />}
-          </div>
-        </div>
-      )
+      return <AssistantMessage key={item.id} item={item} />
 
     case 'toolCall':
       return <ToolItem tool={item.tool!} elapsedSeconds={item.elapsedSeconds} />
@@ -451,6 +414,97 @@ function PermissionBar({ toolName, onAllow, onDeny, onAlwaysAllow }: PermissionB
         <button className="permission-bar__btn permission-bar__btn--deny" onClick={onDeny}>拒绝</button>
         <button className="permission-bar__btn permission-bar__btn--allow" onClick={onAllow}>允许</button>
         <button className="permission-bar__btn permission-bar__btn--always" onClick={onAlwaysAllow}>一直允许</button>
+      </div>
+    </div>
+  )
+}
+
+// ── Assistant Message with Action Menu ─────────────────────────────────
+
+function AssistantMessage({ item }: { item: ChatItem }): React.JSX.Element {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const actionsRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const handler = (e: MouseEvent) => {
+      if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [menuOpen])
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(item.content ?? '')
+    setMenuOpen(false)
+  }, [item.content])
+
+  const handleForward = useCallback(() => {
+    navigator.clipboard.writeText(item.content ?? '')
+    setMenuOpen(false)
+  }, [item.content])
+
+  return (
+    <div className="chat-msg chat-msg--assistant">
+      <div className="chat-msg__bubble chat-msg__markdown">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            pre({ children }) {
+              return <>{children}</>
+            },
+            code({ className, children, ...props }) {
+              const isBlock = className?.includes('language-') || String(children).includes('\n')
+              return isBlock ? (
+                <pre className="chat-msg__code-block">
+                  <code className={className} {...props}>
+                    {children}
+                  </code>
+                </pre>
+              ) : (
+                <code className="chat-msg__inline-code" {...props}>
+                  {children}
+                </code>
+              )
+            },
+            a({ node, children, ...props }) {
+              return (
+                <a {...props} target="_blank" rel="noopener noreferrer">
+                  {children}
+                </a>
+              )
+            }
+          }}
+        >
+          {item.content}
+        </ReactMarkdown>
+        {item.streaming && <span className="chat-msg__cursor" />}
+        {!item.streaming && (
+          <div className="chat-msg__actions" ref={actionsRef}>
+            <button
+              className="chat-msg__action-btn"
+              onClick={() => setMenuOpen(!menuOpen)}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <circle cx="3" cy="8" r="1.5"/>
+                <circle cx="8" cy="8" r="1.5"/>
+                <circle cx="13" cy="8" r="1.5"/>
+              </svg>
+            </button>
+            {menuOpen && (
+              <div className="chat-msg__menu">
+                <button className="chat-msg__menu-item" onClick={handleCopy}>
+                  复制
+                </button>
+                <button className="chat-msg__menu-item" onClick={handleForward}>
+                  转发
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
