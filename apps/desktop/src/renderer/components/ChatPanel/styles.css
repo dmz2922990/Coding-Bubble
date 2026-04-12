@@ -1384,6 +1384,7 @@
   align-items: flex-start;
   gap: 6px;
   padding: 8px 12px;
+  position: relative;
 }
 
 .message-input__prompt {
@@ -1417,6 +1418,61 @@
 
 .message-input__textarea:disabled {
   opacity: 0.4;
+}
+
+.message-input__textarea--busy {
+  opacity: 0.5;
+}
+
+/* ── Suggestion List ──────────────────────────────────────── */
+
+.message-input__suggestions {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  background: rgba(30, 30, 36, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  margin-bottom: 2px;
+  max-height: 240px;
+  overflow-y: auto;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+}
+
+.message-input__suggestion {
+  padding: 6px 12px;
+  font-size: 13px;
+  font-family: 'SF Mono', Menlo, monospace;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.message-input__suggestion-name {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.message-input__suggestion-desc {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.message-input__suggestion:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.message-input__suggestion--active {
+  background: rgba(99, 102, 241, 0.25);
+  color: #e0e0ff;
 }
 
 /* ── Tool Elapsed Time ────────────────────────────────────── */

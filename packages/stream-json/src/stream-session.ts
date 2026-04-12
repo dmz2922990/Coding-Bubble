@@ -1,13 +1,14 @@
 import { spawn, ChildProcess } from 'child_process'
 import * as readline from 'readline'
 import { EventEmitter } from 'events'
-import type { StreamEvent, StreamSessionOptions, PermissionResult } from './types'
+import type { StreamEvent, StreamSessionOptions, PermissionResult, SkillCommand } from './types'
 
 export interface StreamSessionEvents {
   event: (event: StreamEvent) => void
 }
 
 const MAX_LINE_BYTES = 10 * 1024 * 1024 // 10MB
+const INIT_REQUEST_ID = 'init_1'
 
 export class StreamSession {
   private _proc: ChildProcess | null = null
@@ -15,6 +16,7 @@ export class StreamSession {
   private _writeQueue: Promise<void> = Promise.resolve()
   private _rl: readline.Interface | null = null
   private readonly _emitter = new EventEmitter()
+  private _initialized = false
 
   get sessionId(): string | null {
     return this._sessionId
@@ -107,6 +109,13 @@ export class StreamSession {
         this._handleLine(line)
       })
     }
+
+    // Request init metadata via initialize control request
+    this._writeJSON({
+      type: 'control_request',
+      request_id: INIT_REQUEST_ID,
+      request: { subtype: 'initialize' },
+    })
   }
 
   send(text: string): void {
@@ -215,6 +224,9 @@ export class StreamSession {
       case 'control_cancel_request':
         console.log('[stream-json] control_cancel_request:', raw.request_id)
         break
+      case 'control_response':
+        this._handleControlResponse(raw)
+        break
       case 'tool_progress':
         this._handleToolProgress(raw)
         break
@@ -236,7 +248,18 @@ export class StreamSession {
     const subtype = raw.subtype as string | undefined
     switch (subtype) {
       case 'init':
-        console.log('[stream-json] system init, session_id:', sid)
+        if (this._initialized) break
+        this._initialized = true
+        console.log('[stream-json] system init (fallback), session_id:', sid,
+          'skills:', Array.isArray(raw.skills) ? (raw.skills as string[]).length : 'N/A',
+          'slash_commands:', Array.isArray(raw.slash_commands) ? (raw.slash_commands as string[]).length : 'N/A')
+        this._emit({
+          type: 'session_init',
+          initMetadata: {
+            skills: Array.isArray(raw.skills) ? raw.skills as string[] : [],
+            slashCommands: Array.isArray(raw.slash_commands) ? raw.slash_commands as string[] : [],
+          },
+        })
         break
       case 'session_state_changed':
         this._emit({
@@ -397,6 +420,34 @@ export class StreamSession {
     })
   }
 
+  private _handleControlResponse(raw: Record<string, unknown>): void {
+    const response = raw.response as Record<string, unknown> | undefined
+    const requestId = response?.request_id as string | undefined
+    if (requestId !== INIT_REQUEST_ID) return
+    if (this._initialized) return
+
+    const inner = response?.response as Record<string, unknown> | undefined
+    if (!inner) return
+
+    const commands = Array.isArray(inner.commands)
+      ? (inner.commands as Record<string, unknown>[]).filter(c => c && typeof c.name === 'string').map(c => ({
+          name: c.name as string,
+          description: (c.description as string) ?? '',
+          argumentHint: (c.argumentHint as string) ?? '',
+        }))
+      : [] as SkillCommand[]
+
+    this._initialized = true
+    this._emit({
+      type: 'session_init',
+      initMetadata: {
+        skills: [],
+        slashCommands: [],
+        commands,
+      },
+    })
+  }
+
   private _handleStreamEvent(raw: Record<string, unknown>): void {
     const event = raw.event as Record<string, unknown> | undefined
     if (!event) return
@@ -454,6 +505,9 @@ export class StreamSession {
             else resolve()
           })
         })
+      })
+      .catch((err) => {
+        console.warn('[stream-json] write failed:', (err as Error).message)
       })
   }
 

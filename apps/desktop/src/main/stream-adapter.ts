@@ -396,7 +396,22 @@ export class StreamAdapterManager {
         } else if (state === 'requires_action') {
           const hasPendingPerm = this._pendingPermissions.has(sessionId)
           const session = this._store.get(sessionId)
-          this._store.transition(session!, hasPendingPerm ? 'waitingForApproval' : 'waitingForInput')
+          if (session) {
+            this._store.transition(session, hasPendingPerm ? 'waitingForApproval' : 'waitingForInput')
+            this._broadcast('session:update', {
+              sessionId,
+              phase: session.phase,
+              initMetadata: session.initMetadata,
+            })
+          }
+        }
+        break
+      }
+
+      case 'session_init': {
+        if (event.initMetadata) {
+          this._store.setInitMetadata(sessionId, event.initMetadata)
+          this._broadcast('session:update', { sessionId, initMetadata: event.initMetadata })
         }
         break
       }

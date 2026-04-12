@@ -7,7 +7,8 @@ import type {
   ChatHistoryItem,
   Intervention,
   InterventionPhase,
-  PermissionContext
+  PermissionContext,
+  InitMetadata
 } from './types'
 import { VALID_TRANSITIONS, STATE_PRIORITY, ONESHOT_TIMEOUTS } from './types'
 import type { BubbleNotification, NotificationType } from './types'
@@ -60,6 +61,14 @@ export class SessionStore {
     if (session) {
       session.permissionMode = mode
       console.log('[SessionStore] set permission mode to', mode, 'for session:', sessionId)
+    }
+  }
+
+  setInitMetadata(sessionId: string, metadata: InitMetadata): void {
+    const session = this._sessions.get(sessionId)
+    if (session) {
+      session.initMetadata = metadata
+      console.log('[SessionStore] set init metadata for session:', sessionId, 'skills:', metadata.skills.length, 'commands:', metadata.slashCommands.length)
     }
   }
 

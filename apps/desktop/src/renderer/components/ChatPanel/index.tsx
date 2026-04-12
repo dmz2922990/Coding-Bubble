@@ -4,7 +4,7 @@ import { TabBar } from './TabBar'
 import { SessionListView } from './SessionListView'
 import { SessionTab } from './SessionTab'
 import { MessageInput } from './MessageInput'
-import type { TabItem, SessionInfo, ChatItem, SessionPhaseType } from './types'
+import type { TabItem, SessionInfo, ChatItem, SessionPhaseType, InitMetadata } from './types'
 import './styles.css'
 
 /** Phase structure received from main process via IPC */
@@ -53,6 +53,7 @@ export function ChatPanel(): React.JSX.Element {
             lastActivity: s.lastActivity as number,
             toolName: toolName || undefined,
             toolInput: toolInput || undefined,
+            initMetadata: s.initMetadata as InitMetadata | undefined,
           }
         })
         itemsMap.set(sessionId, (s.chatItems as ChatItem[]) ?? [])
@@ -265,6 +266,7 @@ export function ChatPanel(): React.JSX.Element {
             <MessageInput
               onSend={handleSendMessage}
               phase={sessionData.phase}
+              initMetadata={sessionData.session.initMetadata}
             />
           )}
         </>

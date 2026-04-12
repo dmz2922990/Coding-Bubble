@@ -29,6 +29,19 @@ export type SessionPhaseType =
   | 'compacting'
   | 'ended'
 
+/** Init metadata from system/init message */
+export interface SkillCommand {
+  name: string
+  description: string
+  argumentHint: string
+}
+
+export interface InitMetadata {
+  skills: string[]
+  slashCommands: string[]
+  commands?: SkillCommand[]
+}
+
 /** Status indicator for a session */
 export interface SessionInfo {
   sessionId: string
@@ -39,6 +52,7 @@ export interface SessionInfo {
   lastActivity: number
   toolName?: string
   toolInput?: Record<string, unknown> | null
+  initMetadata?: InitMetadata
 }
 
 /** Chat history item rendered in a session tab */

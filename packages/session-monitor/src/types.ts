@@ -1,5 +1,17 @@
 // ═─ Session Phase State Machine ──────────────────────────────
 
+export interface SkillCommand {
+  name: string
+  description: string
+  argumentHint: string
+}
+
+export interface InitMetadata {
+  skills: string[]
+  slashCommands: string[]
+  commands?: SkillCommand[]
+}
+
 export type SessionPhaseType =
   | 'idle'
   | 'thinking'
@@ -30,10 +42,10 @@ export type SessionPhase =
   | { type: 'ended' }
 
 export const VALID_TRANSITIONS: Record<SessionPhaseType, SessionPhaseType[]> = {
-  idle: ['thinking', 'processing', 'waitingForApproval', 'done', 'compacting'],
+  idle: ['thinking', 'processing', 'waitingForApproval', 'waitingForInput', 'done', 'compacting'],
   thinking: ['processing', 'done', 'error', 'waitingForApproval', 'compacting'],
   processing: ['thinking', 'done', 'error', 'waitingForInput', 'waitingForApproval', 'compacting'],
-  done: ['idle', 'thinking'],
+  done: ['idle', 'thinking', 'waitingForInput'],
   error: ['idle', 'thinking', 'done'],
   waitingForInput: ['thinking', 'processing', 'idle', 'done', 'compacting'],
   waitingForApproval: ['processing', 'idle', 'waitingForInput', 'done'],
@@ -108,6 +120,7 @@ export interface SessionState {
   lastActivity: number
   createdAt: number
   permissionMode: string
+  initMetadata?: InitMetadata
 }
 
 // ═─ Hook Events ─────────────────────────────────────────────

@@ -1,5 +1,18 @@
 // ═─ Stream Event Types ──────────────────────────────────────────
 
+export interface SkillCommand {
+  name: string
+  description: string
+  argumentHint: string
+}
+
+export interface InitMetadata {
+  skills: string[]
+  slashCommands: string[]
+  /** Rich command details from initialize control response */
+  commands?: SkillCommand[]
+}
+
 export type StreamEventType =
   | 'text'
   | 'text_delta'
@@ -9,6 +22,7 @@ export type StreamEventType =
   | 'thinking'
   | 'permission_request'
   | 'session_state'
+  | 'session_init'
   | 'tool_progress'
   | 'tool_summary'
   | 'rate_limit'
@@ -62,6 +76,8 @@ export interface StreamEvent {
   taskId?: string
   // post_turn_summary
   title?: string
+  // session_init
+  initMetadata?: InitMetadata
 }
 
 // ═─ Session Options ────────────────────────────────────────────
