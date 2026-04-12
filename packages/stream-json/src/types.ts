@@ -13,6 +13,8 @@ export type StreamEventType =
   | 'tool_summary'
   | 'rate_limit'
   | 'system_status'
+  | 'task_lifecycle'
+  | 'post_turn_summary'
   | 'error'
   | 'exit'
 
@@ -22,6 +24,7 @@ export interface StreamEvent {
   toolName?: string
   toolInput?: Record<string, unknown>
   toolUseId?: string
+  parentToolUseId?: string | null
   sessionId?: string
   requestId?: string
   done?: boolean
@@ -52,6 +55,13 @@ export interface StreamEvent {
   costUsd?: number
   // result subtype (e.g. "interrupted")
   subtype?: string
+  // tool_result
+  isError?: boolean
+  // task_lifecycle
+  taskPhase?: 'started' | 'progress' | 'completed' | 'failed'
+  taskId?: string
+  // post_turn_summary
+  title?: string
 }
 
 // ═─ Session Options ────────────────────────────────────────────

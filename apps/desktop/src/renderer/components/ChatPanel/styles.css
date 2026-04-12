@@ -687,6 +687,35 @@
   overflow-y: auto;
 }
 
+.chat-msg__tool-subs-count {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.chat-msg__tool-subs {
+  margin-top: 8px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chat-msg__tool-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.chat-msg__tool-sub-name {
+  font-family: monospace;
+  color: rgba(255, 255, 255, 0.6);
+  flex-shrink: 0;
+}
+
 /* ── Thinking Item ───────────────────────────────────────── */
 
 .chat-msg--thinking {
@@ -1442,6 +1471,44 @@
 
 @keyframes system-status-spin {
   to { transform: rotate(360deg); }
+}
+
+/* ── Task Notification Item ─────────────────────────────────── */
+
+.chat-msg--task {
+  align-self: flex-start;
+}
+
+.chat-msg__task {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(33, 150, 243, 0.08);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.chat-msg__task-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chat-msg__task-count {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.chat-msg__task-progress-list {
+  margin-top: 6px;
+  padding-left: 16px;
+  border-left: 2px solid rgba(33, 150, 243, 0.2);
+}
+
+.chat-msg__task-progress-item {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 11px;
+  padding: 2px 0;
 }
 
 /* ── Result Summary ──────────────────────────────────────── */

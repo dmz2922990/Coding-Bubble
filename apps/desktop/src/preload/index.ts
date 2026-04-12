@@ -89,4 +89,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   /** Directory picker dialog */
   showOpenDialog: (options: Record<string, unknown>): Promise<unknown> =>
     ipcRenderer.invoke('dialog:showOpenDialog', options),
+  /** Save markdown file dialog */
+  saveMarkdown: (content: string, defaultName: string): Promise<{ success: boolean; path?: string }> =>
+    ipcRenderer.invoke('dialog:saveMarkdown', content, defaultName),
 })

@@ -44,20 +44,34 @@ export interface SessionInfo {
 /** Chat history item rendered in a session tab */
 export interface ChatItem {
   id: string
-  type: 'user' | 'assistant' | 'toolCall' | 'thinking' | 'interrupted' | 'systemStatus' | 'resultSummary'
+  type: 'user' | 'assistant' | 'toolCall' | 'thinking' | 'interrupted' | 'system' | 'systemStatus' | 'taskNotification' | 'resultSummary'
   content?: string
   tool?: {
     name: string
     input: Record<string, string>
     status: 'running' | 'success' | 'error' | 'interrupted' | 'waitingForApproval'
     result?: string
+    subTools?: Array<{
+      id: string
+      name: string
+      input: Record<string, string>
+      status: 'running' | 'success' | 'error' | 'interrupted' | 'waitingForApproval'
+      result?: string
+    }>
   }
   timestamp: number
   streaming?: boolean
   elapsedSeconds?: number
   toolUseId?: string
   statusKind?: string
+  taskId?: string
+  taskPhase?: 'started' | 'running' | 'completed' | 'failed'
+  taskDescription?: string
+  taskProgress?: string[]
+  taskSummary?: string
   durationMs?: number
+  inputTokens?: number
+  outputTokens?: number
   costUsd?: number
   interrupted?: boolean
 }

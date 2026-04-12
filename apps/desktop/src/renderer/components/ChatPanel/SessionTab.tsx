@@ -210,6 +210,9 @@ function MessageItem({ item }: { item: ChatItem }): React.JSX.Element {
     case 'systemStatus':
       return <SystemStatusItem statusKind={item.statusKind ?? ''} content={item.content ?? ''} />
 
+    case 'taskNotification':
+      return <TaskNotificationItem phase={item.taskPhase ?? 'started'} description={item.taskDescription ?? ''} progress={item.taskProgress ?? []} summary={item.taskSummary} />
+
     case 'resultSummary':
       return <ResultSummaryItem durationMs={item.durationMs} inputTokens={item.inputTokens} outputTokens={item.outputTokens} costUsd={item.costUsd} interrupted={item.interrupted} />
 
@@ -218,10 +221,11 @@ function MessageItem({ item }: { item: ChatItem }): React.JSX.Element {
   }
 }
 
-function ToolItem({ tool, elapsedSeconds }: { tool: { name: string; input: Record<string, string>; status: string; result?: string }; elapsedSeconds?: number }): React.JSX.Element {
+function ToolItem({ tool, elapsedSeconds }: { tool: { name: string; input: Record<string, string>; status: string; result?: string; subTools?: Array<{ id: string; name: string; input: Record<string, string>; status: string; result?: string }> }; elapsedSeconds?: number }): React.JSX.Element {
   const [expanded, setExpanded] = useState(false)
   const color = TOOL_STATUS_COLORS[tool.status] ?? '#888'
   const inputPreview = JSON.stringify(tool.input).slice(0, 80)
+  const hasSubTools = tool.subTools && tool.subTools.length > 0
 
   return (
     <div className="chat-msg chat-msg--tool">
@@ -232,10 +236,26 @@ function ToolItem({ tool, elapsedSeconds }: { tool: { name: string; input: Recor
           {elapsedSeconds != null && elapsedSeconds > 0 && (
             <span className="chat-msg__tool-elapsed">· {elapsedSeconds}s</span>
           )}
-          <span className="chat-msg__tool-input">{inputPreview}</span>
+          {hasSubTools && !expanded && (
+            <span className="chat-msg__tool-subs-count">({tool.subTools!.length} 个子工具)</span>
+          )}
+          {!hasSubTools && (
+            <span className="chat-msg__tool-input">{inputPreview}</span>
+          )}
         </div>
-        {expanded && tool.result && (
+        {expanded && !hasSubTools && tool.result && (
           <pre className="chat-msg__tool-result">{tool.result}</pre>
+        )}
+        {expanded && hasSubTools && (
+          <div className="chat-msg__tool-subs">
+            {tool.subTools!.map((st) => (
+              <div key={st.id} className="chat-msg__tool-sub">
+                <span className="chat-msg__tool-dot" style={{ backgroundColor: TOOL_STATUS_COLORS[st.status] ?? '#888' }} />
+                <span className="chat-msg__tool-sub-name">{st.name}</span>
+                <span className="chat-msg__tool-input">{JSON.stringify(st.input).slice(0, 60)}</span>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>
@@ -261,6 +281,45 @@ function SystemStatusItem({ statusKind, content }: { statusKind: string; content
     <div className={`chat-msg__system-status chat-msg__system-status--${statusKind}`}>
       {statusKind === 'compacting' && <span className="chat-msg__system-status-spinner" />}
       <span>{content}</span>
+    </div>
+  )
+}
+
+const TASK_PHASE_ICONS: Record<string, string> = {
+  started: '📌',
+  running: '⏳',
+  completed: '✅',
+  failed: '❌',
+}
+
+function TaskNotificationItem({ phase, description, progress, summary }: {
+  phase: 'started' | 'running' | 'completed' | 'failed'
+  description: string
+  progress: string[]
+  summary?: string
+}): React.JSX.Element {
+  const [expanded, setExpanded] = useState(false)
+  const icon = TASK_PHASE_ICONS[phase] ?? '📌'
+  const headerText = summary ?? description
+  const hasProgress = progress.length > 0
+
+  return (
+    <div className="chat-msg chat-msg--task" onClick={() => hasProgress && setExpanded(!expanded)}>
+      <div className="chat-msg__task">
+        <div className="chat-msg__task-header">
+          <span>{icon} {headerText}</span>
+          {hasProgress && !expanded && (
+            <span className="chat-msg__task-count">({progress.length} 条进度)</span>
+          )}
+        </div>
+        {expanded && hasProgress && (
+          <div className="chat-msg__task-progress-list">
+            {progress.map((p, i) => (
+              <div key={i} className="chat-msg__task-progress-item">{p}</div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -446,6 +505,14 @@ function AssistantMessage({ item }: { item: ChatItem }): React.JSX.Element {
     setMenuOpen(false)
   }, [item.content])
 
+  const handleSaveTo = useCallback(() => {
+    const content = item.content ?? ''
+    const firstLine = content.split('\n')[0]?.slice(0, 40) ?? 'message'
+    const safeName = firstLine.replace(/[/\\?%*:|"<>]/g, '').trim() || 'message'
+    window.electronAPI.saveMarkdown(content, `${safeName}.md`)
+    setMenuOpen(false)
+  }, [item.content])
+
   return (
     <div className="chat-msg chat-msg--assistant">
       <div className="chat-msg__bubble chat-msg__markdown">
@@ -500,6 +567,9 @@ function AssistantMessage({ item }: { item: ChatItem }): React.JSX.Element {
                 </button>
                 <button className="chat-msg__menu-item" onClick={handleForward}>
                   转发
+                </button>
+                <button className="chat-msg__menu-item" onClick={handleSaveTo}>
+                  Save to
                 </button>
               </div>
             )}

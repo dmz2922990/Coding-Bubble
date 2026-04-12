@@ -58,6 +58,8 @@ declare global {
       }
       /** Directory picker dialog */
       showOpenDialog: (options: Record<string, unknown>) => Promise<{ canceled: boolean; filePaths: string[] }>
+      /** Save markdown file dialog */
+      saveMarkdown: (content: string, defaultName: string) => Promise<{ success: boolean; path?: string }>
     }
   }
 }
