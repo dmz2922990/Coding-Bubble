@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { InputHistory } from '@coding-bubble/stream-json/src/input-history'
+import type { HistoryEntry } from '@coding-bubble/stream-json/src/input-history'
 import type { InitMetadata, SkillCommand } from './types'
 import './styles.css'
 
@@ -43,7 +45,18 @@ export function MessageInput({ onSend, phase, initMetadata }: Props): React.JSX.
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [highlightIndex, setHighlightIndex] = useState(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const historyRef = useRef(new InputHistory())
   const isBusy = BUSY_PHASES.has(phase)
+
+  // Load history from persistent config on mount
+  useEffect(() => {
+    window.electronAPI.getConfig().then(config => {
+      const entries = config.inputHistory as HistoryEntry[] | undefined
+      if (Array.isArray(entries) && entries.length > 0) {
+        historyRef.current.loadEntries(entries)
+      }
+    })
+  }, [])
 
   const suggestions = useMemo(() => buildSuggestions(initMetadata), [initMetadata])
 
@@ -106,6 +119,8 @@ export function MessageInput({ onSend, phase, initMetadata }: Props): React.JSX.
   const handleSend = useCallback(() => {
     const trimmed = text.trim()
     if (!trimmed) return
+    historyRef.current.add(trimmed)
+    window.electronAPI.setConfig({ inputHistory: historyRef.current.toJSON() })
     setText('')
     setShowSuggestions(false)
     onSend(trimmed)
@@ -135,11 +150,34 @@ export function MessageInput({ onSend, phase, initMetadata }: Props): React.JSX.
       }
     }
 
+    if (e.key === 'ArrowUp') {
+      const entry = historyRef.current.navigateUp(text)
+      if (entry !== null) {
+        e.preventDefault()
+        setText(entry)
+      }
+      return
+    }
+
+    if (e.key === 'ArrowDown') {
+      const entry = historyRef.current.navigateDown()
+      if (entry !== null) {
+        e.preventDefault()
+        setText(entry)
+      }
+      return
+    }
+
+    if (e.key === 'Escape') {
+      historyRef.current.reset()
+      return
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
     }
-  }, [showSuggestions, filteredSuggestions, highlightIndex, applySuggestion, handleSend])
+  }, [showSuggestions, filteredSuggestions, highlightIndex, applySuggestion, handleSend, text])
 
   const handleSuggestionClick = useCallback((item: SuggestionItem) => {
     applySuggestion(item)

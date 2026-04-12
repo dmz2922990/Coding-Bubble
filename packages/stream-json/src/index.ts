@@ -7,3 +7,6 @@ export type {
   PermissionResult,
   StreamSessionMeta,
 } from './types'
+export { InputHistory } from './input-history'
+export type { HistoryEntry } from './input-history'
+export { PersistentInputHistory } from './persistent-input-history'
