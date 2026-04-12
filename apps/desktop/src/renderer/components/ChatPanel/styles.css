@@ -732,6 +732,22 @@
   border-radius: 8px;
   background: rgba(255, 152, 0, 0.08);
   border: 1px solid rgba(255, 152, 0, 0.15);
+  max-height: 240px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.approval-detail::-webkit-scrollbar {
+  width: 4px;
+}
+
+.approval-detail::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+.approval-detail::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .approval-detail__title {
@@ -772,9 +788,22 @@
   padding: 8px;
   white-space: pre-wrap;
   word-break: break-all;
-  max-height: 240px;
+  max-height: 160px;
   overflow-y: auto;
   margin-top: 4px;
+}
+
+.approval-detail__json::-webkit-scrollbar {
+  width: 4px;
+}
+
+.approval-detail__json::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+.approval-detail__json::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 /* ── Diff View ─────────────────────────────────────────────── */
@@ -785,11 +814,25 @@
   background: rgba(0, 0, 0, 0.3);
   border-radius: 6px;
   overflow-x: auto;
-  max-height: 300px;
+  max-height: 180px;
   overflow-y: auto;
   font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
   font-size: 11px;
   line-height: 1.5;
+}
+
+.diff-view::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.diff-view::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+.diff-view::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .diff-view__line {

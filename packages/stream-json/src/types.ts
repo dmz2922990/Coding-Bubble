@@ -34,6 +34,8 @@ export interface StreamEvent {
   state?: 'idle' | 'running' | 'requires_action'
   // system_status
   statusKind?: 'compacting' | 'compacted' | 'api_retry'
+  errorMessage?: string
+  errorStatus?: number | null
   attempt?: number
   maxRetries?: number
   delayMs?: number

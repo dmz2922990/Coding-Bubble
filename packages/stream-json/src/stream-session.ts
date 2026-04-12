@@ -256,6 +256,8 @@ export class StreamSession {
         this._emit({
           type: 'system_status',
           statusKind: 'api_retry',
+          errorMessage: raw.error as string | undefined,
+          errorStatus: raw.error_status as number | null | undefined,
           attempt: raw.attempt as number,
           maxRetries: raw.max_retries as number,
           delayMs: raw.retry_delay_ms as number,

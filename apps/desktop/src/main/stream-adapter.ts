@@ -359,10 +359,30 @@ export class StreamAdapterManager {
       case 'system_status': {
         const kind = event.statusKind
         if (!kind) break
+
+        const ERROR_LABELS: Record<string, string> = {
+          rate_limit: '速率限制',
+          server_error: '服务器错误',
+          authentication_failed: '认证失败',
+          billing_error: '计费错误',
+          invalid_request: '无效请求',
+          max_output_tokens: '输出长度超限',
+          unknown: '未知错误',
+        }
+
+        let retryMsg = `API 重试中 (${event.attempt ?? '?'}/${event.maxRetries ?? '?'})`
+        if (event.errorMessage) {
+          const label = ERROR_LABELS[event.errorMessage] ?? event.errorMessage
+          retryMsg += ` — ${label}`
+        }
+        if (event.errorStatus) {
+          retryMsg += ` (HTTP ${event.errorStatus})`
+        }
+
         const messages: Record<string, string> = {
           compacting: '正在压缩上下文...',
           compacted: '上下文压缩完成',
-          api_retry: `API 重试中 (${event.attempt ?? '?'}/${event.maxRetries ?? '?'})...`,
+          api_retry: retryMsg,
         }
         this._store.addSystemStatus(sessionId, kind, messages[kind] ?? kind)
         if (kind === 'compacting') {
