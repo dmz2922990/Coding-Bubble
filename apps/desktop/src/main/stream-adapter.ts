@@ -19,6 +19,7 @@ export interface StreamAdapterOptions {
 export class StreamAdapterManager {
   private _sessions = new Map<string, StreamSession>()
   private _managedPids = new Set<number>()
+  private _destroying = new Set<string>()
   private _store: SessionStore
   private _broadcast: (channel: string, data: unknown) => void
   /** Permission chain — keyed by internal session ID */
@@ -177,13 +178,18 @@ export class StreamAdapterManager {
 
   async destroy(sessionId: string): Promise<void> {
     this._cleanupPending(sessionId)
+    this._destroying.add(sessionId)
 
     const stream = this._sessions.get(sessionId)
-    if (!stream) return
+    if (!stream) {
+      this._destroying.delete(sessionId)
+      return
+    }
 
     if (stream.pid) this._managedPids.delete(stream.pid)
     await stream.close()
     this._sessions.delete(sessionId)
+    this._destroying.delete(sessionId)
 
     this._store.process({
       hook_event_name: 'SessionEnd',
@@ -294,6 +300,10 @@ export class StreamAdapterManager {
 
       case 'exit': {
         this._cleanupPending(sessionId)
+
+        if (this._destroying.has(sessionId)) {
+          break
+        }
 
         if (event.exitCode === 0) {
           this._store.process({
