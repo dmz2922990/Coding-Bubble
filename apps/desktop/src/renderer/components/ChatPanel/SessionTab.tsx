@@ -64,6 +64,18 @@ export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onA
     if (atBottom) setNewCount(0)
   }, [])
 
+  useEffect(() => {
+    if (session.source !== 'stream') return
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        e.preventDefault()
+        window.electronAPI.stream.interrupt(session.sessionId)
+      }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [session.sessionId, session.source])
+
   const scrollToBottom = useCallback(() => {
     const el = listRef.current
     if (!el) return

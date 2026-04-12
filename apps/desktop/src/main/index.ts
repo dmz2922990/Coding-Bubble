@@ -612,6 +612,11 @@ ipcMain.handle('stream:answer', async (_event, sessionId: string, answer: string
   streamManager.answerPermission(sessionId, answer)
 })
 
+ipcMain.handle('stream:interrupt', async (_event, sessionId: string) => {
+  if (!streamManager) return
+  streamManager.interrupt(sessionId)
+})
+
 // ── IPC: Bubble Navigation ─────────────────────────────────
 
 ipcMain.on('panel:navigate-to-session', (_event, sessionId: string) => {

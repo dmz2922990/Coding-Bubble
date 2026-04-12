@@ -79,6 +79,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('stream:always-allow', sessionId),
     answer: (sessionId: string, answer: string): Promise<void> =>
       ipcRenderer.invoke('stream:answer', sessionId, answer),
+    interrupt: (sessionId: string): Promise<void> =>
+      ipcRenderer.invoke('stream:interrupt', sessionId),
     onEvent: (cb: (event: unknown, data: unknown) => void) => {
       ipcRenderer.on('session:update', cb)
       return () => ipcRenderer.removeListener('session:update', cb)

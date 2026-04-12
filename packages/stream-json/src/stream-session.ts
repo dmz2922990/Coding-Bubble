@@ -117,6 +117,14 @@ export class StreamSession {
     this._writeJSON(msg)
   }
 
+  interrupt(): void {
+    this._writeJSON({
+      type: 'control_request',
+      request_id: `interrupt_${Date.now()}`,
+      request: { subtype: 'interrupt' },
+    })
+  }
+
   respondPermission(requestId: string, result: PermissionResult): void {
     const innerResponse: Record<string, unknown> = {
       behavior: result.behavior,

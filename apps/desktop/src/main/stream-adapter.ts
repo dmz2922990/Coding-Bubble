@@ -152,6 +152,13 @@ export class StreamAdapterManager {
     this.approvePermission(sessionId)
   }
 
+  interrupt(sessionId: string): void {
+    const stream = this._sessions.get(sessionId)
+    if (stream?.alive) {
+      stream.interrupt()
+    }
+  }
+
   answerPermission(sessionId: string, answer: string): void {
     const entry = this._pendingPermissions.get(sessionId)
     if (!entry) return
