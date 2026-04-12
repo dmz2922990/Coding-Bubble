@@ -261,6 +261,28 @@ function createPanelWindow(): void {
   } else {
     panelWin.setAlwaysOnTop(true)
   }
+
+  // Right-click context menu for text selection
+  panelWin.webContents.on('context-menu', (_event, params) => {
+    const menuItems: Electron.MenuItemConstructorOptions[] = []
+    if (params.selectionText) {
+      menuItems.push({ label: '拷贝', role: 'copy' })
+    }
+    if (params.isEditable) {
+      if (params.selectionText) {
+        menuItems.push({ label: '剪切', role: 'cut' })
+      }
+      menuItems.push({ label: '粘贴', role: 'paste' })
+    }
+    if (params.selectionText || params.isEditable) {
+      menuItems.push({ type: 'separator' })
+      menuItems.push({ label: '全选', role: 'selectAll' })
+    }
+    if (menuItems.length > 0) {
+      Menu.buildFromTemplate(menuItems).popup({ window: panelWin! })
+    }
+  })
+
   panelWin.on('ready-to-show', () => {
     panelWin?.show()
     bubbleControllerSync()
@@ -610,6 +632,11 @@ ipcMain.handle('stream:always-allow', async (_event, sessionId: string) => {
 ipcMain.handle('stream:answer', async (_event, sessionId: string, answer: string) => {
   if (!streamManager) return
   streamManager.answerPermission(sessionId, answer)
+})
+
+ipcMain.handle('stream:interrupt', async (_event, sessionId: string) => {
+  if (!streamManager) return
+  streamManager.interrupt(sessionId)
 })
 
 // ── IPC: Bubble Navigation ─────────────────────────────────

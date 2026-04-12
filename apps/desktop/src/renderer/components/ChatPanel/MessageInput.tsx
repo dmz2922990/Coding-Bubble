@@ -15,10 +15,10 @@ export function MessageInput({ onSend, phase }: Props): React.JSX.Element {
 
   const handleSend = useCallback(() => {
     const trimmed = text.trim()
-    if (!trimmed || isBusy) return
+    if (!trimmed) return
     setText('')
     onSend(trimmed)
-  }, [text, isBusy, onSend])
+  }, [text, onSend])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -39,12 +39,12 @@ export function MessageInput({ onSend, phase }: Props): React.JSX.Element {
     adjustHeight()
   }, [text, adjustHeight])
 
-  // Auto-focus when not busy
+  // Auto-focus on mount and when transitioning to idle
   useEffect(() => {
-    if (!isBusy && textareaRef.current) {
+    if (textareaRef.current) {
       textareaRef.current.focus()
     }
-  }, [isBusy])
+  }, [])
 
   return (
     <div className="message-input">
@@ -57,16 +57,9 @@ export function MessageInput({ onSend, phase }: Props): React.JSX.Element {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={isBusy ? '等待回复中...' : ''}
-          disabled={isBusy}
           rows={1}
         />
       </div>
-      {isBusy && (
-        <div className="message-input__spinner">
-          <span className="message-input__spinner-dot" />
-        </div>
-      )}
       <div className="message-input__line" />
     </div>
   )

@@ -412,6 +412,72 @@ export class SessionStore {
     this._publish('session:history', { sessionId, items: session.chatItems })
   }
 
+  addSystemStatus(sessionId: string, statusKind: string, content: string): void {
+    const session = this._sessions.get(sessionId)
+    if (!session) return
+
+    const item: ChatHistoryItem = {
+      id: `sysstatus_${Date.now()}`,
+      type: 'systemStatus',
+      statusKind,
+      content,
+      timestamp: now()
+    }
+    session.chatItems.push(item)
+    this._publish('session:history', { sessionId, items: session.chatItems })
+  }
+
+  addResultSummary(sessionId: string, data: { durationMs?: number; inputTokens?: number; outputTokens?: number; costUsd?: number; interrupted?: boolean }): void {
+    const session = this._sessions.get(sessionId)
+    if (!session) return
+
+    const item: ChatHistoryItem = {
+      id: `result_${Date.now()}`,
+      type: 'resultSummary',
+      durationMs: data.durationMs,
+      inputTokens: data.inputTokens,
+      outputTokens: data.outputTokens,
+      costUsd: data.costUsd,
+      interrupted: data.interrupted,
+      timestamp: now()
+    }
+    session.chatItems.push(item)
+    this._publish('session:history', { sessionId, items: session.chatItems })
+  }
+
+  updateToolProgress(sessionId: string, toolUseId: string, elapsedSeconds: number): void {
+    const session = this._sessions.get(sessionId)
+    if (!session) return
+
+    const item = session.chatItems.find(i => i.type === 'toolCall' && i.id === toolUseId)
+    if (item && item.type === 'toolCall') {
+      item.elapsedSeconds = elapsedSeconds
+      this._publish('session:history', { sessionId, items: session.chatItems })
+    }
+  }
+
+  updateStreamingAssistant(sessionId: string, content: string, streaming: boolean): void {
+    const session = this._sessions.get(sessionId)
+    if (!session) return
+
+    // Find existing streaming assistant message or create new one
+    const existing = session.chatItems.find(i => i.type === 'assistant' && i.streaming === true)
+    if (existing && existing.type === 'assistant') {
+      existing.content = content
+      existing.streaming = streaming
+    } else {
+      const item: ChatHistoryItem = {
+        id: `asst_${Date.now()}`,
+        type: 'assistant',
+        content,
+        timestamp: now(),
+        streaming
+      }
+      session.chatItems.push(item)
+    }
+    this._publish('session:history', { sessionId, items: session.chatItems })
+  }
+
   transition(session: SessionState, newType: SessionPhase['type'], context?: Partial<SessionState['phase']>): void {
     const currentType = session.phase.type
     const allowed = VALID_TRANSITIONS[currentType]

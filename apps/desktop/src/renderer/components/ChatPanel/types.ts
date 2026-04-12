@@ -44,7 +44,7 @@ export interface SessionInfo {
 /** Chat history item rendered in a session tab */
 export interface ChatItem {
   id: string
-  type: 'user' | 'assistant' | 'toolCall' | 'thinking' | 'interrupted'
+  type: 'user' | 'assistant' | 'toolCall' | 'thinking' | 'interrupted' | 'systemStatus' | 'resultSummary'
   content?: string
   tool?: {
     name: string
@@ -53,4 +53,11 @@ export interface ChatItem {
     result?: string
   }
   timestamp: number
+  streaming?: boolean
+  elapsedSeconds?: number
+  toolUseId?: string
+  statusKind?: string
+  durationMs?: number
+  costUsd?: number
+  interrupted?: boolean
 }

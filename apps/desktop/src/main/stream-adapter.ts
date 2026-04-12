@@ -24,6 +24,8 @@ export class StreamAdapterManager {
   private _broadcast: (channel: string, data: unknown) => void
   /** Permission chain — keyed by internal session ID */
   private _pendingPermissions = new Map<string, PendingStreamPermission>()
+  /** Sessions interrupted by user — keyed by internal session ID */
+  private _interrupted = new Set<string>()
 
   constructor(options: StreamAdapterOptions) {
     this._store = options.sessionStore
@@ -152,6 +154,14 @@ export class StreamAdapterManager {
     this.approvePermission(sessionId)
   }
 
+  interrupt(sessionId: string): void {
+    const stream = this._sessions.get(sessionId)
+    if (stream?.alive) {
+      this._interrupted.add(sessionId)
+      stream.interrupt()
+    }
+  }
+
   answerPermission(sessionId: string, answer: string): void {
     const entry = this._pendingPermissions.get(sessionId)
     if (!entry) return
@@ -228,9 +238,17 @@ export class StreamAdapterManager {
   private _handleEvent(sessionId: string, event: StreamEvent): void {
     switch (event.type) {
       case 'text': {
+        // Complete assistant message — finalize any streaming message
+        this._store.updateStreamingAssistant(sessionId, event.content ?? '', false)
+
         const session = this._store.get(sessionId)
         if (!session) return
         this._broadcast('session:update', { sessionId, phase: session.phase })
+        break
+      }
+
+      case 'text_delta': {
+        this._store.updateStreamingAssistant(sessionId, event.content ?? '', true)
         break
       }
 
@@ -261,12 +279,25 @@ export class StreamAdapterManager {
       case 'result': {
         this._cleanupPending(sessionId)
 
+        const interrupted = this._interrupted.has(sessionId)
+        this._interrupted.delete(sessionId)
+
         this._store.process({
           hook_event_name: 'Stop',
           session_id: sessionId,
           cwd: '',
-          payload: { last_assistant_message: event.content ?? '' },
+          payload: {},
         })
+
+        if (event.durationMs != null || event.inputTokens != null || event.costUsd != null || interrupted) {
+          this._store.addResultSummary(sessionId, {
+            durationMs: event.durationMs,
+            inputTokens: event.inputTokens,
+            outputTokens: event.outputTokens,
+            costUsd: event.costUsd,
+            interrupted,
+          })
+        }
         break
       }
 
@@ -295,6 +326,83 @@ export class StreamAdapterManager {
         }).catch((err) => {
           console.error('[stream-adapter] permission handler error:', err)
         })
+        break
+      }
+
+      case 'session_state': {
+        const state = event.state
+        if (!state) break
+        if (state === 'idle') {
+          this._store.transition(this._store.get(sessionId)!, 'idle')
+        } else if (state === 'running') {
+          const session = this._store.get(sessionId)
+          const hasActiveTool = session?.chatItems.some(i => i.type === 'toolCall' && i.tool?.status === 'running')
+          this._store.transition(session!, hasActiveTool ? 'processing' : 'thinking')
+        } else if (state === 'requires_action') {
+          const hasPendingPerm = this._pendingPermissions.has(sessionId)
+          const session = this._store.get(sessionId)
+          this._store.transition(session!, hasPendingPerm ? 'waitingForApproval' : 'waitingForInput')
+        }
+        break
+      }
+
+      case 'tool_progress': {
+        if (event.toolUseId && event.elapsedSeconds != null) {
+          this._store.updateToolProgress(sessionId, event.toolUseId, event.elapsedSeconds)
+        }
+        break
+      }
+
+      case 'tool_summary': {
+        if (event.summary) {
+          this._store.addSystemMessage(sessionId, event.summary)
+        }
+        break
+      }
+
+      case 'system_status': {
+        const kind = event.statusKind
+        if (!kind) break
+
+        const ERROR_LABELS: Record<string, string> = {
+          rate_limit: '速率限制',
+          server_error: '服务器错误',
+          authentication_failed: '认证失败',
+          billing_error: '计费错误',
+          invalid_request: '无效请求',
+          max_output_tokens: '输出长度超限',
+          unknown: '未知错误',
+        }
+
+        let retryMsg = `API 重试中 (${event.attempt ?? '?'}/${event.maxRetries ?? '?'})`
+        if (event.errorMessage) {
+          const label = ERROR_LABELS[event.errorMessage] ?? event.errorMessage
+          retryMsg += ` — ${label}`
+        }
+        if (event.errorStatus) {
+          retryMsg += ` (HTTP ${event.errorStatus})`
+        }
+
+        const messages: Record<string, string> = {
+          compacting: '正在压缩上下文...',
+          compacted: '上下文压缩完成',
+          api_retry: retryMsg,
+        }
+        this._store.addSystemStatus(sessionId, kind, messages[kind] ?? kind)
+        if (kind === 'compacting') {
+          const session = this._store.get(sessionId)
+          if (session) this._store.transition(session, 'compacting')
+        }
+        break
+      }
+
+      case 'rate_limit': {
+        const status = event.rateLimitStatus
+        const messages: Record<string, string> = {
+          allowed_warning: '接近速率限制',
+          rejected: '速率受限，等待恢复中...',
+        }
+        this._store.addSystemStatus(sessionId, 'rate_limit', messages[status ?? ''] ?? `速率限制: ${status}`)
         break
       }
 

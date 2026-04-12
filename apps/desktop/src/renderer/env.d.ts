@@ -53,6 +53,7 @@ declare global {
         deny: (sessionId: string, reason?: string) => Promise<void>
         alwaysAllow: (sessionId: string) => Promise<void>
         answer: (sessionId: string, answer: string) => Promise<void>
+        interrupt: (sessionId: string) => Promise<void>
         onEvent: (cb: (event: unknown, data: unknown) => void) => () => void
       }
       /** Directory picker dialog */

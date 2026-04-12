@@ -64,6 +64,18 @@ export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onA
     if (atBottom) setNewCount(0)
   }, [])
 
+  useEffect(() => {
+    if (session.source !== 'stream') return
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        e.preventDefault()
+        window.electronAPI.stream.interrupt(session.sessionId)
+      }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [session.sessionId, session.source])
+
   const scrollToBottom = useCallback(() => {
     const el = listRef.current
     if (!el) return
@@ -173,46 +185,10 @@ function MessageItem({ item }: { item: ChatItem }): React.JSX.Element {
       )
 
     case 'assistant':
-      return (
-        <div className="chat-msg chat-msg--assistant">
-          <div className="chat-msg__bubble chat-msg__markdown">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                pre({ children }) {
-                  return <>{children}</>
-                },
-                code({ className, children, ...props }) {
-                  const isBlock = className?.includes('language-') || String(children).includes('\n')
-                  return isBlock ? (
-                    <pre className="chat-msg__code-block">
-                      <code className={className} {...props}>
-                        {children}
-                      </code>
-                    </pre>
-                  ) : (
-                    <code className="chat-msg__inline-code" {...props}>
-                      {children}
-                    </code>
-                  )
-                },
-                a({ node, children, ...props }) {
-                  return (
-                    <a {...props} target="_blank" rel="noopener noreferrer">
-                      {children}
-                    </a>
-                  )
-                }
-              }}
-            >
-              {item.content}
-            </ReactMarkdown>
-          </div>
-        </div>
-      )
+      return <AssistantMessage key={item.id} item={item} />
 
     case 'toolCall':
-      return <ToolItem tool={item.tool!} />
+      return <ToolItem tool={item.tool!} elapsedSeconds={item.elapsedSeconds} />
 
     case 'thinking':
       return <ThinkingItem content={item.content ?? ''} />
@@ -231,12 +207,18 @@ function MessageItem({ item }: { item: ChatItem }): React.JSX.Element {
         </div>
       )
 
+    case 'systemStatus':
+      return <SystemStatusItem statusKind={item.statusKind ?? ''} content={item.content ?? ''} />
+
+    case 'resultSummary':
+      return <ResultSummaryItem durationMs={item.durationMs} inputTokens={item.inputTokens} outputTokens={item.outputTokens} costUsd={item.costUsd} interrupted={item.interrupted} />
+
     default:
       return null
   }
 }
 
-function ToolItem({ tool }: { tool: { name: string; input: Record<string, string>; status: string; result?: string } }): React.JSX.Element {
+function ToolItem({ tool, elapsedSeconds }: { tool: { name: string; input: Record<string, string>; status: string; result?: string }; elapsedSeconds?: number }): React.JSX.Element {
   const [expanded, setExpanded] = useState(false)
   const color = TOOL_STATUS_COLORS[tool.status] ?? '#888'
   const inputPreview = JSON.stringify(tool.input).slice(0, 80)
@@ -247,6 +229,9 @@ function ToolItem({ tool }: { tool: { name: string; input: Record<string, string
         <div className="chat-msg__tool-header">
           <span className="chat-msg__tool-dot" style={{ backgroundColor: color }} />
           <span className="chat-msg__tool-name">{tool.name}</span>
+          {elapsedSeconds != null && elapsedSeconds > 0 && (
+            <span className="chat-msg__tool-elapsed">· {elapsedSeconds}s</span>
+          )}
           <span className="chat-msg__tool-input">{inputPreview}</span>
         </div>
         {expanded && tool.result && (
@@ -267,6 +252,48 @@ function ThinkingItem({ content }: { content: string }): React.JSX.Element {
         <span className="chat-msg__thinking-label">💭 思考</span>
         <span className="chat-msg__thinking-content">{expanded ? content : preview}</span>
       </div>
+    </div>
+  )
+}
+
+function SystemStatusItem({ statusKind, content }: { statusKind: string; content: string }): React.JSX.Element {
+  return (
+    <div className={`chat-msg__system-status chat-msg__system-status--${statusKind}`}>
+      {statusKind === 'compacting' && <span className="chat-msg__system-status-spinner" />}
+      <span>{content}</span>
+    </div>
+  )
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`
+  const seconds = Math.floor(ms / 1000)
+  if (seconds < 60) return `${seconds}s`
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = seconds % 60
+  return `${minutes}m ${remainingSeconds}s`
+}
+
+function formatTokens(n?: number): string {
+  if (n == null) return ''
+  return n.toLocaleString()
+}
+
+function ResultSummaryItem({ durationMs, inputTokens, outputTokens, costUsd, interrupted }: {
+  durationMs?: number; inputTokens?: number; outputTokens?: number; costUsd?: number; interrupted?: boolean
+}): React.JSX.Element {
+  const parts: string[] = []
+  if (interrupted) parts.push('已中断')
+  if (durationMs != null) parts.push(formatDuration(durationMs))
+  const totalTokens = (inputTokens ?? 0) + (outputTokens ?? 0)
+  if (totalTokens > 0) parts.push(`${formatTokens(totalTokens)} tokens`)
+  if (costUsd != null && costUsd > 0) parts.push(`$${costUsd.toFixed(4)}`)
+
+  if (parts.length === 0) return null
+
+  return (
+    <div className={`chat-msg__result-summary${interrupted ? ' chat-msg__result-summary--interrupted' : ''}`}>
+      {parts.join(' · ')}
     </div>
   )
 }
@@ -387,6 +414,97 @@ function PermissionBar({ toolName, onAllow, onDeny, onAlwaysAllow }: PermissionB
         <button className="permission-bar__btn permission-bar__btn--deny" onClick={onDeny}>拒绝</button>
         <button className="permission-bar__btn permission-bar__btn--allow" onClick={onAllow}>允许</button>
         <button className="permission-bar__btn permission-bar__btn--always" onClick={onAlwaysAllow}>一直允许</button>
+      </div>
+    </div>
+  )
+}
+
+// ── Assistant Message with Action Menu ─────────────────────────────────
+
+function AssistantMessage({ item }: { item: ChatItem }): React.JSX.Element {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const actionsRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const handler = (e: MouseEvent) => {
+      if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [menuOpen])
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(item.content ?? '')
+    setMenuOpen(false)
+  }, [item.content])
+
+  const handleForward = useCallback(() => {
+    navigator.clipboard.writeText(item.content ?? '')
+    setMenuOpen(false)
+  }, [item.content])
+
+  return (
+    <div className="chat-msg chat-msg--assistant">
+      <div className="chat-msg__bubble chat-msg__markdown">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            pre({ children }) {
+              return <>{children}</>
+            },
+            code({ className, children, ...props }) {
+              const isBlock = className?.includes('language-') || String(children).includes('\n')
+              return isBlock ? (
+                <pre className="chat-msg__code-block">
+                  <code className={className} {...props}>
+                    {children}
+                  </code>
+                </pre>
+              ) : (
+                <code className="chat-msg__inline-code" {...props}>
+                  {children}
+                </code>
+              )
+            },
+            a({ node, children, ...props }) {
+              return (
+                <a {...props} target="_blank" rel="noopener noreferrer">
+                  {children}
+                </a>
+              )
+            }
+          }}
+        >
+          {item.content}
+        </ReactMarkdown>
+        {item.streaming && <span className="chat-msg__cursor" />}
+        {!item.streaming && (
+          <div className="chat-msg__actions" ref={actionsRef}>
+            <button
+              className="chat-msg__action-btn"
+              onClick={() => setMenuOpen(!menuOpen)}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <circle cx="3" cy="8" r="1.5"/>
+                <circle cx="8" cy="8" r="1.5"/>
+                <circle cx="13" cy="8" r="1.5"/>
+              </svg>
+            </button>
+            {menuOpen && (
+              <div className="chat-msg__menu">
+                <button className="chat-msg__menu-item" onClick={handleCopy}>
+                  复制
+                </button>
+                <button className="chat-msg__menu-item" onClick={handleForward}>
+                  转发
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
