@@ -60,5 +60,31 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.on('session:update', cb)
       return () => ipcRenderer.removeListener('session:update', cb)
     }
-  }
+  },
+  /** Stream session management */
+  stream: {
+    create: (cwd: string): Promise<{ sessionId?: string; error?: string }> =>
+      ipcRenderer.invoke('stream:create', cwd),
+    send: (sessionId: string, text: string): Promise<{ success?: boolean; error?: string }> =>
+      ipcRenderer.invoke('stream:send', sessionId, text),
+    destroy: (sessionId: string): Promise<void> =>
+      ipcRenderer.invoke('stream:destroy', sessionId),
+    resume: (claudeSessionId: string, cwd: string): Promise<{ sessionId?: string; error?: string }> =>
+      ipcRenderer.invoke('stream:resume', claudeSessionId, cwd),
+    approve: (sessionId: string): Promise<void> =>
+      ipcRenderer.invoke('stream:approve', sessionId),
+    deny: (sessionId: string, reason?: string): Promise<void> =>
+      ipcRenderer.invoke('stream:deny', sessionId, reason),
+    alwaysAllow: (sessionId: string): Promise<void> =>
+      ipcRenderer.invoke('stream:always-allow', sessionId),
+    answer: (sessionId: string, answer: string): Promise<void> =>
+      ipcRenderer.invoke('stream:answer', sessionId, answer),
+    onEvent: (cb: (event: unknown, data: unknown) => void) => {
+      ipcRenderer.on('session:update', cb)
+      return () => ipcRenderer.removeListener('session:update', cb)
+    }
+  },
+  /** Directory picker dialog */
+  showOpenDialog: (options: Record<string, unknown>): Promise<unknown> =>
+    ipcRenderer.invoke('dialog:showOpenDialog', options),
 })

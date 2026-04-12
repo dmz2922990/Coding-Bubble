@@ -1,123 +1,16 @@
-import { app, BrowserWindow, ipcMain, Menu, nativeImage, screen, Tray } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, screen, Tray } from 'electron'
 import { join } from 'path'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import type { HookResponse, Intervention } from '@coding-bubble/session-monitor'
+import { formatToolDetail } from './format-tool-detail'
 
 let ballWin: BrowserWindow | null = null
 let panelWin: BrowserWindow | null = null
 let settingsWin: BrowserWindow | null = null
 let tray: Tray | null = null
 
-/** Pending permission resolvers keyed by sessionId */
+/** Pending permission resolvers keyed by sessionId — for hook sessions only */
 const pendingPermissionResolvers = new Map<string, { toolUseId: string | undefined; toolName?: string; toolInput?: Record<string, unknown> | null; formattedDetail: string; resolve: (response: HookResponse) => void }>()
-
-function escapeHtml(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
-function formatToolDetail(toolName?: string, toolInput?: Record<string, unknown> | null): string {
-  if (!toolName) return '已允许未知工具'
-  const input = toolInput ?? {}
-  const COLLAPSE_THRESHOLD = 200
-
-  function fmtBody(text: string): string {
-    const escaped = escapeHtml(text)
-    if (text.length <= COLLAPSE_THRESHOLD) {
-      return `<pre class="sys-detail">${escaped}</pre>`
-    }
-    return `<details><summary>变更详情</summary><pre class="sys-detail">${escaped}</pre></details>`
-  }
-
-  /** Build unified diff from old/new strings, matching ApprovalDetail's DiffView */
-  function fmtDiff(oldStr: string, newStr: string): string {
-    const oldLines = oldStr.split('\n')
-    const newLines = newStr.split('\n')
-
-    // Find common prefix
-    let prefix = 0
-    while (prefix < oldLines.length && prefix < newLines.length && oldLines[prefix] === newLines[prefix]) {
-      prefix++
-    }
-
-    // Find common suffix
-    let oEnd = oldLines.length - 1
-    let nEnd = newLines.length - 1
-    while (oEnd > prefix && nEnd > prefix && oldLines[oEnd] === newLines[nEnd]) {
-      oEnd--
-      nEnd--
-    }
-
-    const lines: Array<{ type: 'ctx' | 'rm' | 'add'; text: string }> = []
-    // Show all prefix context lines
-    for (let i = 0; i < prefix; i++) {
-      lines.push({ type: 'ctx', text: oldLines[i] })
-    }
-    // Removed lines
-    for (let i = prefix; i <= oEnd; i++) {
-      lines.push({ type: 'rm', text: oldLines[i] })
-    }
-    // Added lines
-    for (let i = prefix; i <= nEnd; i++) {
-      lines.push({ type: 'add', text: newLines[i] })
-    }
-    // Show all suffix context lines
-    for (let i = oEnd + 1; i < oldLines.length; i++) {
-      lines.push({ type: 'ctx', text: oldLines[i] })
-    }
-
-    const diffHtml = lines.map(l => {
-      const marker = l.type === 'rm' ? '-' : l.type === 'add' ? '+' : ' '
-      const escaped = escapeHtml(l.text)
-      return `<span class="diff-${l.type === 'rm' ? 'rm' : l.type === 'add' ? 'add' : 'ctx'}">${marker} ${escaped}</span>`
-    }).join('\n')
-
-    const totalLen = lines.reduce((s, l) => s + l.text.length + 2, 0)
-    if (totalLen <= COLLAPSE_THRESHOLD) {
-      return `<pre class="sys-detail sys-detail--diff">${diffHtml}</pre>`
-    }
-    return `<details><summary>变更详情</summary><pre class="sys-detail sys-detail--diff">${diffHtml}</pre></details>`
-  }
-
-  switch (toolName) {
-    case 'Bash': {
-      const cmd = input.command as string ?? ''
-      return `已允许: Bash${fmtBody(cmd)}`
-    }
-    case 'Edit': {
-      const file = escapeHtml((input.file_path as string ?? '').split('/').pop() ?? '')
-      const oldStr = input.old_string as string ?? ''
-      const newStr = input.new_string as string ?? ''
-      return `已允许: Edit <code>${file}</code>${fmtDiff(oldStr, newStr)}`
-    }
-    case 'Write': {
-      const file = escapeHtml((input.file_path as string ?? '').split('/').pop() ?? '')
-      const content = input.content as string ?? ''
-      return `已允许: Write <code>${file}</code>${fmtBody(content)}`
-    }
-    case 'Read': {
-      const file = escapeHtml((input.file_path as string ?? ''))
-      return `已允许: Read <code>${file}</code>`
-    }
-    case 'Grep': {
-      const pattern = escapeHtml((input.pattern as string ?? ''))
-      const path = escapeHtml((input.path as string ?? ''))
-      return `已允许: Grep <code>${pattern}</code> in <code>${path || '(default)'}</code>`
-    }
-    case 'Glob': {
-      const pattern = escapeHtml((input.pattern as string ?? ''))
-      return `已允许: Glob <code>${pattern}</code>`
-    }
-    case 'AskUserQuestion': {
-      const questions = input.questions as Array<Record<string, unknown>> | undefined
-      const q = questions?.[0]?.question as string ?? ''
-      return `已允许: AskUserQuestion${fmtBody(q)}`
-    }
-    default: {
-      const json = JSON.stringify(input)
-      return `已允许: ${toolName}${fmtBody(json)}`
-    }
-  }
-}
 
 /** 拖拽时记录光标相对于窗口左上角的偏移量 */
 let dragOffset = { x: 0, y: 0 }
@@ -473,13 +366,19 @@ ipcMain.handle('config:set', (_event, config: Record<string, unknown>) => {
   writeConfig({ ...existing, ...config })
 })
 
+ipcMain.handle('dialog:showOpenDialog', async (_event, options: Electron.OpenDialogOptions) => {
+  return dialog.showOpenDialog(options)
+})
+
 // ── Session Monitor ──────────────────────────────────────────
 
 import { SessionStore, createSocketServer, installHooks, hooksInstalled, watchJsonlFile, parseFullConversation } from '@coding-bubble/session-monitor'
 import type { HookEvent } from '@coding-bubble/session-monitor'
 import { TerminalJumper } from '@coding-bubble/session-monitor'
+import { StreamAdapterManager } from './stream-adapter'
 
 let sessionStore: SessionStore | null = null
+let streamManager: StreamAdapterManager | null = null
 const terminalJumper = new TerminalJumper()
 const jsonlWatchers = new Map<string, ReturnType<typeof watchJsonlFile>>()
 
@@ -654,6 +553,65 @@ ipcMain.handle('session:jump-to-terminal', async (_event, sessionId: string) => 
   return terminalJumper.jump(session)
 })
 
+// ── IPC: Stream Session Management ────────────────────────────
+
+ipcMain.handle('stream:create', async (_event, cwd: string) => {
+  if (!streamManager) return { error: 'Stream manager not initialized' }
+  try {
+    const sessionId = await streamManager.create(cwd)
+    return { sessionId }
+  } catch (err) {
+    return { error: String(err) }
+  }
+})
+
+ipcMain.handle('stream:send', async (_event, sessionId: string, text: string) => {
+  if (!streamManager) return { error: 'Stream manager not initialized' }
+  try {
+    streamManager.send(sessionId, text)
+    return { success: true }
+  } catch (err) {
+    return { error: String(err) }
+  }
+})
+
+ipcMain.handle('stream:destroy', async (_event, sessionId: string) => {
+  if (!streamManager) return
+  await streamManager.destroy(sessionId)
+})
+
+ipcMain.handle('stream:resume', async (_event, claudeSessionId: string, cwd: string) => {
+  if (!streamManager) return { error: 'Stream manager not initialized' }
+  try {
+    const sessionId = await streamManager.resume(claudeSessionId, cwd)
+    return { sessionId }
+  } catch (err) {
+    return { error: String(err) }
+  }
+})
+
+// ── IPC: Stream Permission Handling (independent from hooks) ──────
+
+ipcMain.handle('stream:approve', async (_event, sessionId: string) => {
+  if (!streamManager) return
+  streamManager.approvePermission(sessionId)
+})
+
+ipcMain.handle('stream:deny', async (_event, sessionId: string, reason?: string) => {
+  if (!streamManager) return
+  streamManager.denyPermission(sessionId, reason)
+})
+
+ipcMain.handle('stream:always-allow', async (_event, sessionId: string) => {
+  if (!streamManager) return
+  streamManager.alwaysAllowPermission(sessionId)
+})
+
+ipcMain.handle('stream:answer', async (_event, sessionId: string, answer: string) => {
+  if (!streamManager) return
+  streamManager.answerPermission(sessionId, answer)
+})
+
 // ── IPC: Bubble Navigation ─────────────────────────────────
 
 ipcMain.on('panel:navigate-to-session', (_event, sessionId: string) => {
@@ -711,6 +669,11 @@ app.whenReady().then(() => {
   sessionStore = new SessionStore()
   sessionStore.onPublish((channel: string, data: unknown) => broadcastToRenderer(channel, data))
 
+  streamManager = new StreamAdapterManager({
+    sessionStore,
+    broadcastToRenderer,
+  })
+
   sessionStore.onInterventionChange(() => {
     bubbleControllerSync()
   })
@@ -720,6 +683,7 @@ app.whenReady().then(() => {
   })
 
   createSocketServer({
+    isManagedPid: (pid: number) => streamManager?.isManagedPid(pid) ?? false,
     onEvent: (event: HookEvent) => {
       console.log('[main] socket onEvent:', JSON.stringify(event))
 
@@ -821,4 +785,8 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+})
+
+app.on('before-quit', () => {
+  streamManager?.closeAll()
 })

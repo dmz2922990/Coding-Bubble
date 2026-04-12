@@ -63,6 +63,7 @@
     }
   },
   "dependencies": {
+    "@coding-bubble/stream-json": "workspace:*",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "ws": "^8.19.0"

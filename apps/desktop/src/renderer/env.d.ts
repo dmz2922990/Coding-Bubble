@@ -36,11 +36,27 @@ declare global {
         list: () => Promise<unknown[]>
         approve: (sessionId: string) => Promise<void>
         deny: (sessionId: string, reason?: string) => Promise<void>
+        alwaysAllow: (sessionId: string) => Promise<void>
+        answer: (sessionId: string, answer: string) => Promise<void>
         hooksStatus: () => Promise<{ installed: boolean }>
         installHooks: () => Promise<void>
         jumpToTerminal: (sessionId: string) => Promise<{ success: boolean; error?: string }>
         onUpdate: (cb: (event: unknown, data: unknown) => void) => () => void
       }
+      /** Stream session management */
+      stream: {
+        create: (cwd: string) => Promise<{ sessionId?: string; error?: string }>
+        send: (sessionId: string, text: string) => Promise<{ success?: boolean; error?: string }>
+        destroy: (sessionId: string) => Promise<void>
+        resume: (claudeSessionId: string, cwd: string) => Promise<{ sessionId?: string; error?: string }>
+        approve: (sessionId: string) => Promise<void>
+        deny: (sessionId: string, reason?: string) => Promise<void>
+        alwaysAllow: (sessionId: string) => Promise<void>
+        answer: (sessionId: string, answer: string) => Promise<void>
+        onEvent: (cb: (event: unknown, data: unknown) => void) => () => void
+      }
+      /** Directory picker dialog */
+      showOpenDialog: (options: Record<string, unknown>) => Promise<{ canceled: boolean; filePaths: string[] }>
     }
   }
 }

@@ -36,6 +36,8 @@ class ToolUseIdCache {
 
 export interface SocketServerOptions {
   socketPath?: string
+  /** Return true to ignore events from this PID (e.g. stream-managed processes) */
+  isManagedPid?: (pid: number) => boolean
   onEvent: (event: HookEvent) => void
   onPermissionRequest: (
     sessionId: string,
@@ -69,6 +71,13 @@ export function createSocketServer(options: SocketServerOptions): SocketServer {
       try {
         const event: HookEvent = JSON.parse(buffer.trim())
         const payload = event.payload as Record<string, unknown> | undefined
+
+        // Ignore events from stream-managed processes (hooks skipped via CLAUDE_BUBBLE_SKIP_HOOK env var)
+        if (event.pid && options.isManagedPid?.(event.pid)) {
+          console.log('[socket-server] ignoring event from managed PID:', event.pid)
+          socket.end()
+          return
+        }
 
         // PermissionRequest - wait for user decision
         if (event.hook_event_name === 'PermissionRequest') {

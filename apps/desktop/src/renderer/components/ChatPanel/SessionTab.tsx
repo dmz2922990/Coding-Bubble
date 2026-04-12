@@ -32,36 +32,49 @@ interface Props {
   onAlwaysAllow?: () => void
   onAnswer?: (answer: string) => void
   onJumpToTerminal?: () => void
+  onDisconnect?: () => void
 }
 
-export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onAnswer, onJumpToTerminal }: Props): React.JSX.Element {
+export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onAnswer, onJumpToTerminal, onDisconnect }: Props): React.JSX.Element {
   const listRef = useRef<HTMLDivElement>(null)
-  const [autoScroll, setAutoScroll] = useState(true)
+  const autoScrollRef = useRef(true)
   const [newCount, setNewCount] = useState(0)
+  const prevItemCountRef = useRef(items.length)
 
   useEffect(() => {
-    if (listRef.current && autoScroll) {
-      listRef.current.scrollTop = 0
+    const el = listRef.current
+    if (!el) return
+
+    const added = items.length - prevItemCountRef.current
+    prevItemCountRef.current = items.length
+
+    if (autoScrollRef.current) {
+      el.scrollTop = el.scrollHeight
+      setNewCount(0)
+    } else if (added > 0) {
+      setNewCount((c) => c + added)
     }
-  }, [items, autoScroll])
+  }, [items])
 
   const handleScroll = useCallback(() => {
     const el = listRef.current
     if (!el) return
-    const atTop = el.scrollTop < 30
-    setAutoScroll(atTop)
-    if (atTop) setNewCount(0)
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 30
+    autoScrollRef.current = atBottom
+    if (atBottom) setNewCount(0)
   }, [])
 
-  const scrollToLatest = useCallback(() => {
-    listRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
-    setAutoScroll(true)
+  const scrollToBottom = useCallback(() => {
+    const el = listRef.current
+    if (!el) return
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+    autoScrollRef.current = true
     setNewCount(0)
   }, [])
 
   return (
     <div className="session-tab">
-      <div className="session-tab__header">
+      <div className={`session-tab__header${onDisconnect ? ' session-tab__header--stream' : ''}`}>
         <span className="session-tab__name">{session.projectName}</span>
         <div className="session-tab__header-actions">
           <span className={`session-tab__phase-badge session-tab__phase-badge--${session.phase}`}>
@@ -79,6 +92,17 @@ export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onA
               </svg>
             </button>
           )}
+          {onDisconnect && (
+            <button
+              className="session-tab__jump-btn"
+              onClick={onDisconnect}
+              title="断开会话"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
@@ -90,22 +114,23 @@ export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onA
       </div>
 
       <div className="session-tab__messages" ref={listRef} onScroll={handleScroll}>
-        {session.phase === 'waitingForApproval' && session.toolName && (
-          <ApprovalDetail toolName={session.toolName} toolInput={session.toolInput} />
-        )}
         {items.length === 0 && session.phase !== 'waitingForApproval' ? (
           <div className="session-tab__empty">暂无对话记录</div>
         ) : (
-          [...items].reverse().map((item) => (
+          items.map((item) => (
             <MessageItem key={item.id} item={item} />
           ))
         )}
       </div>
 
-      {!autoScroll && newCount > 0 && (
-        <button className="session-tab__new-indicator" onClick={scrollToLatest}>
-          ↑ {newCount} 条新消息
+      {newCount > 0 && (
+        <button className="session-tab__new-indicator" onClick={scrollToBottom}>
+          ↓ {newCount} 条新消息
         </button>
+      )}
+
+      {session.phase === 'waitingForApproval' && session.toolName && session.toolName !== 'AskUserQuestion' && (
+        <ApprovalDetail toolName={session.toolName} toolInput={session.toolInput} />
       )}
 
       {session.phase === 'waitingForApproval' && session.toolName === 'AskUserQuestion' ? (

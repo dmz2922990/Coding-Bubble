@@ -9,7 +9,9 @@
     "baseUrl": "../../",
     "paths": {
       "@coding-bubble/backend": ["packages/backend/src/index.ts"],
-      "@coding-bubble/shared": ["packages/shared/src/index.ts"]
+      "@coding-bubble/shared": ["packages/shared/src/index.ts"],
+      "@coding-bubble/session-monitor": ["packages/session-monitor/src/index.ts"],
+      "@coding-bubble/stream-json": ["packages/stream-json/src/index.ts"]
     },
     "strict": true,
     "skipLibCheck": true,

@@ -14,6 +14,9 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@coding-bubble/stream-json':
+        specifier: workspace:*
+        version: link:../../packages/stream-json
       react-markdown:
         specifier: ^10.1.0
         version: 10.1.0(@types/react@18.3.28)(react@18.3.1)
@@ -68,6 +71,15 @@ importers:
         version: 5.9.3
 
   packages/shared: {}
+
+  packages/stream-json:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.37
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
 
 packages:
 
