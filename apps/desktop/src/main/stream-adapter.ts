@@ -24,6 +24,8 @@ export class StreamAdapterManager {
   private _broadcast: (channel: string, data: unknown) => void
   /** Permission chain — keyed by internal session ID */
   private _pendingPermissions = new Map<string, PendingStreamPermission>()
+  /** Sessions interrupted by user — keyed by internal session ID */
+  private _interrupted = new Set<string>()
 
   constructor(options: StreamAdapterOptions) {
     this._store = options.sessionStore
@@ -155,6 +157,7 @@ export class StreamAdapterManager {
   interrupt(sessionId: string): void {
     const stream = this._sessions.get(sessionId)
     if (stream?.alive) {
+      this._interrupted.add(sessionId)
       stream.interrupt()
     }
   }
@@ -276,7 +279,8 @@ export class StreamAdapterManager {
       case 'result': {
         this._cleanupPending(sessionId)
 
-        const interrupted = event.subtype === 'interrupted'
+        const interrupted = this._interrupted.has(sessionId)
+        this._interrupted.delete(sessionId)
 
         this._store.process({
           hook_event_name: 'Stop',
