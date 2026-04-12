@@ -192,6 +192,9 @@ export class StreamSession {
       case 'assistant':
         this._handleAssistant(raw)
         break
+      case 'stream_event':
+        this._handleStreamEvent(raw)
+        break
       case 'user':
         // tool results from Claude Code — logged only
         break
@@ -204,6 +207,15 @@ export class StreamSession {
       case 'control_cancel_request':
         console.log('[stream-json] control_cancel_request:', raw.request_id)
         break
+      case 'tool_progress':
+        this._handleToolProgress(raw)
+        break
+      case 'tool_use_summary':
+        this._handleToolSummary(raw)
+        break
+      case 'rate_limit_event':
+        this._handleRateLimit(raw)
+        break
       default:
         console.log('[stream-json] unknown event type:', eventType)
     }
@@ -211,10 +223,39 @@ export class StreamSession {
 
   private _handleSystem(raw: Record<string, unknown>): void {
     const sid = raw.session_id as string | undefined
-    if (sid) {
-      this._sessionId = sid
+    if (sid) this._sessionId = sid
+
+    const subtype = raw.subtype as string | undefined
+    switch (subtype) {
+      case 'init':
+        console.log('[stream-json] system init, session_id:', sid)
+        break
+      case 'session_state_changed':
+        this._emit({
+          type: 'session_state',
+          state: raw.state as 'idle' | 'running' | 'requires_action',
+        })
+        break
+      case 'status':
+        if (raw.status === 'compacting') {
+          this._emit({ type: 'system_status', statusKind: 'compacting' })
+        }
+        break
+      case 'compact_boundary':
+        this._emit({ type: 'system_status', statusKind: 'compacted' })
+        break
+      case 'api_retry':
+        this._emit({
+          type: 'system_status',
+          statusKind: 'api_retry',
+          attempt: raw.attempt as number,
+          maxRetries: raw.max_retries as number,
+          delayMs: raw.retry_delay_ms as number,
+        })
+        break
+      default:
+        break
     }
-    console.log('[stream-json] system init, session_id:', sid)
   }
 
   private _handleAssistant(raw: Record<string, unknown>): void {
@@ -262,6 +303,9 @@ export class StreamSession {
       done: true,
       inputTokens: typeof usage?.input_tokens === 'number' ? usage.input_tokens : undefined,
       outputTokens: typeof usage?.output_tokens === 'number' ? usage.output_tokens : undefined,
+      durationMs: typeof raw.duration_ms === 'number' ? raw.duration_ms : undefined,
+      durationApiMs: typeof raw.duration_api_ms === 'number' ? raw.duration_api_ms : undefined,
+      costUsd: typeof raw.total_cost_usd === 'number' ? raw.total_cost_usd : undefined,
     })
   }
 
@@ -279,6 +323,47 @@ export class StreamSession {
       requestId: raw.request_id as string,
       toolName: request?.tool_name as string,
       toolInput: request?.input as Record<string, unknown>,
+    })
+  }
+
+  private _handleStreamEvent(raw: Record<string, unknown>): void {
+    const event = raw.event as Record<string, unknown> | undefined
+    if (!event) return
+
+    const eventType = event.type as string
+    if (eventType !== 'content_block_delta') return
+
+    const delta = event.delta as Record<string, unknown> | undefined
+    if (delta?.type !== 'text_delta') return
+
+    this._emit({
+      type: 'text_delta',
+      content: delta.text as string,
+    })
+  }
+
+  private _handleToolProgress(raw: Record<string, unknown>): void {
+    this._emit({
+      type: 'tool_progress',
+      toolUseId: raw.tool_use_id as string,
+      toolName: raw.tool_name as string,
+      elapsedSeconds: raw.elapsed_time_seconds as number,
+    })
+  }
+
+  private _handleToolSummary(raw: Record<string, unknown>): void {
+    this._emit({
+      type: 'tool_summary',
+      summary: raw.summary as string,
+    })
+  }
+
+  private _handleRateLimit(raw: Record<string, unknown>): void {
+    const info = raw.rate_limit_info as Record<string, unknown> | undefined
+    this._emit({
+      type: 'rate_limit',
+      rateLimitStatus: info?.status as string | undefined,
+      resetsAt: info?.resetsAt as number | undefined,
     })
   }
 

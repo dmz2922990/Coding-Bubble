@@ -74,11 +74,13 @@ export interface ToolCallItem {
 
 export type ChatHistoryItem =
   | { id: string; type: 'user'; content: string; timestamp: number }
-  | { id: string; type: 'assistant'; content: string; timestamp: number }
-  | { id: string; type: 'toolCall'; tool: ToolCallItem; timestamp: number }
+  | { id: string; type: 'assistant'; content: string; timestamp: number; streaming?: boolean }
+  | { id: string; type: 'toolCall'; tool: ToolCallItem; timestamp: number; elapsedSeconds?: number }
   | { id: string; type: 'thinking'; content: string; timestamp: number }
   | { id: string; type: 'interrupted'; timestamp: number }
   | { id: string; type: 'system'; content: string; timestamp: number }
+  | { id: string; type: 'systemStatus'; statusKind: string; content: string; timestamp: number }
+  | { id: string; type: 'resultSummary'; durationMs?: number; inputTokens?: number; outputTokens?: number; costUsd?: number; timestamp: number }
 
 // ═─ Session State ───────────────────────────────────────────
 

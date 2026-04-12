@@ -1298,3 +1298,73 @@
   0%, 100% { opacity: 0.3; transform: scale(0.8); }
   50% { opacity: 1; transform: scale(1.2); }
 }
+
+/* ── Tool Elapsed Time ────────────────────────────────────── */
+
+.chat-msg__tool-elapsed {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 11px;
+  font-family: 'SF Mono', Menlo, monospace;
+}
+
+/* ── System Status Indicator ─────────────────────────────── */
+
+.chat-msg__system-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin: 4px 0;
+}
+
+.chat-msg__system-status--compacting {
+  background: rgba(33, 150, 243, 0.1);
+  color: rgba(33, 150, 243, 0.8);
+}
+
+.chat-msg__system-status--compacted {
+  background: rgba(33, 150, 243, 0.06);
+  color: rgba(33, 150, 243, 0.5);
+}
+
+.chat-msg__system-status--api_retry {
+  background: rgba(255, 193, 7, 0.1);
+  color: rgba(255, 193, 7, 0.8);
+}
+
+.chat-msg__system-status--rate_limit {
+  background: rgba(244, 67, 54, 0.1);
+  color: rgba(244, 67, 54, 0.8);
+}
+
+.chat-msg__system-status-spinner {
+  width: 10px;
+  height: 10px;
+  border: 2px solid rgba(33, 150, 243, 0.3);
+  border-top-color: rgba(33, 150, 243, 0.8);
+  border-radius: 50%;
+  animation: system-status-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes system-status-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Result Summary ──────────────────────────────────────── */
+
+.chat-msg__result-summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  margin: 4px 0;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 11px;
+  font-family: 'SF Mono', Menlo, monospace;
+  letter-spacing: 0.3px;
+}

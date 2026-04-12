@@ -207,12 +207,13 @@ function MessageItem({ item }: { item: ChatItem }): React.JSX.Element {
             >
               {item.content}
             </ReactMarkdown>
+            {item.streaming && <span className="chat-msg__cursor" />}
           </div>
         </div>
       )
 
     case 'toolCall':
-      return <ToolItem tool={item.tool!} />
+      return <ToolItem tool={item.tool!} elapsedSeconds={item.elapsedSeconds} />
 
     case 'thinking':
       return <ThinkingItem content={item.content ?? ''} />
@@ -231,12 +232,18 @@ function MessageItem({ item }: { item: ChatItem }): React.JSX.Element {
         </div>
       )
 
+    case 'systemStatus':
+      return <SystemStatusItem statusKind={item.statusKind ?? ''} content={item.content ?? ''} />
+
+    case 'resultSummary':
+      return <ResultSummaryItem durationMs={item.durationMs} inputTokens={item.inputTokens} outputTokens={item.outputTokens} costUsd={item.costUsd} />
+
     default:
       return null
   }
 }
 
-function ToolItem({ tool }: { tool: { name: string; input: Record<string, string>; status: string; result?: string } }): React.JSX.Element {
+function ToolItem({ tool, elapsedSeconds }: { tool: { name: string; input: Record<string, string>; status: string; result?: string }; elapsedSeconds?: number }): React.JSX.Element {
   const [expanded, setExpanded] = useState(false)
   const color = TOOL_STATUS_COLORS[tool.status] ?? '#888'
   const inputPreview = JSON.stringify(tool.input).slice(0, 80)
@@ -247,6 +254,9 @@ function ToolItem({ tool }: { tool: { name: string; input: Record<string, string
         <div className="chat-msg__tool-header">
           <span className="chat-msg__tool-dot" style={{ backgroundColor: color }} />
           <span className="chat-msg__tool-name">{tool.name}</span>
+          {elapsedSeconds != null && elapsedSeconds > 0 && (
+            <span className="chat-msg__tool-elapsed">· {elapsedSeconds}s</span>
+          )}
           <span className="chat-msg__tool-input">{inputPreview}</span>
         </div>
         {expanded && tool.result && (
@@ -267,6 +277,47 @@ function ThinkingItem({ content }: { content: string }): React.JSX.Element {
         <span className="chat-msg__thinking-label">💭 思考</span>
         <span className="chat-msg__thinking-content">{expanded ? content : preview}</span>
       </div>
+    </div>
+  )
+}
+
+function SystemStatusItem({ statusKind, content }: { statusKind: string; content: string }): React.JSX.Element {
+  return (
+    <div className={`chat-msg__system-status chat-msg__system-status--${statusKind}`}>
+      {statusKind === 'compacting' && <span className="chat-msg__system-status-spinner" />}
+      <span>{content}</span>
+    </div>
+  )
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`
+  const seconds = Math.floor(ms / 1000)
+  if (seconds < 60) return `${seconds}s`
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = seconds % 60
+  return `${minutes}m ${remainingSeconds}s`
+}
+
+function formatTokens(n?: number): string {
+  if (n == null) return ''
+  return n.toLocaleString()
+}
+
+function ResultSummaryItem({ durationMs, inputTokens, outputTokens, costUsd }: {
+  durationMs?: number; inputTokens?: number; outputTokens?: number; costUsd?: number
+}): React.JSX.Element {
+  const parts: string[] = []
+  if (durationMs != null) parts.push(formatDuration(durationMs))
+  const totalTokens = (inputTokens ?? 0) + (outputTokens ?? 0)
+  if (totalTokens > 0) parts.push(`${formatTokens(totalTokens)} tokens`)
+  if (costUsd != null && costUsd > 0) parts.push(`$${costUsd.toFixed(4)}`)
+
+  if (parts.length === 0) return null
+
+  return (
+    <div className="chat-msg__result-summary">
+      {parts.join(' · ')}
     </div>
   )
 }

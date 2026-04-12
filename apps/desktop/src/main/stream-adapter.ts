@@ -228,9 +228,17 @@ export class StreamAdapterManager {
   private _handleEvent(sessionId: string, event: StreamEvent): void {
     switch (event.type) {
       case 'text': {
+        // Complete assistant message — finalize any streaming message
+        this._store.updateStreamingAssistant(sessionId, event.content ?? '', false)
+
         const session = this._store.get(sessionId)
         if (!session) return
         this._broadcast('session:update', { sessionId, phase: session.phase })
+        break
+      }
+
+      case 'text_delta': {
+        this._store.updateStreamingAssistant(sessionId, event.content ?? '', true)
         break
       }
 
@@ -265,8 +273,17 @@ export class StreamAdapterManager {
           hook_event_name: 'Stop',
           session_id: sessionId,
           cwd: '',
-          payload: { last_assistant_message: event.content ?? '' },
+          payload: {},
         })
+
+        if (event.durationMs != null || event.inputTokens != null || event.costUsd != null) {
+          this._store.addResultSummary(sessionId, {
+            durationMs: event.durationMs,
+            inputTokens: event.inputTokens,
+            outputTokens: event.outputTokens,
+            costUsd: event.costUsd,
+          })
+        }
         break
       }
 
@@ -295,6 +312,63 @@ export class StreamAdapterManager {
         }).catch((err) => {
           console.error('[stream-adapter] permission handler error:', err)
         })
+        break
+      }
+
+      case 'session_state': {
+        const state = event.state
+        if (!state) break
+        if (state === 'idle') {
+          this._store.transition(this._store.get(sessionId)!, 'idle')
+        } else if (state === 'running') {
+          const session = this._store.get(sessionId)
+          const hasActiveTool = session?.chatItems.some(i => i.type === 'toolCall' && i.tool?.status === 'running')
+          this._store.transition(session!, hasActiveTool ? 'processing' : 'thinking')
+        } else if (state === 'requires_action') {
+          const hasPendingPerm = this._pendingPermissions.has(sessionId)
+          const session = this._store.get(sessionId)
+          this._store.transition(session!, hasPendingPerm ? 'waitingForApproval' : 'waitingForInput')
+        }
+        break
+      }
+
+      case 'tool_progress': {
+        if (event.toolUseId && event.elapsedSeconds != null) {
+          this._store.updateToolProgress(sessionId, event.toolUseId, event.elapsedSeconds)
+        }
+        break
+      }
+
+      case 'tool_summary': {
+        if (event.summary) {
+          this._store.addSystemMessage(sessionId, event.summary)
+        }
+        break
+      }
+
+      case 'system_status': {
+        const kind = event.statusKind
+        if (!kind) break
+        const messages: Record<string, string> = {
+          compacting: '正在压缩上下文...',
+          compacted: '上下文压缩完成',
+          api_retry: `API 重试中 (${event.attempt ?? '?'}/${event.maxRetries ?? '?'})...`,
+        }
+        this._store.addSystemStatus(sessionId, kind, messages[kind] ?? kind)
+        if (kind === 'compacting') {
+          const session = this._store.get(sessionId)
+          if (session) this._store.transition(session, 'compacting')
+        }
+        break
+      }
+
+      case 'rate_limit': {
+        const status = event.rateLimitStatus
+        const messages: Record<string, string> = {
+          allowed_warning: '接近速率限制',
+          rejected: '速率受限，等待恢复中...',
+        }
+        this._store.addSystemStatus(sessionId, 'rate_limit', messages[status ?? ''] ?? `速率限制: ${status}`)
         break
       }
 

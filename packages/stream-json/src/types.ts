@@ -2,11 +2,17 @@
 
 export type StreamEventType =
   | 'text'
+  | 'text_delta'
   | 'tool_use'
   | 'tool_result'
   | 'result'
   | 'thinking'
   | 'permission_request'
+  | 'session_state'
+  | 'tool_progress'
+  | 'tool_summary'
+  | 'rate_limit'
+  | 'system_status'
   | 'error'
   | 'exit'
 
@@ -24,6 +30,24 @@ export interface StreamEvent {
   signal?: string | null
   inputTokens?: number
   outputTokens?: number
+  // session_state
+  state?: 'idle' | 'running' | 'requires_action'
+  // system_status
+  statusKind?: 'compacting' | 'compacted' | 'api_retry'
+  attempt?: number
+  maxRetries?: number
+  delayMs?: number
+  // rate_limit
+  rateLimitStatus?: string
+  resetsAt?: number
+  // tool_progress
+  elapsedSeconds?: number
+  // tool_summary
+  summary?: string
+  // result statistics
+  durationMs?: number
+  durationApiMs?: number
+  costUsd?: number
 }
 
 // ═─ Session Options ────────────────────────────────────────────
