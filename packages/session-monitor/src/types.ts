@@ -80,7 +80,7 @@ export type ChatHistoryItem =
   | { id: string; type: 'interrupted'; timestamp: number }
   | { id: string; type: 'system'; content: string; timestamp: number }
   | { id: string; type: 'systemStatus'; statusKind: string; content: string; timestamp: number }
-  | { id: string; type: 'resultSummary'; durationMs?: number; inputTokens?: number; outputTokens?: number; costUsd?: number; timestamp: number }
+  | { id: string; type: 'resultSummary'; durationMs?: number; inputTokens?: number; outputTokens?: number; costUsd?: number; interrupted?: boolean; timestamp: number }
 
 // ═─ Session State ───────────────────────────────────────────
 

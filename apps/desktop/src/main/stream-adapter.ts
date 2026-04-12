@@ -276,6 +276,8 @@ export class StreamAdapterManager {
       case 'result': {
         this._cleanupPending(sessionId)
 
+        const interrupted = event.subtype === 'interrupted'
+
         this._store.process({
           hook_event_name: 'Stop',
           session_id: sessionId,
@@ -283,12 +285,13 @@ export class StreamAdapterManager {
           payload: {},
         })
 
-        if (event.durationMs != null || event.inputTokens != null || event.costUsd != null) {
+        if (event.durationMs != null || event.inputTokens != null || event.costUsd != null || interrupted) {
           this._store.addResultSummary(sessionId, {
             durationMs: event.durationMs,
             inputTokens: event.inputTokens,
             outputTokens: event.outputTokens,
             costUsd: event.costUsd,
+            interrupted,
           })
         }
         break

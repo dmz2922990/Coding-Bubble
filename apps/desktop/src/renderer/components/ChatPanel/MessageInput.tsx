@@ -62,11 +62,6 @@ export function MessageInput({ onSend, phase }: Props): React.JSX.Element {
           rows={1}
         />
       </div>
-      {isBusy && (
-        <div className="message-input__spinner">
-          <span className="message-input__spinner-dot" />
-        </div>
-      )}
       <div className="message-input__line" />
     </div>
   )

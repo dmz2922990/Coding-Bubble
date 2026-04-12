@@ -309,6 +309,7 @@ export class StreamSession {
       content: raw.result as string,
       sessionId: sid ?? this._sessionId ?? undefined,
       done: true,
+      subtype: raw.subtype as string | undefined,
       inputTokens: typeof usage?.input_tokens === 'number' ? usage.input_tokens : undefined,
       outputTokens: typeof usage?.output_tokens === 'number' ? usage.output_tokens : undefined,
       durationMs: typeof raw.duration_ms === 'number' ? raw.duration_ms : undefined,

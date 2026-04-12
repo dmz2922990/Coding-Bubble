@@ -48,6 +48,8 @@ export interface StreamEvent {
   durationMs?: number
   durationApiMs?: number
   costUsd?: number
+  // result subtype (e.g. "interrupted")
+  subtype?: string
 }
 
 // ═─ Session Options ────────────────────────────────────────────

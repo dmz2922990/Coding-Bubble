@@ -248,7 +248,7 @@ function MessageItem({ item }: { item: ChatItem }): React.JSX.Element {
       return <SystemStatusItem statusKind={item.statusKind ?? ''} content={item.content ?? ''} />
 
     case 'resultSummary':
-      return <ResultSummaryItem durationMs={item.durationMs} inputTokens={item.inputTokens} outputTokens={item.outputTokens} costUsd={item.costUsd} />
+      return <ResultSummaryItem durationMs={item.durationMs} inputTokens={item.inputTokens} outputTokens={item.outputTokens} costUsd={item.costUsd} interrupted={item.interrupted} />
 
     default:
       return null
@@ -316,10 +316,11 @@ function formatTokens(n?: number): string {
   return n.toLocaleString()
 }
 
-function ResultSummaryItem({ durationMs, inputTokens, outputTokens, costUsd }: {
-  durationMs?: number; inputTokens?: number; outputTokens?: number; costUsd?: number
+function ResultSummaryItem({ durationMs, inputTokens, outputTokens, costUsd, interrupted }: {
+  durationMs?: number; inputTokens?: number; outputTokens?: number; costUsd?: number; interrupted?: boolean
 }): React.JSX.Element {
   const parts: string[] = []
+  if (interrupted) parts.push('已中断')
   if (durationMs != null) parts.push(formatDuration(durationMs))
   const totalTokens = (inputTokens ?? 0) + (outputTokens ?? 0)
   if (totalTokens > 0) parts.push(`${formatTokens(totalTokens)} tokens`)
@@ -328,7 +329,7 @@ function ResultSummaryItem({ durationMs, inputTokens, outputTokens, costUsd }: {
   if (parts.length === 0) return null
 
   return (
-    <div className="chat-msg__result-summary">
+    <div className={`chat-msg__result-summary${interrupted ? ' chat-msg__result-summary--interrupted' : ''}`}>
       {parts.join(' · ')}
     </div>
   )

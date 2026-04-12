@@ -59,4 +59,5 @@ export interface ChatItem {
   statusKind?: string
   durationMs?: number
   costUsd?: number
+  interrupted?: boolean
 }

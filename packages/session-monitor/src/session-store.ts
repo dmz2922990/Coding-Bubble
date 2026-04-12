@@ -427,7 +427,7 @@ export class SessionStore {
     this._publish('session:history', { sessionId, items: session.chatItems })
   }
 
-  addResultSummary(sessionId: string, data: { durationMs?: number; inputTokens?: number; outputTokens?: number; costUsd?: number }): void {
+  addResultSummary(sessionId: string, data: { durationMs?: number; inputTokens?: number; outputTokens?: number; costUsd?: number; interrupted?: boolean }): void {
     const session = this._sessions.get(sessionId)
     if (!session) return
 
@@ -438,6 +438,7 @@ export class SessionStore {
       inputTokens: data.inputTokens,
       outputTokens: data.outputTokens,
       costUsd: data.costUsd,
+      interrupted: data.interrupted,
       timestamp: now()
     }
     session.chatItems.push(item)

@@ -1280,25 +1280,6 @@
   opacity: 0.4;
 }
 
-.message-input__spinner {
-  display: flex;
-  justify-content: center;
-  padding: 4px 0 6px;
-}
-
-.message-input__spinner-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #4fc3f7;
-  animation: message-input-pulse 1.2s ease-in-out infinite;
-}
-
-@keyframes message-input-pulse {
-  0%, 100% { opacity: 0.3; transform: scale(0.8); }
-  50% { opacity: 1; transform: scale(1.2); }
-}
-
 /* ── Tool Elapsed Time ────────────────────────────────────── */
 
 .chat-msg__tool-elapsed {
@@ -1356,10 +1337,10 @@
 /* ── Result Summary ──────────────────────────────────────── */
 
 .chat-msg__result-summary {
-  display: flex;
+  display: inline-flex;
+  align-self: flex-start;
   align-items: center;
-  justify-content: center;
-  padding: 6px 12px;
+  padding: 4px 10px;
   margin: 4px 0;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.03);
@@ -1367,4 +1348,8 @@
   font-size: 11px;
   font-family: 'SF Mono', Menlo, monospace;
   letter-spacing: 0.3px;
+}
+
+.chat-msg__result-summary--interrupted {
+  color: rgba(244, 67, 54, 0.7);
 }
