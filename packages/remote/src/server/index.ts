@@ -105,7 +105,8 @@ async function main(): Promise<void> {
         break
 
       case 'list_directory': {
-        const dirPath = message.path ?? os.homedir()
+        const rawPath = message.path
+        const dirPath = (!rawPath || rawPath === '~') ? os.homedir() : rawPath
         try {
           fs.accessSync(dirPath, fs.constants.R_OK)
           const entries = listDirectory(dirPath)

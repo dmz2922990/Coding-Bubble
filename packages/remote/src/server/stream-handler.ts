@@ -38,6 +38,8 @@ export class StreamHandler {
         permissionMode: message.permissionMode,
       }
 
+      let initFired = false
+
       // Forward all stream events to client
       streamSession.on('event', (event: StreamEvent) => {
         this._server.send({
@@ -45,6 +47,16 @@ export class StreamHandler {
           sessionId: internalId,
           event,
         })
+
+        // Send stream_create_result after session is initialized
+        if (!initFired && event.type === 'session_init') {
+          initFired = true
+          this._server.send({
+            type: 'stream_create_result',
+            requestId: message.requestId,
+            sessionId: internalId,
+          })
+        }
       })
 
       streamSession.spawn(options)
@@ -55,19 +67,24 @@ export class StreamHandler {
         permissionMode: message.permissionMode ?? 'default',
       })
 
-      const result: StreamCreateResultMessage = {
-        type: 'stream_create_result',
-        requestId: message.requestId,
-        sessionId: internalId,
-      }
-      this._server.send(result)
+      // Fallback: if process exits before init, send error
+      streamSession.on('event', (event: StreamEvent) => {
+        if (!initFired && event.type === 'exit') {
+          initFired = true
+          this._server.send({
+            type: 'stream_create_result',
+            requestId: message.requestId,
+            error: 'Process exited before initialization',
+          })
+          this._sessions.delete(internalId)
+        }
+      })
     } catch (err) {
-      const result: StreamCreateResultMessage = {
+      this._server.send({
         type: 'stream_create_result',
         requestId: message.requestId,
         error: (err as Error).message,
-      }
-      this._server.send(result)
+      })
     }
   }
 

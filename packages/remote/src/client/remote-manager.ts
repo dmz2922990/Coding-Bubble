@@ -37,10 +37,10 @@ export class RemoteManager {
     pendingRequests: Map<string, PendingRequest<unknown>>
   }>()
 
-  private _messageHandler: ServerMessageHandler | null = null
+  private _messageHandlers: ServerMessageHandler[] = []
 
   onMessage(handler: ServerMessageHandler): void {
-    this._messageHandler = handler
+    this._messageHandlers.push(handler)
   }
 
   getConnections(): ConnectionInfo[] {
@@ -190,8 +190,10 @@ export class RemoteManager {
         }
       }
 
-      // Dispatch to handler
-      this._messageHandler?.(serverId, msg)
+      // Dispatch to handlers
+      for (const handler of this._messageHandlers) {
+        handler(serverId, msg)
+      }
     })
 
     ws.on('close', () => {
