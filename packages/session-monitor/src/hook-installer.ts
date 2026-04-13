@@ -61,7 +61,7 @@ export function installHooks(): void {
 
   const hooks: Record<string, unknown[]> = (settings.hooks as Record<string, unknown[]>) ?? {}
 
-  const command = `node ${resolveHookPath()}`
+  const command = `node "${resolveHookPath()}"`
   for (const event of HOOK_EVENTS) {
     const hookEntry = {
       hooks: [{
