@@ -35,7 +35,11 @@ const BUBBLE_HOOK_ID = 'claude-bubble-state'
 
 function loadHookScript(): string {
   const candidates = [
+    // Production: bundled via electron-builder extraResources
+    join(process.resourcesPath ?? '', 'claude-bubble-state.js'),
+    // Dev: resources next to out/main/
     join(__dirname, '..', 'resources', 'claude-bubble-state.js'),
+    // Dev: workspace package location
     join(__dirname, '..', '..', '..', '..', 'packages', 'session-monitor', 'resources', 'claude-bubble-state.js')
   ]
   for (const p of candidates) {

@@ -29,6 +29,10 @@
       {
         "from": "resources/tray-iconTemplate@2x.png",
         "to": "tray-iconTemplate@2x.png"
+      },
+      {
+        "from": "../../packages/session-monitor/resources/claude-bubble-state.js",
+        "to": "claude-bubble-state.js"
       }
     ],
     "mac": {
