@@ -1,0 +1,27 @@
+{
+  "name": "@coding-bubble/remote",
+  "version": "0.0.1",
+  "private": true,
+  "main": "src/client/index.ts",
+  "types": "src/client/index.ts",
+  "bin": {
+    "coding-bubble-remote": "src/server/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsup",
+    "server": "npx tsx src/server/index.ts"
+  },
+  "dependencies": {
+    "@coding-bubble/session-monitor": "workspace:*",
+    "@coding-bubble/stream-json": "workspace:*",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/ws": "^8.5.0",
+    "@yao-pkg/pkg": "^6.14.2",
+    "tsup": "^8.5.1",
+    "typescript": "^5.4.0"
+  }
+}

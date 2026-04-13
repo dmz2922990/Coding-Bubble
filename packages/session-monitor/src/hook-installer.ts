@@ -33,7 +33,15 @@ const HOOK_EVENTS = [
 
 const BUBBLE_HOOK_ID = 'claude-bubble-state'
 
+// Injected at build time by tsup for standalone bundles
+declare const __HOOK_SCRIPT__: string | undefined
+
 function loadHookScript(): string {
+  // Standalone bundle: hook script inlined as string constant
+  if (typeof __HOOK_SCRIPT__ !== 'undefined' && __HOOK_SCRIPT__) {
+    return __HOOK_SCRIPT__
+  }
+
   const candidates = [
     // Production: bundled via electron-builder extraResources
     join(process.resourcesPath ?? '', 'claude-bubble-state.js'),

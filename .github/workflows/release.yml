@@ -5,23 +5,88 @@ on:
     tags: ['v*']
 
 jobs:
-  build-mac:
-    runs-on: macos-latest
+  build-remote-linux:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
-
       - run: pnpm install
+      - run: pnpm --filter @coding-bubble/remote build
+      - name: Package standalone binary
+        run: |
+          cd packages/remote
+          npx pkg dist/server.js -t node20-linux-x64 -o dist/bin/coding-bubble-remote
+          chmod +x dist/bin/coding-bubble-remote-linux-x64
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: remote-linux-x64
+          path: packages/remote/dist/bin/coding-bubble-remote-linux-x64
 
+  build-remote-win:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm --filter @coding-bubble/remote build
+      - name: Package standalone binary
+        run: |
+          cd packages/remote
+          npx pkg dist/server.js -t node20-win-x64 -o dist/bin/coding-bubble-remote.exe
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: remote-win-x64
+          path: packages/remote/dist/bin/coding-bubble-remote.exe
+
+  build-remote-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm --filter @coding-bubble/remote build
+      - name: Package standalone binary (x64)
+        run: |
+          cd packages/remote
+          npx pkg dist/server.js -t node20-mac-x64 -o dist/bin/coding-bubble-remote-mac-x64
+      - name: Package standalone binary (arm64)
+        run: |
+          cd packages/remote
+          npx pkg dist/server.js -t node20-mac-arm64 -o dist/bin/coding-bubble-remote-mac-arm64
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: remote-mac
+          path: |
+            packages/remote/dist/bin/coding-bubble-remote-mac-x64
+            packages/remote/dist/bin/coding-bubble-remote-mac-arm64
+
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install
       - name: Build & Package (macOS)
         run: pnpm --filter @coding-bubble/desktop run package:mac
-
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -34,19 +99,14 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
-
       - run: pnpm install
-
       - name: Build & Package (Windows)
         run: pnpm --filter @coding-bubble/desktop run package:win
-
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -55,7 +115,7 @@ jobs:
             apps/desktop/release/*.exe
 
   publish:
-    needs: [build-mac, build-win]
+    needs: [build-mac, build-win, build-remote-linux, build-remote-win, build-remote-mac]
     runs-on: ubuntu-latest
     permissions:
       contents: write

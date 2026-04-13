@@ -65,7 +65,7 @@ export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onA
   }, [])
 
   useEffect(() => {
-    if (session.source !== 'stream') return
+    if (session.source !== 'stream' && session.source !== 'remote-stream') return
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
         e.preventDefault()

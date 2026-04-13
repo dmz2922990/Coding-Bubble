@@ -5,7 +5,7 @@ export interface TabItem {
   closable?: boolean
   content: React.ReactNode
   phase?: SessionPhaseType
-  source?: 'hook' | 'stream'
+  source?: 'hook' | 'stream' | 'remote-hook' | 'remote-stream'
 }
 
 /** Functions exposed by the tab manager */
@@ -48,7 +48,7 @@ export interface SessionInfo {
   projectName: string
   cwd: string
   phase: SessionPhaseType
-  source?: 'hook' | 'stream'
+  source?: 'hook' | 'stream' | 'remote-hook' | 'remote-stream'
   lastActivity: number
   toolName?: string
   toolInput?: Record<string, unknown> | null

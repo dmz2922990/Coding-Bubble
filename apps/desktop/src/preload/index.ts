@@ -86,6 +86,41 @@ contextBridge.exposeInMainWorld('electronAPI', {
       return () => ipcRenderer.removeListener('session:update', cb)
     }
   },
+  /** Remote server management */
+  remote: {
+    connect: (serverId: string): Promise<void> =>
+      ipcRenderer.invoke('remote:connect', serverId),
+    disconnect: (serverId: string): Promise<void> =>
+      ipcRenderer.invoke('remote:disconnect', serverId),
+    listServers: (): Promise<unknown[]> =>
+      ipcRenderer.invoke('remote:list-servers'),
+    addServer: (config: Record<string, unknown>): Promise<void> =>
+      ipcRenderer.invoke('remote:add-server', config),
+    removeServer: (serverId: string): Promise<void> =>
+      ipcRenderer.invoke('remote:remove-server', serverId),
+    listDirectory: (serverId: string, path?: string): Promise<unknown[]> =>
+      ipcRenderer.invoke('remote:list-directory', serverId, path),
+    stream: {
+      create: (serverId: string, cwd: string): Promise<{ sessionId?: string; error?: string }> =>
+        ipcRenderer.invoke('remote:stream:create', serverId, cwd),
+      send: (sessionId: string, text: string): Promise<void> =>
+        ipcRenderer.invoke('remote:stream:send', sessionId, text),
+      approve: (sessionId: string): Promise<void> =>
+        ipcRenderer.invoke('remote:stream:approve', sessionId),
+      deny: (sessionId: string, reason?: string): Promise<void> =>
+        ipcRenderer.invoke('remote:stream:deny', sessionId, reason),
+      alwaysAllow: (sessionId: string): Promise<void> =>
+        ipcRenderer.invoke('remote:stream:always-allow', sessionId),
+      interrupt: (sessionId: string): Promise<void> =>
+        ipcRenderer.invoke('remote:stream:interrupt', sessionId),
+      destroy: (sessionId: string): Promise<void> =>
+        ipcRenderer.invoke('remote:stream:destroy', sessionId),
+    },
+    hook: {
+      closeSession: (sessionId: string): Promise<void> =>
+        ipcRenderer.invoke('remote:hook:close-session', sessionId),
+    },
+  },
   /** Directory picker dialog */
   showOpenDialog: (options: Record<string, unknown>): Promise<unknown> =>
     ipcRenderer.invoke('dialog:showOpenDialog', options),

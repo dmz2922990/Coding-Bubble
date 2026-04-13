@@ -114,7 +114,7 @@ export interface SessionState {
   projectName: string
   phase: SessionPhase
   chatItems: ChatHistoryItem[]
-  source: 'hook' | 'stream'
+  source: 'hook' | 'stream' | 'remote-hook' | 'remote-stream'
   pid?: number
   tty?: string
   lastActivity: number

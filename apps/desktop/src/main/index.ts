@@ -2,6 +2,8 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, screen, Tray } 
 import { join } from 'path'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import type { HookResponse, Intervention } from '@coding-bubble/session-monitor'
+import { RemoteManager, RemoteHookAdapter, RemoteStreamAdapter } from '@coding-bubble/remote'
+import type { RemoteServerConfig } from '@coding-bubble/remote'
 import { formatToolDetail } from './format-tool-detail'
 
 let ballWin: BrowserWindow | null = null
@@ -411,6 +413,12 @@ import { StreamAdapterManager } from './stream-adapter'
 
 let sessionStore: SessionStore | null = null
 let streamManager: StreamAdapterManager | null = null
+let remoteManager: RemoteManager | null = null
+let remoteHookAdapter: RemoteHookAdapter | null = null
+let remoteStreamAdapter: RemoteStreamAdapter | null = null
+
+/** Map internal sessionId -> serverId for remote sessions */
+const remoteSessionServerMap = new Map<string, string>()
 const terminalJumper = new TerminalJumper()
 const jsonlWatchers = new Map<string, ReturnType<typeof watchJsonlFile>>()
 
@@ -649,6 +657,126 @@ ipcMain.handle('stream:interrupt', async (_event, sessionId: string) => {
   streamManager.interrupt(sessionId)
 })
 
+// ── IPC: Remote Management ──────────────────────────────────────
+
+ipcMain.handle('remote:connect', async (_event, serverId: string) => {
+  remoteManager?.connect(serverId)
+})
+
+ipcMain.handle('remote:disconnect', async (_event, serverId: string) => {
+  remoteManager?.disconnect(serverId)
+})
+
+ipcMain.handle('remote:list-servers', async () => {
+  return remoteManager?.getConnections() ?? []
+})
+
+ipcMain.handle('remote:add-server', async (_event, config: Record<string, unknown>) => {
+  if (!remoteManager) return
+  const serverConfig = config as unknown as RemoteServerConfig
+  remoteManager.addServer(serverConfig)
+  // Persist to config
+  const conf = readConfig()
+  const servers = (conf.remoteServers as RemoteServerConfig[] | undefined) ?? []
+  const existing = servers.findIndex(s => s.id === serverConfig.id)
+  if (existing >= 0) {
+    servers[existing] = serverConfig
+  } else {
+    servers.push(serverConfig)
+  }
+  conf.remoteServers = servers
+  writeConfig(conf)
+})
+
+ipcMain.handle('remote:remove-server', async (_event, serverId: string) => {
+  if (!remoteManager) return
+  remoteManager.removeServer(serverId)
+  // Persist to config
+  const conf = readConfig()
+  const servers = ((conf.remoteServers as RemoteServerConfig[] | undefined) ?? [])
+    .filter(s => s.id !== serverId)
+  conf.remoteServers = servers
+  writeConfig(conf)
+})
+
+ipcMain.handle('remote:list-directory', async (_event, serverId: string, dirPath?: string) => {
+  if (!remoteManager) return []
+  return remoteManager.listDirectory(serverId, dirPath)
+})
+
+ipcMain.handle('remote:stream:create', async (_event, serverId: string, cwd: string) => {
+  if (!remoteStreamAdapter) return { error: 'Remote not initialized' }
+  try {
+    const sessionId = await remoteStreamAdapter.create(serverId, cwd)
+    remoteSessionServerMap.set(sessionId, serverId)
+    return { sessionId }
+  } catch (err) {
+    return { error: (err as Error).message }
+  }
+})
+
+ipcMain.handle('remote:stream:send', async (_event, sessionId: string, text: string) => {
+  if (!remoteStreamAdapter) return
+  const serverId = remoteSessionServerMap.get(sessionId)
+  if (!serverId) return
+  remoteStreamAdapter.send(serverId, sessionId, text)
+})
+
+ipcMain.handle('remote:stream:approve', async (_event, sessionId: string) => {
+  if (!remoteStreamAdapter) return
+  const serverId = remoteSessionServerMap.get(sessionId)
+  if (!serverId) return
+  const session = sessionStore?.get(sessionId)
+  const requestId = session?.phase.type === 'waitingForApproval'
+    ? (session.phase as { context: { toolUseId: string } }).context?.toolUseId
+    : undefined
+  if (requestId) remoteStreamAdapter.approvePermission(serverId, sessionId, requestId)
+})
+
+ipcMain.handle('remote:stream:deny', async (_event, sessionId: string, reason?: string) => {
+  if (!remoteStreamAdapter) return
+  const serverId = remoteSessionServerMap.get(sessionId)
+  if (!serverId) return
+  const session = sessionStore?.get(sessionId)
+  const requestId = session?.phase.type === 'waitingForApproval'
+    ? (session.phase as { context: { toolUseId: string } }).context?.toolUseId
+    : undefined
+  if (requestId) remoteStreamAdapter.denyPermission(serverId, sessionId, requestId, reason)
+})
+
+ipcMain.handle('remote:stream:always-allow', async (_event, sessionId: string) => {
+  if (!remoteStreamAdapter) return
+  const serverId = remoteSessionServerMap.get(sessionId)
+  if (!serverId) return
+  const session = sessionStore?.get(sessionId)
+  const requestId = session?.phase.type === 'waitingForApproval'
+    ? (session.phase as { context: { toolUseId: string } }).context?.toolUseId
+    : undefined
+  if (requestId) remoteStreamAdapter.alwaysAllowPermission(serverId, sessionId, requestId)
+})
+
+ipcMain.handle('remote:stream:interrupt', async (_event, sessionId: string) => {
+  if (!remoteStreamAdapter) return
+  const serverId = remoteSessionServerMap.get(sessionId)
+  if (!serverId) return
+  remoteStreamAdapter.interrupt(serverId, sessionId)
+})
+
+ipcMain.handle('remote:stream:destroy', async (_event, sessionId: string) => {
+  if (!remoteStreamAdapter) return
+  const serverId = remoteSessionServerMap.get(sessionId)
+  if (!serverId) return
+  remoteSessionServerMap.delete(sessionId)
+  await remoteStreamAdapter.destroy(serverId, sessionId)
+})
+
+ipcMain.handle('remote:hook:close-session', async (_event, sessionId: string) => {
+  if (!remoteHookAdapter) return
+  const serverId = remoteSessionServerMap.get(sessionId)
+  if (!serverId) return
+  remoteHookAdapter.closeSession(serverId, sessionId)
+})
+
 // ── IPC: Bubble Navigation ─────────────────────────────────
 
 ipcMain.on('panel:navigate-to-session', (_event, sessionId: string) => {
@@ -718,6 +846,19 @@ app.whenReady().then(() => {
   sessionStore.onNotificationChange(() => {
     bubbleControllerSync()
   })
+
+  // Initialize remote manager
+  remoteManager = new RemoteManager()
+  remoteHookAdapter = new RemoteHookAdapter(remoteManager, sessionStore)
+  remoteStreamAdapter = new RemoteStreamAdapter(remoteManager, sessionStore)
+  remoteHookAdapter.register()
+  remoteStreamAdapter.register()
+
+  // Connect to configured remote servers
+  const remoteServers = (readConfig().remoteServers as RemoteServerConfig[]) ?? []
+  for (const serverConfig of remoteServers) {
+    remoteManager.addServer(serverConfig)
+  }
 
   createSocketServer({
     isManagedPid: (pid: number) => streamManager?.isManagedPid(pid) ?? false,
@@ -826,4 +967,5 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   streamManager?.closeAll()
+  remoteManager?.close()
 })

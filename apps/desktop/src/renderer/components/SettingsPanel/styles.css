@@ -185,3 +185,146 @@
 .settings-panel__save:active {
   transform: scale(0.97);
 }
+
+/* ── Remote Server Card ──────────────────────────────── */
+
+.remote-server-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(50, 50, 56, 0.5);
+  margin-bottom: 8px;
+}
+
+.remote-server-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.remote-server-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.remote-server-card__status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.remote-server-card__status--connected {
+  background: #4caf50;
+  box-shadow: 0 0 4px rgba(76, 175, 80, 0.5);
+}
+
+.remote-server-card__status--connecting {
+  background: #ff9800;
+  animation: status-pulse 1.2s ease-in-out infinite;
+}
+
+.remote-server-card__status--disconnected {
+  background: #666;
+}
+
+@keyframes status-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.remote-server-card__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f0f0f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remote-server-card__address {
+  font-size: 11px;
+  color: rgba(240, 240, 240, 0.4);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.remote-server-card__state {
+  font-size: 11px;
+  color: rgba(240, 240, 240, 0.5);
+}
+
+.remote-server-card__actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.remote-server-card__btn {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.remote-server-card__btn:hover {
+  opacity: 0.85;
+}
+
+.remote-server-card__btn--connect {
+  background: rgba(79, 195, 247, 0.2);
+  color: #4fc3f7;
+}
+
+.remote-server-card__btn--disconnect {
+  background: rgba(255, 152, 0, 0.2);
+  color: #ff9800;
+}
+
+.remote-server-card__btn--remove {
+  background: rgba(244, 67, 54, 0.15);
+  color: #f44336;
+}
+
+/* ── Remote Server Form ──────────────────────────────── */
+
+.remote-server-form {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.remote-server-form__row {
+  display: flex;
+  gap: 8px;
+}
+
+.remote-server-form__add-btn {
+  width: 100%;
+  padding: 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(240, 240, 240, 0.5);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-top: 4px;
+}
+
+.remote-server-form__add-btn:hover:not(:disabled) {
+  border-color: rgba(79, 195, 247, 0.5);
+  color: #4fc3f7;
+  background: rgba(79, 195, 247, 0.05);
+}
+
+.remote-server-form__add-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}

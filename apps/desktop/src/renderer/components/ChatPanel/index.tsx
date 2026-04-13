@@ -49,7 +49,7 @@ export function ChatPanel(): React.JSX.Element {
             projectName: s.projectName as string,
             cwd: s.cwd as string,
             phase: phase as SessionInfo['phase'],
-            source: (s.source as 'hook' | 'stream') ?? 'hook',
+            source: (s.source as 'hook' | 'stream' | 'remote-hook' | 'remote-stream') ?? 'hook',
             lastActivity: s.lastActivity as number,
             toolName: toolName || undefined,
             toolInput: toolInput || undefined,
@@ -135,7 +135,7 @@ export function ChatPanel(): React.JSX.Element {
     // Add/update tabs for active sessions
     for (const id of sessionIds) {
       const info = sessions.get(id)!
-      const isStream = info.session.source === 'stream'
+      const isStream = info.session.source === 'stream' || info.session.source === 'remote-stream'
       const tabTitle = info.session.projectName
       const existing = tabManager.tabs.find(t => t.id === id)
       if (!existing) {
@@ -159,7 +159,7 @@ export function ChatPanel(): React.JSX.Element {
   const handleApprove = useCallback(() => {
     if (tabManager.activeTabId !== 'chat') {
       const session = sessions.get(tabManager.activeTabId)
-      if (session?.session.source === 'stream') {
+      if (session?.session.source === 'stream' || session?.session.source === 'remote-stream') {
         window.electronAPI.stream.approve(tabManager.activeTabId)
       } else {
         window.electronAPI.session.approve(tabManager.activeTabId)
@@ -170,7 +170,7 @@ export function ChatPanel(): React.JSX.Element {
   const handleDeny = useCallback(() => {
     if (tabManager.activeTabId !== 'chat') {
       const session = sessions.get(tabManager.activeTabId)
-      if (session?.session.source === 'stream') {
+      if (session?.session.source === 'stream' || session?.session.source === 'remote-stream') {
         window.electronAPI.stream.deny(tabManager.activeTabId)
       } else {
         window.electronAPI.session.deny(tabManager.activeTabId)
@@ -181,7 +181,7 @@ export function ChatPanel(): React.JSX.Element {
   const handleAlwaysAllow = useCallback(() => {
     if (tabManager.activeTabId !== 'chat') {
       const session = sessions.get(tabManager.activeTabId)
-      if (session?.session.source === 'stream') {
+      if (session?.session.source === 'stream' || session?.session.source === 'remote-stream') {
         window.electronAPI.stream.alwaysAllow(tabManager.activeTabId)
       } else {
         window.electronAPI.session.alwaysAllow(tabManager.activeTabId)
@@ -192,7 +192,7 @@ export function ChatPanel(): React.JSX.Element {
   const handleAnswer = useCallback((answer: string) => {
     if (tabManager.activeTabId !== 'chat') {
       const session = sessions.get(tabManager.activeTabId)
-      if (session?.session.source === 'stream') {
+      if (session?.session.source === 'stream' || session?.session.source === 'remote-stream') {
         window.electronAPI.stream.answer(tabManager.activeTabId, answer)
       } else {
         window.electronAPI.session.answer(tabManager.activeTabId, answer)
@@ -212,6 +212,14 @@ export function ChatPanel(): React.JSX.Element {
     }
   }, [loadSessions])
 
+  // Remote stream session creation
+  const handleCreateRemoteStreamSession = useCallback(async (serverId: string, cwd: string) => {
+    const result = await window.electronAPI.remote.stream.create(serverId, cwd)
+    if (result?.sessionId) {
+      loadSessions()
+    }
+  }, [loadSessions])
+
   // Stream session message send
   const handleSendMessage = useCallback((text: string) => {
     if (tabManager.activeTabId && tabManager.activeTabId !== 'chat') {
@@ -222,7 +230,7 @@ export function ChatPanel(): React.JSX.Element {
   // Stream session close on tab close
   const handleTabClose = useCallback((id: string) => {
     const session = sessions.get(id)
-    if (session?.session.source === 'stream') {
+    if (session?.session.source === 'stream' || session?.session.source === 'remote-stream') {
       const confirmed = window.confirm('确定断开该流式会话？')
       if (!confirmed) return
       window.electronAPI.stream.destroy(id)
@@ -241,6 +249,7 @@ export function ChatPanel(): React.JSX.Element {
           onSessionClick={handleSessionClick}
           onJumpToTerminal={handleJumpToTerminal}
           onCreateStreamSession={handleCreateStreamSession}
+          onCreateRemoteStreamSession={handleCreateRemoteStreamSession}
           onDestroyStream={handleTabClose}
         />
       )
@@ -249,7 +258,7 @@ export function ChatPanel(): React.JSX.Element {
     const sessionData = sessions.get(tabManager.activeTabId)
     if (sessionData) {
       const items = sessionItems.get(tabManager.activeTabId) ?? []
-      const isStream = sessionData.session.source === 'stream'
+      const isStream = sessionData.session.source === 'stream' || sessionData.session.source === 'remote-stream'
       return (
         <>
           <SessionTab
