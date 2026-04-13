@@ -106,6 +106,8 @@
 .notification-bubble__status {
   font-size: 11px;
   font-weight: 500;
+  /* Emoji support across platforms */
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
 }
 
 .notification-bubble__overflow {
