@@ -401,7 +401,7 @@
   justify-content: center;
   gap: 6px;
   margin: 8px 12px 12px;
-  padding: 10px 0;
+  padding: 10px 16px;
   border: 1px dashed rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   background: transparent;
@@ -410,6 +410,8 @@
   cursor: pointer;
   transition: all 0.15s ease;
   flex-shrink: 0;
+  /* Ensure minimum height for text rendering */
+  min-height: 36px;
 }
 
 .session-list__create-btn:hover {
