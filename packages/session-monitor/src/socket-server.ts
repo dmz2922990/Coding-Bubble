@@ -1,8 +1,17 @@
 import * as net from 'net'
 import * as fs from 'fs'
+import * as os from 'os'
+import * as path from 'path'
 import type { HookEvent, HookResponse } from './types'
 
-const DEFAULT_SOCKET_PATH = '/tmp/claude-bubble.sock'
+function getDefaultSocketPath(): string {
+  if (process.platform === 'win32') {
+    return '\\\\.\\pipe\\claude-bubble'
+  }
+  return path.join(os.tmpdir(), 'claude-bubble.sock')
+}
+
+const DEFAULT_SOCKET_PATH = getDefaultSocketPath()
 
 /**
  * Tool Use ID Cache

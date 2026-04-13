@@ -7,7 +7,7 @@ export function resolveClaudeDir(): string {
 }
 
 export function resolveHookPath(): string {
-  return join(resolveClaudeDir(), 'hooks', 'claude-bubble-state.py')
+  return join(resolveClaudeDir(), 'hooks', 'claude-bubble-state.js')
 }
 
 export function resolveSettingsPath(): string {
@@ -33,14 +33,10 @@ const HOOK_EVENTS = [
 
 const BUBBLE_HOOK_ID = 'claude-bubble-state'
 
-/**
- * Reads the Python hook script from the app's resource directory.
- * In production the app bundles this file; in dev we resolve relative to package.
- */
 function loadHookScript(): string {
   const candidates = [
-    join(__dirname, '..', 'resources', 'claude-bubble-state.py'),
-    join(__dirname, '..', '..', '..', '..', 'packages', 'session-monitor', 'resources', 'claude-bubble-state.py')
+    join(__dirname, '..', 'resources', 'claude-bubble-state.js'),
+    join(__dirname, '..', '..', '..', '..', 'packages', 'session-monitor', 'resources', 'claude-bubble-state.js')
   ]
   for (const p of candidates) {
     if (existsSync(p)) return readFileSync(p, 'utf-8')
@@ -61,7 +57,7 @@ export function installHooks(): void {
 
   const hooks: Record<string, unknown[]> = (settings.hooks as Record<string, unknown[]>) ?? {}
 
-  const command = `python3 ${resolveHookPath()}`
+  const command = `node ${resolveHookPath()}`
   for (const event of HOOK_EVENTS) {
     const hookEntry = {
       hooks: [{
@@ -69,7 +65,6 @@ export function installHooks(): void {
         command
       }]
     }
-    // Remove any previous bubble hook entries for this event
     const existing = (hooks[event] as Array<Record<string, unknown>>) ?? []
     hooks[event] = [
       ...existing.filter((e) => {
