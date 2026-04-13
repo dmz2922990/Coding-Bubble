@@ -69,7 +69,10 @@ export function installHooks(): void {
 
   const hooks: Record<string, unknown[]> = (settings.hooks as Record<string, unknown[]>) ?? {}
 
-  const command = `node "${resolveHookPath()}"`
+  const hookPath = resolveHookPath()
+  const command = process.platform === 'win32'
+    ? `node "${hookPath}"`
+    : `node ${hookPath}`
   for (const event of HOOK_EVENTS) {
     const hookEntry = {
       hooks: [{
