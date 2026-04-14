@@ -69,7 +69,11 @@ export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onA
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
         e.preventDefault()
-        window.electronAPI.stream.interrupt(session.sessionId)
+        if (session.source === 'remote-stream') {
+          window.electronAPI.remote.stream.interrupt(session.sessionId)
+        } else {
+          window.electronAPI.stream.interrupt(session.sessionId)
+        }
       }
     }
     document.addEventListener('keydown', handler)

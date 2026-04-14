@@ -223,9 +223,14 @@ export function ChatPanel(): React.JSX.Element {
   // Stream session message send
   const handleSendMessage = useCallback((text: string) => {
     if (tabManager.activeTabId && tabManager.activeTabId !== 'chat') {
-      window.electronAPI.stream.send(tabManager.activeTabId, text)
+      const session = sessions.get(tabManager.activeTabId)
+      if (session?.session.source === 'remote-stream') {
+        window.electronAPI.remote.stream.send(tabManager.activeTabId, text)
+      } else {
+        window.electronAPI.stream.send(tabManager.activeTabId, text)
+      }
     }
-  }, [tabManager.activeTabId])
+  }, [tabManager.activeTabId, sessions])
 
   // Stream session close on tab close
   const handleTabClose = useCallback((id: string) => {
