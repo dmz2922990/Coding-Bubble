@@ -1112,9 +1112,7 @@ app.whenReady().then(() => {
   // Load notification auto-close config from persisted config
   const defaultAutoClose: NotificationAutoCloseConfig = { approval: 0, error: 30, input: 15, done: 15 }
   const savedAutoClose = readConfig().notificationAutoClose as NotificationAutoCloseConfig | undefined
-  if (savedAutoClose) {
-    sessionStore.updateNotificationConfig({ ...defaultAutoClose, ...savedAutoClose })
-  }
+  sessionStore.updateNotificationConfig(savedAutoClose ? { ...defaultAutoClose, ...savedAutoClose } : defaultAutoClose)
 
   streamManager = new StreamAdapterManager({
     sessionStore,

@@ -72,6 +72,16 @@ export class SessionStore {
 
   updateNotificationConfig(config: NotificationAutoCloseConfig): void {
     this._notificationConfig = { ...config }
+    // Refresh autoCloseMs for all existing notifications
+    let changed = false
+    for (const [sessionId, notification] of this._notifications) {
+      const newMs = config[notification.type] * 1000
+      if (notification.autoCloseMs !== newMs) {
+        notification.autoCloseMs = newMs
+        changed = true
+      }
+    }
+    if (changed) this._notifyNotificationChange()
   }
 
   setInitMetadata(sessionId: string, metadata: InitMetadata): void {
