@@ -22,6 +22,7 @@ export type SessionPhaseType =
   | 'idle'
   | 'thinking'
   | 'processing'
+  | 'juggling'
   | 'done'
   | 'error'
   | 'waitingForInput'

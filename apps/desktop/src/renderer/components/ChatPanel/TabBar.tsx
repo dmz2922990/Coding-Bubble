@@ -5,7 +5,8 @@ import './TabBar.css'
 const TAB_PHASE_COLORS: Record<SessionPhaseType, string> = {
   idle: '#888',
   thinking: '#ab47bc',
-  processing: '#4caf50',
+  processing: '#2196f3',
+  juggling: '#ab47bc',
   done: '#66bb6a',
   error: '#f44336',
   waitingForInput: '#78909c',

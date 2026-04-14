@@ -6,6 +6,7 @@ const PHASE_LABELS: Record<string, string> = {
   idle: '空闲',
   thinking: '思考中',
   processing: '处理中',
+  juggling: '子任务中',
   done: '已完成',
   error: '出错',
   waitingForInput: '等待输入',
@@ -17,7 +18,8 @@ const PHASE_LABELS: Record<string, string> = {
 const PHASE_COLORS: Record<string, string> = {
   idle: '#888',
   thinking: '#ab47bc',
-  processing: '#4caf50',
+  processing: '#2196f3',
+  juggling: '#ab47bc',
   done: '#66bb6a',
   error: '#f44336',
   waitingForInput: '#78909c',

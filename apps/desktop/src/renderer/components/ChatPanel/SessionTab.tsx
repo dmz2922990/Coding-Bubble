@@ -16,6 +16,7 @@ const PHASE_LABELS: Record<string, string> = {
   idle: '空闲',
   thinking: '思考中',
   processing: '处理中',
+  juggling: '子任务中',
   done: '已完成',
   error: '出错',
   waitingForInput: '等待输入',

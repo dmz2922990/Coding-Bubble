@@ -148,7 +148,11 @@ body,
 }
 
 .ball__status-dot--processing {
-  background: #4caf50;
+  background: #2196f3;
+}
+
+.ball__status-dot--juggling {
+  background: #ab47bc;
 }
 
 .ball__status-dot--done {
