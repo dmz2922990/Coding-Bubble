@@ -12,6 +12,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setIgnoreMouseEvents: (ignore: boolean): void => {
     ipcRenderer.send('set-ignore-mouse-events', ignore)
   },
+  /** Lock click-through off for reliable double-click */
+  holdClickable: (): void => {
+    ipcRenderer.send('ball:hold-clickable')
+  },
   /** 打开对话面板 */
   openPanel: (): void => { ipcRenderer.send('panel:open') },
   /** 右键上下文菜单 */

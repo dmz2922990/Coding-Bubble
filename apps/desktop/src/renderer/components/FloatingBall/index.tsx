@@ -178,6 +178,7 @@ export function FloatingBall(): React.JSX.Element {
       movedRef.current = false
       isDraggingRef.current = true
       window.electronAPI.dragStart()
+      window.electronAPI.holdClickable()
 
       const onMove = (): void => {
         movedRef.current = true

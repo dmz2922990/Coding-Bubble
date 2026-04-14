@@ -83,29 +83,39 @@ function createBallWindow(): void {
   // 透明区域点击穿透，forward: true 保留 mousemove 以触发 mouseenter/leave
   ballWin.setIgnoreMouseEvents(true, { forward: true })
 
-  // ── 定时器补偿：系统拖拽(drag-and-drop)期间 forward 不转发 drag 事件，
-  //    需要 polling 检测光标是否在球图标区域上方，临时关闭穿透以接收 drop ──
-  let pollIgnoring = true // 当前 main 认为的穿透状态
-  const POLL_INTERVAL = 80
+  // ── Polling: detect cursor over ball icon area, toggle click-through ──
+  // macOS: setIgnoreMouseEvents(true, { forward: true }) forwards mousemove,
+  //        so mouseenter/mouseleave handle most cases. Polling is a backup.
+  // Windows: { forward: true } has no effect, so polling is the primary mechanism.
+  let pollIgnoring = true
+  let holdNonIgnoringUntil = 0 // Lock click-through off after mousedown for reliable double-click
+  const POLL_INTERVAL = 20
   const BALL_SIZE = 56
   const pollTimer = setInterval(() => {
     if (!ballWin || ballWin.isDestroyed()) return
+    const now = Date.now()
     const cursor = screen.getCursorScreenPoint()
     const bounds = ballWin.getBounds()
-    // 球图标位于窗口底部居中
+    // Ball icon is at bottom center of window
     const ballCenterX = bounds.x + Math.round(bounds.width / 2)
     const ballCenterY = bounds.y + bounds.height - 8 - Math.round(BALL_SIZE / 2)
     const dx = cursor.x - ballCenterX
     const dy = cursor.y - ballCenterY
     const inBall = dx * dx + dy * dy <= (BALL_SIZE / 2 + 4) * (BALL_SIZE / 2 + 4)
-    if (inBall && pollIgnoring) {
+    if ((inBall || now < holdNonIgnoringUntil) && pollIgnoring) {
       pollIgnoring = false
       ballWin.setIgnoreMouseEvents(false)
-    } else if (!inBall && !pollIgnoring) {
+    } else if (!inBall && !pollIgnoring && now >= holdNonIgnoringUntil) {
       pollIgnoring = true
       ballWin.setIgnoreMouseEvents(true, { forward: true })
     }
   }, POLL_INTERVAL)
+
+  // When renderer detects mousedown on ball, lock click-through off briefly
+  // to ensure the double-click sequence completes without being interrupted by polling
+  ipcMain.on('ball:hold-clickable', () => {
+    holdNonIgnoringUntil = Date.now() + 600
+  })
 
   ballWin.on('ready-to-show', () => ballWin?.show())
 
