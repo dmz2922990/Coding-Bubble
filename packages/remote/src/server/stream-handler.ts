@@ -38,7 +38,13 @@ export class StreamHandler {
         permissionMode: message.permissionMode,
       }
 
-      let initFired = false
+      // Send result BEFORE registering event listener
+      // WebSocket preserves message order, so client receives result first
+      this._server.send({
+        type: 'stream_create_result',
+        requestId: message.requestId,
+        sessionId: internalId,
+      })
 
       // Forward all stream events to client
       streamSession.on('event', (event: StreamEvent) => {
@@ -47,16 +53,6 @@ export class StreamHandler {
           sessionId: internalId,
           event,
         })
-
-        // Send stream_create_result after session is initialized
-        if (!initFired && event.type === 'session_init') {
-          initFired = true
-          this._server.send({
-            type: 'stream_create_result',
-            requestId: message.requestId,
-            sessionId: internalId,
-          })
-        }
       })
 
       streamSession.spawn(options)
@@ -65,19 +61,6 @@ export class StreamHandler {
         session: streamSession,
         sessionId: internalId,
         permissionMode: message.permissionMode ?? 'default',
-      })
-
-      // Fallback: if process exits before init, send error
-      streamSession.on('event', (event: StreamEvent) => {
-        if (!initFired && event.type === 'exit') {
-          initFired = true
-          this._server.send({
-            type: 'stream_create_result',
-            requestId: message.requestId,
-            error: 'Process exited before initialization',
-          })
-          this._sessions.delete(internalId)
-        }
       })
     } catch (err) {
       this._server.send({

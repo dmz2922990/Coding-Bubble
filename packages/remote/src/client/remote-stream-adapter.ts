@@ -124,21 +124,9 @@ export class RemoteStreamAdapter {
     const internalSessionId = `remote:${serverId}:${message.sessionId}`
     const event = message.event
 
-    // Ensure session exists in SessionStore
-    if (!this._sessionStore.get(internalSessionId)) {
-      const projectName = message.event.cwd
-        ? message.event.cwd.split('/').filter(Boolean).pop() ?? 'remote'
-        : 'remote'
-      this._sessionStore.createStreamSession(internalSessionId, projectName)
-      const session = this._sessionStore.get(internalSessionId)
-      if (session) {
-        (session as { source: string }).source = 'remote-stream'
-      }
-      this._serverSessions.set(internalSessionId, serverId)
-    }
+    // Session must be created by _handleCreateResult first
+    if (!this._sessionStore.get(internalSessionId)) return
 
-    // Translate StreamEvent to SessionStore operations
-    // (mirrors StreamAdapterManager logic)
     this._translateEvent(internalSessionId, event)
   }
 
