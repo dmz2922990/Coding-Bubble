@@ -8,7 +8,7 @@ const hookScriptPath = resolve(
 )
 
 export default defineConfig({
-  entry: { server: 'src/server/index.ts' },
+  entry: { 'coding-bubble-remote-server': 'src/server/index.ts' },
   format: ['cjs'],
   platform: 'node',
   target: 'node20',
