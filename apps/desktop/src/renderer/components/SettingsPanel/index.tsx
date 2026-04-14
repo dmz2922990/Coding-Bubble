@@ -20,6 +20,18 @@ export function SettingsPanel(): React.JSX.Element {
 
   useEffect(() => {
     loadRemoteServers()
+
+    // Listen for real-time connection state changes from main process
+    const unsubscribe = window.electronAPI.remote.onStateChange(
+      (_event: unknown, data: { serverId: string; state: 'disconnected' | 'connecting' | 'connected' }) => {
+        setRemoteServers(prev =>
+          prev.map(s =>
+            s.config.id === data.serverId ? { ...s, state: data.state } : s
+          )
+        )
+      }
+    )
+    return () => { unsubscribe() }
   }, [])
 
   const loadRemoteServers = useCallback(async () => {
@@ -54,8 +66,7 @@ export function SettingsPanel(): React.JSX.Element {
     } else {
       await window.electronAPI.remote.connect(server.config.id)
     }
-    // Delay to allow state update
-    setTimeout(loadRemoteServers, 500)
+    loadRemoteServers()
   }, [loadRemoteServers])
 
   const handleClose = useCallback(() => {

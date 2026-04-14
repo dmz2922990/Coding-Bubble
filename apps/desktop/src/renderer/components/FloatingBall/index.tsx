@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { ChatBubble } from '../ChatBubble'
 import { NotificationBubble } from './NotificationBubble'
 import type { BubbleNotification } from './NotificationBubble'
+import bubbleIcon from '../../assets/bubble-icon.png'
 import './styles.css'
 
 /** 按时段分组的启动开场语 */
@@ -261,7 +262,7 @@ export function FloatingBall(): React.JSX.Element {
             onContextMenu={handleContextMenu}
             title="Coding-bubble 💬"
           >
-            <span className="ball__icon">💬</span>
+            <img className="ball__icon" src={bubbleIcon} alt="bubble" draggable={false} />
           </div>
           {showBadge && <span className="ball__badge" />}
           {displayState && <span className={`ball__status-dot ball__status-dot--${displayState}`} />}

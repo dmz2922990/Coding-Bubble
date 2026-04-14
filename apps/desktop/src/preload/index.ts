@@ -120,6 +120,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
       closeSession: (sessionId: string): Promise<void> =>
         ipcRenderer.invoke('remote:hook:close-session', sessionId),
     },
+    onStateChange: (cb: (event: unknown, data: { serverId: string; state: string }) => void) => {
+      ipcRenderer.on('remote:state-change', cb)
+      return () => ipcRenderer.removeListener('remote:state-change', cb)
+    },
   },
   /** Directory picker dialog */
   showOpenDialog: (options: Record<string, unknown>): Promise<unknown> =>

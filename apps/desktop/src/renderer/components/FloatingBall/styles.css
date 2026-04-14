@@ -96,11 +96,11 @@ body,
 }
 
 .ball__icon {
-  font-size: 56px;
-  line-height: 1;
+  width: 83px;
+  height: 83px;
   pointer-events: none;
-  /* Emoji support across platforms */
-  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 /* ── Badge: red dot for pending approvals ── */

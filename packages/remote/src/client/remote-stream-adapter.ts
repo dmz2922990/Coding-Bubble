@@ -1,12 +1,10 @@
 import type { SessionStore } from '@coding-bubble/session-monitor'
-import type { StreamEvent, PermissionResult } from '@coding-bubble/stream-json'
+import type { PermissionResult } from '@coding-bubble/stream-json'
+import type { StreamEvent } from '@coding-bubble/stream-json'
 import type { RemoteManager } from './remote-manager'
 import type { ServerMessage, StreamEventMessage, StreamCreateResultMessage } from '../shared/protocol'
 
-interface PendingStreamPermission {
-  sessionId: string
-  requestId: string
-}
+export type StreamEventHandler = (sessionId: string, event: StreamEvent) => void
 
 interface PendingCreate {
   resolve: (sessionId: string) => void
@@ -19,12 +17,17 @@ export class RemoteStreamAdapter {
   private _sessionStore: SessionStore
   private _serverSessions = new Map<string, string>() // compound sessionId -> serverId
   private _serverInternalIds = new Map<string, string>() // compound sessionId -> server's internal sessionId
-  private _pendingPermissions = new Map<string, PendingStreamPermission>() // sessionId -> pending
   private _pendingCreates = new Map<string, PendingCreate>() // requestId -> pending
+  private _eventHandler: StreamEventHandler | null = null
 
   constructor(remoteManager: RemoteManager, sessionStore: SessionStore) {
     this._remoteManager = remoteManager
     this._sessionStore = sessionStore
+  }
+
+  /** Set a custom event handler to translate StreamEvents into SessionStore operations */
+  setEventHandler(handler: StreamEventHandler): void {
+    this._eventHandler = handler
   }
 
   register(): void {
@@ -83,7 +86,6 @@ export class RemoteStreamAdapter {
     const internalId = this._serverInternalIds.get(sessionId)
     this._serverSessions.delete(sessionId)
     this._serverInternalIds.delete(sessionId)
-    this._pendingPermissions.delete(sessionId)
     if (!internalId) return
     this._remoteManager.send(serverId, {
       type: 'stream_destroy',
@@ -91,12 +93,10 @@ export class RemoteStreamAdapter {
     })
   }
 
+  /** Send permission approval to remote server (only WebSocket forwarding, no local state) */
   approvePermission(serverId: string, sessionId: string, requestId: string): void {
     const internalId = this._serverInternalIds.get(sessionId) ?? sessionId
     const result: PermissionResult = { behavior: 'allow', updatedInput: {} }
-    this._pendingPermissions.delete(sessionId)
-    this._sessionStore.resolvePermission(requestId, { decision: 'allow' })
-
     this._remoteManager.send(serverId, {
       type: 'stream_permission_response',
       sessionId: internalId,
@@ -105,12 +105,10 @@ export class RemoteStreamAdapter {
     })
   }
 
+  /** Send permission denial to remote server (only WebSocket forwarding, no local state) */
   denyPermission(serverId: string, sessionId: string, requestId: string, reason?: string): void {
     const internalId = this._serverInternalIds.get(sessionId) ?? sessionId
     const result: PermissionResult = { behavior: 'deny', message: reason ?? 'Denied by user' }
-    this._pendingPermissions.delete(sessionId)
-    this._sessionStore.resolvePermission(requestId, { decision: 'deny', reason })
-
     this._remoteManager.send(serverId, {
       type: 'stream_permission_response',
       sessionId: internalId,
@@ -119,6 +117,7 @@ export class RemoteStreamAdapter {
     })
   }
 
+  /** Send always-allow mode + current approval to remote server */
   alwaysAllowPermission(serverId: string, sessionId: string, requestId: string): void {
     const internalId = this._serverInternalIds.get(sessionId) ?? sessionId
     this.approvePermission(serverId, sessionId, requestId)
@@ -138,159 +137,10 @@ export class RemoteStreamAdapter {
     // Session must be created by _handleCreateResult first
     if (!this._sessionStore.get(internalSessionId)) return
 
-    this._translateEvent(internalSessionId, event)
-  }
-
-  private _translateEvent(sessionId: string, event: StreamEvent): void {
-    switch (event.type) {
-      case 'text':
-        this._sessionStore.updateStreamingAssistant(sessionId, event.content ?? '', false)
-        break
-
-      case 'text_delta':
-        // text_delta should append, but SessionStore.updateStreamingAssistant
-        // replaces content. For remote, we accumulate manually.
-        {
-          const session = this._sessionStore.get(sessionId)
-          const existing = session?.chatItems.find(i => i.type === 'assistant' && i.streaming)
-          const prevContent = existing && existing.type === 'assistant' ? existing.content : ''
-          this._sessionStore.updateStreamingAssistant(sessionId, prevContent + (event.content ?? ''), true)
-        }
-        break
-
-      case 'tool_use':
-        if (event.parentToolUseId) {
-          this._sessionStore.addSubTool(sessionId, event.parentToolUseId, event.toolUseId!, event.toolName!, event.toolInput ?? {})
-        } else {
-          this._sessionStore.addToolCall(sessionId, event.toolUseId!, event.toolName!, event.toolInput ?? {})
-        }
-        break
-
-      case 'tool_result':
-        if (event.parentToolUseId) {
-          this._sessionStore.updateSubTool(sessionId, event.parentToolUseId, event.toolUseId!, event.isError ? 'error' : 'success', event.content)
-        } else {
-          this._sessionStore.updateStreamToolCall(sessionId, event.toolUseId!, event.isError ? 'error' : 'success', event.content)
-        }
-        break
-
-      case 'thinking':
-        this._sessionStore.addThinking(sessionId, event.content ?? '')
-        break
-
-      case 'result': {
-        this._sessionStore.cleanupRunningToolCalls(sessionId)
-        if (event.subtype === 'interrupted') {
-          this._sessionStore.addSystemMessage(sessionId, '会话已中断')
-        }
-        const session = this._sessionStore.get(sessionId)
-        if (session && session.phase.type !== 'ended') {
-          this._sessionStore.transition(session, event.subtype === 'interrupted' ? 'idle' : 'done')
-        }
-        this._sessionStore.addResultSummary(sessionId, {
-          durationMs: event.durationMs,
-          inputTokens: event.inputTokens,
-          outputTokens: event.outputTokens,
-          costUsd: event.costUsd,
-          interrupted: event.subtype === 'interrupted',
-        })
-        break
-      }
-
-      case 'permission_request':
-        this._pendingPermissions.set(sessionId, {
-          sessionId,
-          requestId: event.requestId!,
-        })
-        {
-          const session = this._sessionStore.get(sessionId)
-          if (session) {
-            this._sessionStore.transition(session, 'waitingForApproval', {
-              toolUseId: event.requestId ?? '',
-              toolName: event.toolName ?? '',
-              toolInput: event.toolInput ?? null,
-              receivedAt: Date.now(),
-            } as unknown as Partial<import('@coding-bubble/session-monitor').SessionPhase>)
-          }
-        }
-        break
-
-      case 'session_state':
-        {
-          const session = this._sessionStore.get(sessionId)
-          if (session) {
-            switch (event.state) {
-              case 'idle':
-                this._sessionStore.transition(session, 'idle')
-                break
-              case 'running':
-                this._sessionStore.transition(session, 'thinking')
-                break
-              case 'requires_action':
-                // Already handled by permission_request
-                break
-            }
-          }
-        }
-        break
-
-      case 'session_init':
-        if (event.initMetadata) {
-          this._sessionStore.setInitMetadata(sessionId, event.initMetadata)
-        }
-        break
-
-      case 'tool_progress':
-        this._sessionStore.updateToolProgress(sessionId, event.toolUseId!, event.elapsedSeconds!)
-        break
-
-      case 'tool_summary':
-        this._sessionStore.addSystemStatus(sessionId, 'tool_summary', event.summary ?? '')
-        break
-
-      case 'system_status':
-        this._sessionStore.addSystemStatus(sessionId, event.statusKind ?? 'unknown', event.errorMessage ?? '')
-        break
-
-      case 'task_lifecycle':
-        switch (event.taskPhase) {
-          case 'started':
-            this._sessionStore.addTaskNotification(sessionId, event.taskId!, event.content ?? '')
-            break
-          case 'progress':
-            this._sessionStore.updateTaskProgress(sessionId, event.taskId!, event.content ?? '')
-            break
-          case 'completed':
-          case 'failed':
-            this._sessionStore.completeTaskNotification(sessionId, event.taskId!, event.taskPhase, event.content ?? '')
-            break
-        }
-        break
-
-      case 'post_turn_summary':
-        this._sessionStore.addSystemMessage(sessionId, event.title ?? event.content ?? '')
-        break
-
-      case 'rate_limit':
-        this._sessionStore.addSystemStatus(sessionId, 'rate_limit', event.rateLimitStatus ?? 'Rate limited')
-        break
-
-      case 'error':
-        this._sessionStore.addSystemMessage(sessionId, `Error: ${event.error?.message ?? 'Unknown error'}`)
-        break
-
-      case 'exit':
-        {
-          const session = this._sessionStore.get(sessionId)
-          if (session && session.phase.type !== 'ended') {
-            if (event.exitCode !== 0) {
-              this._sessionStore.transition(session, 'error')
-            } else {
-              this._sessionStore.transition(session, 'done')
-            }
-          }
-        }
-        break
+    // Delegate to custom event handler if set
+    if (this._eventHandler) {
+      this._eventHandler(internalSessionId, event)
+      return
     }
   }
 

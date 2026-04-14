@@ -16,17 +16,22 @@ export interface StreamAdapterOptions {
   broadcastToRenderer: (channel: string, data: unknown) => void
 }
 
+/** Context objects needed by the shared stream event handler */
+export interface StreamEventContext {
+  pendingPermissions: Map<string, PendingStreamPermission>
+  subToolParents: Map<string, string>
+  interrupted: Set<string>
+  destroying: Set<string>
+}
+
 export class StreamAdapterManager {
   private _sessions = new Map<string, StreamSession>()
   private _managedPids = new Set<number>()
   private _destroying = new Set<string>()
   private _store: SessionStore
   private _broadcast: (channel: string, data: unknown) => void
-  /** Permission chain — keyed by internal session ID */
   private _pendingPermissions = new Map<string, PendingStreamPermission>()
-  /** Sessions interrupted by user — keyed by internal session ID */
   private _interrupted = new Set<string>()
-  /** Sub-tool to parent mapping — keyed by sub-toolUseId */
   private _subToolParents = new Map<string, string>()
 
   constructor(options: StreamAdapterOptions) {
@@ -108,17 +113,15 @@ export class StreamAdapterManager {
     stream.send(text)
   }
 
-  // ── Stream-specific permission handling (pure control_request/response) ──
+  // ── Stream-specific permission handling ──
 
   approvePermission(sessionId: string): void {
     const entry = this._pendingPermissions.get(sessionId)
     if (!entry) return
 
     this._pendingPermissions.delete(sessionId)
-
     this._store.addSystemMessage(sessionId, entry.formattedDetail)
 
-    // Send control_response via stdin — echo back original toolInput as updatedInput
     const stream = this._sessions.get(sessionId)
     if (stream?.alive) {
       stream.respondPermission(entry.requestId, {
@@ -170,7 +173,7 @@ export class StreamAdapterManager {
 
     this._pendingPermissions.delete(sessionId)
 
-    const updatedInput = this._buildAnswerInput(entry.toolInput, answer)
+    const updatedInput = _buildAnswerInput(entry.toolInput, answer)
     this._store.addSystemMessage(sessionId, entry.formattedDetail)
 
     const stream = this._sessions.get(sessionId)
@@ -189,7 +192,7 @@ export class StreamAdapterManager {
   }
 
   async destroy(sessionId: string): Promise<void> {
-    this._cleanupPending(sessionId)
+    _cleanupPending(this._pendingPermissions, sessionId)
     this._destroying.add(sessionId)
 
     const stream = this._sessions.get(sessionId)
@@ -218,301 +221,320 @@ export class StreamAdapterManager {
 
   // ── Private ──────────────────────────────────────────────────
 
-  private _buildAnswerInput(toolInput: Record<string, unknown> | null, answer: string): Record<string, unknown> | undefined {
-    if (!toolInput || !Array.isArray(toolInput.questions)) return undefined
-
-    let answerValue: string
-    try {
-      const parsed = JSON.parse(answer)
-      answerValue = Array.isArray(parsed) ? parsed.join(',') : String(parsed)
-    } catch {
-      answerValue = answer
-    }
-
-    const answers: Record<string, string> = {}
-    for (const q of toolInput.questions as Array<Record<string, unknown>>) {
-      answers[q.question as string] = answerValue
-    }
-
-    return { questions: toolInput.questions, answers }
-  }
-
   private _handleEvent(sessionId: string, event: StreamEvent): void {
-    switch (event.type) {
-      case 'text': {
-        // Complete assistant message — finalize any streaming message
-        this._store.updateStreamingAssistant(sessionId, event.content ?? '', false)
+    handleStreamEvent(this._store, this._broadcast, sessionId, event, {
+      pendingPermissions: this._pendingPermissions,
+      subToolParents: this._subToolParents,
+      interrupted: this._interrupted,
+      destroying: this._destroying,
+    })
+  }
+}
 
-        const session = this._store.get(sessionId)
-        if (!session) return
-        this._broadcast('session:update', { sessionId, phase: session.phase })
-        break
-      }
+// ── Shared stream event handler ──────────────────────────────
 
-      case 'text_delta': {
-        this._store.updateStreamingAssistant(sessionId, event.content ?? '', true)
-        break
-      }
+/** Handle a stream event — reusable by local and remote adapters */
+export function handleStreamEvent(
+  store: SessionStore,
+  broadcast: (channel: string, data: unknown) => void,
+  sessionId: string,
+  event: StreamEvent,
+  ctx: StreamEventContext
+): void {
+  switch (event.type) {
+    case 'text': {
+      store.updateStreamingAssistant(sessionId, event.content ?? '', false)
+      break
+    }
 
-      case 'tool_use': {
-        const toolUseId = event.toolUseId ?? ''
-        const parentToolUseId = event.parentToolUseId
+    case 'text_delta': {
+      store.updateStreamingAssistant(sessionId, event.content ?? '', true)
+      break
+    }
 
-        if (parentToolUseId) {
-          // Subagent tool call — group under parent
-          this._subToolParents.set(toolUseId, parentToolUseId)
-          this._store.addSubTool(sessionId, parentToolUseId, toolUseId, event.toolName ?? 'unknown', event.toolInput ?? {})
-        } else {
-          // Top-level tool call
-          this._store.process({
-            hook_event_name: 'PreToolUse',
-            session_id: sessionId,
-            cwd: '',
-            payload: {
-              tool_use_id: toolUseId,
-              tool_name: event.toolName,
-              tool_input: event.toolInput,
-            },
-          })
-          this._store.addToolCall(sessionId, toolUseId, event.toolName ?? 'unknown', event.toolInput ?? {})
-        }
-        break
-      }
+    case 'tool_use': {
+      const toolUseId = event.toolUseId ?? ''
+      const parentToolUseId = event.parentToolUseId
 
-      case 'thinking': {
-        this._store.process({
-          hook_event_name: 'Notification',
+      if (parentToolUseId) {
+        ctx.subToolParents.set(toolUseId, parentToolUseId)
+        store.addSubTool(sessionId, parentToolUseId, toolUseId, event.toolName ?? 'unknown', event.toolInput ?? {})
+      } else {
+        store.process({
+          hook_event_name: 'PreToolUse',
           session_id: sessionId,
           cwd: '',
-          payload: { type: 'thinking', content: event.content },
+          payload: {
+            tool_use_id: toolUseId,
+            tool_name: event.toolName,
+            tool_input: event.toolInput,
+          },
         })
-        if (event.content) {
-          this._store.addThinking(sessionId, event.content)
+        store.addToolCall(sessionId, toolUseId, event.toolName ?? 'unknown', event.toolInput ?? {})
+      }
+      break
+    }
+
+    case 'thinking': {
+      store.process({
+        hook_event_name: 'Notification',
+        session_id: sessionId,
+        cwd: '',
+        payload: { type: 'thinking', content: event.content },
+      })
+      if (event.content) {
+        store.addThinking(sessionId, event.content)
+      }
+      break
+    }
+
+    case 'tool_result': {
+      const toolUseId = event.toolUseId
+      if (!toolUseId) break
+      const status = event.isError ? 'error' : 'success'
+
+      const parentToolUseId = ctx.subToolParents.get(toolUseId)
+      if (parentToolUseId) {
+        ctx.subToolParents.delete(toolUseId)
+        store.updateSubTool(sessionId, parentToolUseId, toolUseId, status, event.content)
+      } else {
+        store.updateStreamToolCall(sessionId, toolUseId, status, event.content)
+      }
+      break
+    }
+
+    case 'task_lifecycle': {
+      const phase = event.taskPhase
+      const taskId = event.taskId ?? ''
+      const content = event.content ?? ''
+
+      if (phase === 'started') {
+        store.addTaskNotification(sessionId, taskId, content)
+      } else if (phase === 'progress') {
+        store.updateTaskProgress(sessionId, taskId, content)
+      } else if (phase === 'completed' || phase === 'failed') {
+        store.completeTaskNotification(sessionId, taskId, phase, content)
+      }
+      break
+    }
+
+    case 'post_turn_summary': {
+      const title = event.title ?? ''
+      const desc = event.content ?? ''
+      store.addSystemMessage(sessionId, `📋 ${title}: ${desc}`)
+      break
+    }
+
+    case 'result': {
+      _cleanupPending(ctx.pendingPermissions, sessionId)
+
+      const interrupted = ctx.interrupted.has(sessionId)
+      ctx.interrupted.delete(sessionId)
+
+      store.cleanupRunningToolCalls(sessionId)
+
+      store.process({
+        hook_event_name: 'Stop',
+        session_id: sessionId,
+        cwd: '',
+        payload: {},
+      })
+
+      if (event.durationMs != null || event.inputTokens != null || event.costUsd != null || interrupted) {
+        store.addResultSummary(sessionId, {
+          durationMs: event.durationMs,
+          inputTokens: event.inputTokens,
+          outputTokens: event.outputTokens,
+          costUsd: event.costUsd,
+          interrupted,
+        })
+      }
+      break
+    }
+
+    case 'permission_request': {
+      const requestId = event.requestId ?? ''
+      const toolName = event.toolName ?? 'unknown'
+      const toolInput = event.toolInput ?? null
+
+      _cleanupPending(ctx.pendingPermissions, sessionId)
+
+      new Promise<HookResponse>((resolve) => {
+        ctx.pendingPermissions.set(sessionId, {
+          requestId,
+          toolName,
+          toolInput,
+          formattedDetail: formatToolDetail(toolName, toolInput),
+          resolve,
+        })
+
+        store.process({
+          hook_event_name: 'PermissionRequest',
+          session_id: sessionId,
+          cwd: '',
+          payload: { toolUseId: requestId, tool: toolName, input: toolInput },
+        })
+      }).catch((err) => {
+        console.error('[stream-adapter] permission handler error:', err)
+      })
+      break
+    }
+
+    case 'session_state': {
+      const state = event.state
+      if (!state) break
+      if (state === 'idle') {
+        store.transition(store.get(sessionId)!, 'idle')
+      } else if (state === 'running') {
+        const session = store.get(sessionId)
+        const hasActiveTool = session?.chatItems.some(i => i.type === 'toolCall' && i.tool?.status === 'running')
+        store.transition(session!, hasActiveTool ? 'processing' : 'thinking')
+      } else if (state === 'requires_action') {
+        const hasPendingPerm = ctx.pendingPermissions.has(sessionId)
+        const session = store.get(sessionId)
+        if (session) {
+          store.transition(session, hasPendingPerm ? 'waitingForApproval' : 'waitingForInput')
+          broadcast('session:update', {
+            sessionId,
+            phase: session.phase,
+            initMetadata: session.initMetadata,
+          })
         }
+      }
+      break
+    }
+
+    case 'session_init': {
+      if (event.initMetadata) {
+        store.setInitMetadata(sessionId, event.initMetadata)
+        broadcast('session:update', { sessionId, initMetadata: event.initMetadata })
+      }
+      break
+    }
+
+    case 'tool_progress': {
+      if (event.toolUseId && event.elapsedSeconds != null) {
+        store.updateToolProgress(sessionId, event.toolUseId, event.elapsedSeconds)
+      }
+      break
+    }
+
+    case 'tool_summary': {
+      if (event.summary) {
+        store.addSystemMessage(sessionId, event.summary)
+      }
+      break
+    }
+
+    case 'system_status': {
+      const kind = event.statusKind
+      if (!kind) break
+
+      const ERROR_LABELS: Record<string, string> = {
+        rate_limit: '速率限制',
+        server_error: '服务器错误',
+        authentication_failed: '认证失败',
+        billing_error: '计费错误',
+        invalid_request: '无效请求',
+        max_output_tokens: '输出长度超限',
+        unknown: '未知错误',
+      }
+
+      let retryMsg = `API 重试中 (${event.attempt ?? '?'}/${event.maxRetries ?? '?'})`
+      if (event.errorMessage) {
+        const label = ERROR_LABELS[event.errorMessage] ?? event.errorMessage
+        retryMsg += ` — ${label}`
+      }
+      if (event.errorStatus) {
+        retryMsg += ` (HTTP ${event.errorStatus})`
+      }
+
+      const messages: Record<string, string> = {
+        compacting: '正在压缩上下文...',
+        compacted: '上下文压缩完成',
+        api_retry: retryMsg,
+      }
+      store.addSystemStatus(sessionId, kind, messages[kind] ?? kind)
+      if (kind === 'compacting') {
+        const session = store.get(sessionId)
+        if (session) store.transition(session, 'compacting')
+      }
+      break
+    }
+
+    case 'rate_limit': {
+      const status = event.rateLimitStatus
+      const messages: Record<string, string> = {
+        allowed_warning: '接近速率限制',
+        rejected: '速率受限，等待恢复中...',
+      }
+      store.addSystemStatus(sessionId, 'rate_limit', messages[status ?? ''] ?? `速率限制: ${status}`)
+      break
+    }
+
+    case 'exit': {
+      _cleanupPending(ctx.pendingPermissions, sessionId)
+
+      if (ctx.destroying.has(sessionId)) {
         break
       }
 
-      case 'tool_result': {
-        const toolUseId = event.toolUseId
-        if (!toolUseId) break
-        const status = event.isError ? 'error' : 'success'
-
-        const parentToolUseId = this._subToolParents.get(toolUseId)
-        if (parentToolUseId) {
-          this._subToolParents.delete(toolUseId)
-          this._store.updateSubTool(sessionId, parentToolUseId, toolUseId, status, event.content)
-        } else {
-          this._store.updateStreamToolCall(sessionId, toolUseId, status, event.content)
-        }
-        break
-      }
-
-      case 'task_lifecycle': {
-        const phase = event.taskPhase
-        const taskId = event.taskId ?? ''
-        const content = event.content ?? ''
-
-        if (phase === 'started') {
-          this._store.addTaskNotification(sessionId, taskId, content)
-        } else if (phase === 'progress') {
-          this._store.updateTaskProgress(sessionId, taskId, content)
-        } else if (phase === 'completed' || phase === 'failed') {
-          this._store.completeTaskNotification(sessionId, taskId, phase, content)
-        }
-        break
-      }
-
-      case 'post_turn_summary': {
-        const title = event.title ?? ''
-        const desc = event.content ?? ''
-        this._store.addSystemMessage(sessionId, `📋 ${title}: ${desc}`)
-        break
-      }
-
-      case 'result': {
-        this._cleanupPending(sessionId)
-
-        const interrupted = this._interrupted.has(sessionId)
-        this._interrupted.delete(sessionId)
-
-        this._store.cleanupRunningToolCalls(sessionId)
-
-        this._store.process({
+      if (event.exitCode === 0) {
+        store.process({
           hook_event_name: 'Stop',
           session_id: sessionId,
           cwd: '',
           payload: {},
         })
-
-        if (event.durationMs != null || event.inputTokens != null || event.costUsd != null || interrupted) {
-          this._store.addResultSummary(sessionId, {
-            durationMs: event.durationMs,
-            inputTokens: event.inputTokens,
-            outputTokens: event.outputTokens,
-            costUsd: event.costUsd,
-            interrupted,
-          })
-        }
-        break
-      }
-
-      case 'permission_request': {
-        const requestId = event.requestId ?? ''
-        const toolName = event.toolName ?? 'unknown'
-        const toolInput = event.toolInput ?? null
-
-        this._cleanupPending(sessionId)
-
-        new Promise<HookResponse>((resolve) => {
-          this._pendingPermissions.set(sessionId, {
-            requestId,
-            toolName,
-            toolInput,
-            formattedDetail: formatToolDetail(toolName, toolInput),
-            resolve,
-          })
-
-          this._store.process({
-            hook_event_name: 'PermissionRequest',
-            session_id: sessionId,
-            cwd: '',
-            payload: { toolUseId: requestId, tool: toolName, input: toolInput },
-          })
-        }).catch((err) => {
-          console.error('[stream-adapter] permission handler error:', err)
+      } else if (event.exitCode !== null) {
+        store.process({
+          hook_event_name: 'StopFailure',
+          session_id: sessionId,
+          cwd: '',
+          payload: {},
         })
-        break
       }
+      break
+    }
 
-      case 'session_state': {
-        const state = event.state
-        if (!state) break
-        if (state === 'idle') {
-          this._store.transition(this._store.get(sessionId)!, 'idle')
-        } else if (state === 'running') {
-          const session = this._store.get(sessionId)
-          const hasActiveTool = session?.chatItems.some(i => i.type === 'toolCall' && i.tool?.status === 'running')
-          this._store.transition(session!, hasActiveTool ? 'processing' : 'thinking')
-        } else if (state === 'requires_action') {
-          const hasPendingPerm = this._pendingPermissions.has(sessionId)
-          const session = this._store.get(sessionId)
-          if (session) {
-            this._store.transition(session, hasPendingPerm ? 'waitingForApproval' : 'waitingForInput')
-            this._broadcast('session:update', {
-              sessionId,
-              phase: session.phase,
-              initMetadata: session.initMetadata,
-            })
-          }
-        }
-        break
-      }
-
-      case 'session_init': {
-        if (event.initMetadata) {
-          this._store.setInitMetadata(sessionId, event.initMetadata)
-          this._broadcast('session:update', { sessionId, initMetadata: event.initMetadata })
-        }
-        break
-      }
-
-      case 'tool_progress': {
-        if (event.toolUseId && event.elapsedSeconds != null) {
-          this._store.updateToolProgress(sessionId, event.toolUseId, event.elapsedSeconds)
-        }
-        break
-      }
-
-      case 'tool_summary': {
-        if (event.summary) {
-          this._store.addSystemMessage(sessionId, event.summary)
-        }
-        break
-      }
-
-      case 'system_status': {
-        const kind = event.statusKind
-        if (!kind) break
-
-        const ERROR_LABELS: Record<string, string> = {
-          rate_limit: '速率限制',
-          server_error: '服务器错误',
-          authentication_failed: '认证失败',
-          billing_error: '计费错误',
-          invalid_request: '无效请求',
-          max_output_tokens: '输出长度超限',
-          unknown: '未知错误',
-        }
-
-        let retryMsg = `API 重试中 (${event.attempt ?? '?'}/${event.maxRetries ?? '?'})`
-        if (event.errorMessage) {
-          const label = ERROR_LABELS[event.errorMessage] ?? event.errorMessage
-          retryMsg += ` — ${label}`
-        }
-        if (event.errorStatus) {
-          retryMsg += ` (HTTP ${event.errorStatus})`
-        }
-
-        const messages: Record<string, string> = {
-          compacting: '正在压缩上下文...',
-          compacted: '上下文压缩完成',
-          api_retry: retryMsg,
-        }
-        this._store.addSystemStatus(sessionId, kind, messages[kind] ?? kind)
-        if (kind === 'compacting') {
-          const session = this._store.get(sessionId)
-          if (session) this._store.transition(session, 'compacting')
-        }
-        break
-      }
-
-      case 'rate_limit': {
-        const status = event.rateLimitStatus
-        const messages: Record<string, string> = {
-          allowed_warning: '接近速率限制',
-          rejected: '速率受限，等待恢复中...',
-        }
-        this._store.addSystemStatus(sessionId, 'rate_limit', messages[status ?? ''] ?? `速率限制: ${status}`)
-        break
-      }
-
-      case 'exit': {
-        this._cleanupPending(sessionId)
-
-        if (this._destroying.has(sessionId)) {
-          break
-        }
-
-        if (event.exitCode === 0) {
-          this._store.process({
-            hook_event_name: 'Stop',
-            session_id: sessionId,
-            cwd: '',
-            payload: {},
-          })
-        } else if (event.exitCode !== null) {
-          this._store.process({
-            hook_event_name: 'StopFailure',
-            session_id: sessionId,
-            cwd: '',
-            payload: {},
-          })
-        }
-        break
-      }
-
-      case 'error': {
-        console.error('[stream-adapter] error for session:', sessionId, event.error)
-        break
-      }
+    case 'error': {
+      console.error('[stream-adapter] error for session:', sessionId, event.error)
+      break
     }
   }
+}
 
-  private _cleanupPending(sessionId: string): void {
-    const pending = this._pendingPermissions.get(sessionId)
-    if (pending) {
-      this._pendingPermissions.delete(sessionId)
-      pending.resolve({ decision: 'allow' })
-    }
+// ── Helpers ──────────────────────────────────────────────────
+
+function _cleanupPending(
+  pendingPermissions: Map<string, PendingStreamPermission>,
+  sessionId: string
+): void {
+  const pending = pendingPermissions.get(sessionId)
+  if (pending) {
+    pendingPermissions.delete(sessionId)
+    pending.resolve({ decision: 'allow' })
   }
+}
+
+function _buildAnswerInput(
+  toolInput: Record<string, unknown> | null,
+  answer: string
+): Record<string, unknown> | undefined {
+  if (!toolInput || !Array.isArray(toolInput.questions)) return undefined
+
+  let answerValue: string
+  try {
+    const parsed = JSON.parse(answer)
+    answerValue = Array.isArray(parsed) ? parsed.join(',') : String(parsed)
+  } catch {
+    answerValue = answer
+  }
+
+  const answers: Record<string, string> = {}
+  for (const q of toolInput.questions as Array<Record<string, unknown>>) {
+    answers[q.question as string] = answerValue
+  }
+
+  return { questions: toolInput.questions, answers }
 }

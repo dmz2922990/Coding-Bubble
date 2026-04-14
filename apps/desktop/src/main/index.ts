@@ -409,7 +409,8 @@ ipcMain.handle('dialog:saveMarkdown', async (_event, content: string, defaultNam
 import { SessionStore, createSocketServer, installHooks, hooksInstalled, watchJsonlFile, parseFullConversation } from '@coding-bubble/session-monitor'
 import type { HookEvent } from '@coding-bubble/session-monitor'
 import { TerminalJumper } from '@coding-bubble/session-monitor'
-import { StreamAdapterManager } from './stream-adapter'
+import { StreamAdapterManager, handleStreamEvent } from './stream-adapter'
+import type { StreamEventContext } from './stream-adapter'
 
 let sessionStore: SessionStore | null = null
 let streamManager: StreamAdapterManager | null = null
@@ -675,6 +676,22 @@ ipcMain.handle('stream:send', async (_event, sessionId: string, text: string) =>
 })
 
 ipcMain.handle('stream:destroy', async (_event, sessionId: string) => {
+  if (sessionId.startsWith('remote:')) {
+    if (!remoteStreamAdapter) return
+    const serverId = remoteSessionServerMap.get(sessionId)
+    if (!serverId) return
+    remoteSessionServerMap.delete(sessionId)
+    const remoteCtx = (globalThis as Record<string, StreamEventContext>).__remoteStreamCtx
+    remoteCtx?.destroying.add(sessionId)
+    await remoteStreamAdapter.destroy(serverId, sessionId)
+    sessionStore?.process({
+      hook_event_name: 'SessionEnd',
+      session_id: sessionId,
+      cwd: '',
+      payload: {},
+    })
+    return
+  }
   if (!streamManager) return
   await streamManager.destroy(sessionId)
 })
@@ -692,26 +709,154 @@ ipcMain.handle('stream:resume', async (_event, claudeSessionId: string, cwd: str
 // ── IPC: Stream Permission Handling (independent from hooks) ──────
 
 ipcMain.handle('stream:approve', async (_event, sessionId: string) => {
+  // Route remote-stream sessions
+  if (sessionId.startsWith('remote:')) {
+    if (!remoteStreamAdapter) return
+    const serverId = remoteSessionServerMap.get(sessionId)
+    if (!serverId) return
+    const session = sessionStore?.get(sessionId)
+    const requestId = session?.phase.type === 'waitingForApproval'
+      ? (session.phase as { context: { toolUseId: string } }).context?.toolUseId
+      : undefined
+    if (requestId) {
+      const remoteCtx = (globalThis as Record<string, StreamEventContext>).__remoteStreamCtx
+      const pending = remoteCtx?.pendingPermissions.get(sessionId)
+      if (pending) {
+        remoteCtx.pendingPermissions.delete(sessionId)
+        sessionStore?.addSystemMessage(sessionId, pending.formattedDetail)
+        pending.resolve({ decision: 'allow' })
+      }
+      remoteStreamAdapter.approvePermission(serverId, sessionId, requestId)
+      sessionStore?.process({
+        hook_event_name: 'PostToolUse',
+        session_id: sessionId,
+        cwd: '',
+        payload: {},
+      })
+    }
+    return
+  }
   if (!streamManager) return
   streamManager.approvePermission(sessionId)
 })
 
 ipcMain.handle('stream:deny', async (_event, sessionId: string, reason?: string) => {
+  // Route remote-stream sessions
+  if (sessionId.startsWith('remote:')) {
+    if (!remoteStreamAdapter) return
+    const serverId = remoteSessionServerMap.get(sessionId)
+    if (!serverId) return
+    const session = sessionStore?.get(sessionId)
+    const requestId = session?.phase.type === 'waitingForApproval'
+      ? (session.phase as { context: { toolUseId: string } }).context?.toolUseId
+      : undefined
+    if (requestId) {
+      const remoteCtx = (globalThis as Record<string, StreamEventContext>).__remoteStreamCtx
+      const pending = remoteCtx?.pendingPermissions.get(sessionId)
+      if (pending) {
+        remoteCtx.pendingPermissions.delete(sessionId)
+        pending.resolve({ decision: 'deny', reason })
+      }
+      remoteStreamAdapter.denyPermission(serverId, sessionId, requestId, reason)
+    }
+    return
+  }
   if (!streamManager) return
   streamManager.denyPermission(sessionId, reason)
 })
 
 ipcMain.handle('stream:always-allow', async (_event, sessionId: string) => {
+  // Route remote-stream sessions
+  if (sessionId.startsWith('remote:')) {
+    if (!remoteStreamAdapter) return
+    sessionStore?.setPermissionMode(sessionId, 'auto')
+    const serverId = remoteSessionServerMap.get(sessionId)
+    if (!serverId) return
+    const session = sessionStore?.get(sessionId)
+    const requestId = session?.phase.type === 'waitingForApproval'
+      ? (session.phase as { context: { toolUseId: string } }).context?.toolUseId
+      : undefined
+    if (requestId) {
+      const remoteCtx = (globalThis as Record<string, StreamEventContext>).__remoteStreamCtx
+      const pending = remoteCtx?.pendingPermissions.get(sessionId)
+      if (pending) {
+        remoteCtx.pendingPermissions.delete(sessionId)
+        sessionStore?.addSystemMessage(sessionId, pending.formattedDetail)
+        pending.resolve({ decision: 'allow' })
+      }
+      remoteStreamAdapter.approvePermission(serverId, sessionId, requestId)
+      sessionStore?.process({
+        hook_event_name: 'PostToolUse',
+        session_id: sessionId,
+        cwd: '',
+        payload: {},
+      })
+    }
+    return
+  }
   if (!streamManager) return
   streamManager.alwaysAllowPermission(sessionId)
 })
 
 ipcMain.handle('stream:answer', async (_event, sessionId: string, answer: string) => {
+  // Route remote-stream sessions
+  if (sessionId.startsWith('remote:')) {
+    if (!remoteStreamAdapter) return
+    const serverId = remoteSessionServerMap.get(sessionId)
+    if (!serverId) return
+    const session = sessionStore?.get(sessionId)
+    const requestId = session?.phase.type === 'waitingForApproval'
+      ? (session.phase as { context: { toolUseId: string } }).context?.toolUseId
+      : undefined
+    if (!requestId) return
+
+    const remoteCtx = (globalThis as Record<string, StreamEventContext>).__remoteStreamCtx
+    const pending = remoteCtx?.pendingPermissions.get(sessionId)
+    if (pending) {
+      remoteCtx.pendingPermissions.delete(sessionId)
+      sessionStore?.addSystemMessage(sessionId, pending.formattedDetail)
+      // Build answer input for AskUserQuestion
+      let updatedInput: Record<string, unknown> | undefined
+      if (pending.toolInput && Array.isArray(pending.toolInput.questions)) {
+        let answerValue: string
+        try {
+          const parsed = JSON.parse(answer)
+          answerValue = Array.isArray(parsed) ? parsed.join(',') : String(parsed)
+        } catch {
+          answerValue = answer
+        }
+        const answers: Record<string, string> = {}
+        for (const q of pending.toolInput.questions as Array<Record<string, unknown>>) {
+          answers[q.question as string] = answerValue
+        }
+        updatedInput = { questions: pending.toolInput.questions, answers }
+      }
+      pending.resolve({ decision: 'allow', updatedInput })
+      sessionStore?.process({
+        hook_event_name: 'PostToolUse',
+        session_id: sessionId,
+        cwd: '',
+        payload: {},
+      })
+    }
+    remoteStreamAdapter.approvePermission(serverId, sessionId, requestId)
+    return
+  }
+
   if (!streamManager) return
   streamManager.answerPermission(sessionId, answer)
 })
 
 ipcMain.handle('stream:interrupt', async (_event, sessionId: string) => {
+  if (sessionId.startsWith('remote:')) {
+    if (!remoteStreamAdapter) return
+    const serverId = remoteSessionServerMap.get(sessionId)
+    if (!serverId) return
+    const remoteCtx = (globalThis as Record<string, StreamEventContext>).__remoteStreamCtx
+    remoteCtx?.interrupted.add(sessionId)
+    remoteStreamAdapter.interrupt(serverId, sessionId)
+    return
+  }
   if (!streamManager) return
   streamManager.interrupt(sessionId)
 })
@@ -796,7 +941,23 @@ ipcMain.handle('remote:stream:approve', async (_event, sessionId: string) => {
   const requestId = session?.phase.type === 'waitingForApproval'
     ? (session.phase as { context: { toolUseId: string } }).context?.toolUseId
     : undefined
-  if (requestId) remoteStreamAdapter.approvePermission(serverId, sessionId, requestId)
+  if (requestId) {
+    // Clean up shared ctx pending permission and resolve its promise
+    const remoteCtx = (globalThis as Record<string, StreamEventContext>).__remoteStreamCtx
+    const pending = remoteCtx?.pendingPermissions.get(sessionId)
+    if (pending) {
+      remoteCtx.pendingPermissions.delete(sessionId)
+      sessionStore?.addSystemMessage(sessionId, pending.formattedDetail)
+      pending.resolve({ decision: 'allow' })
+    }
+    remoteStreamAdapter.approvePermission(serverId, sessionId, requestId)
+    sessionStore?.process({
+      hook_event_name: 'PostToolUse',
+      session_id: sessionId,
+      cwd: '',
+      payload: {},
+    })
+  }
 })
 
 ipcMain.handle('remote:stream:deny', async (_event, sessionId: string, reason?: string) => {
@@ -807,18 +968,43 @@ ipcMain.handle('remote:stream:deny', async (_event, sessionId: string, reason?: 
   const requestId = session?.phase.type === 'waitingForApproval'
     ? (session.phase as { context: { toolUseId: string } }).context?.toolUseId
     : undefined
-  if (requestId) remoteStreamAdapter.denyPermission(serverId, sessionId, requestId, reason)
+  if (requestId) {
+    const remoteCtx = (globalThis as Record<string, StreamEventContext>).__remoteStreamCtx
+    const pending = remoteCtx?.pendingPermissions.get(sessionId)
+    if (pending) {
+      remoteCtx.pendingPermissions.delete(sessionId)
+      pending.resolve({ decision: 'deny', reason })
+    }
+    remoteStreamAdapter.denyPermission(serverId, sessionId, requestId, reason)
+  }
 })
 
 ipcMain.handle('remote:stream:always-allow', async (_event, sessionId: string) => {
   if (!remoteStreamAdapter) return
+  sessionStore?.setPermissionMode(sessionId, 'auto')
   const serverId = remoteSessionServerMap.get(sessionId)
   if (!serverId) return
   const session = sessionStore?.get(sessionId)
   const requestId = session?.phase.type === 'waitingForApproval'
     ? (session.phase as { context: { toolUseId: string } }).context?.toolUseId
     : undefined
-  if (requestId) remoteStreamAdapter.alwaysAllowPermission(serverId, sessionId, requestId)
+  if (requestId) {
+    const remoteCtx = (globalThis as Record<string, StreamEventContext>).__remoteStreamCtx
+    const pending = remoteCtx?.pendingPermissions.get(sessionId)
+    if (pending) {
+      remoteCtx.pendingPermissions.delete(sessionId)
+      sessionStore?.addSystemMessage(sessionId, pending.formattedDetail)
+      pending.resolve({ decision: 'allow' })
+    }
+    remoteStreamAdapter.approvePermission(serverId, sessionId, requestId)
+    sessionStore?.process({
+      hook_event_name: 'PostToolUse',
+      session_id: sessionId,
+      cwd: '',
+      payload: {},
+    })
+    remoteStreamAdapter.alwaysAllowPermission(serverId, sessionId, requestId)
+  }
 })
 
 ipcMain.handle('remote:stream:interrupt', async (_event, sessionId: string) => {
@@ -919,6 +1105,27 @@ app.whenReady().then(() => {
   remoteStreamAdapter = new RemoteStreamAdapter(remoteManager, sessionStore)
   remoteHookAdapter.register()
   remoteStreamAdapter.register()
+
+  // Push connection state changes to settings window
+  remoteManager.onStateChange((serverId, state) => {
+    if (settingsWin && !settingsWin.isDestroyed()) {
+      settingsWin.webContents.send('remote:state-change', { serverId, state })
+    }
+  })
+
+  // Wire remote stream events to the shared handleStreamEvent
+  const remoteStreamCtx: StreamEventContext = {
+    pendingPermissions: new Map(),
+    subToolParents: new Map(),
+    interrupted: new Set(),
+    destroying: new Set(),
+  }
+  remoteStreamAdapter.setEventHandler((sessionId, event) => {
+    handleStreamEvent(sessionStore!, broadcastToRenderer, sessionId, event, remoteStreamCtx)
+  })
+
+  // Expose remoteStreamCtx for IPC handlers to clean up pending permissions
+  ;(globalThis as Record<string, unknown>).__remoteStreamCtx = remoteStreamCtx
 
   // Connect to configured remote servers
   const remoteServers = (readConfig().remoteServers as RemoteServerConfig[]) ?? []

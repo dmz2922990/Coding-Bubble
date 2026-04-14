@@ -26,6 +26,7 @@ const RECONNECT_BASE_MS = 1000
 const RECONNECT_MAX_MS = 30_000
 
 export type ServerMessageHandler = (serverId: string, message: ServerMessage) => void
+export type StateChangeHandler = (serverId: string, state: ConnectionState) => void
 
 export class RemoteManager {
   private _connections = new Map<string, {
@@ -38,9 +39,14 @@ export class RemoteManager {
   }>()
 
   private _messageHandlers: ServerMessageHandler[] = []
+  private _stateChangeHandler: StateChangeHandler | null = null
 
   onMessage(handler: ServerMessageHandler): void {
     this._messageHandlers.push(handler)
+  }
+
+  onStateChange(handler: StateChangeHandler): void {
+    this._stateChangeHandler = handler
   }
 
   getConnections(): ConnectionInfo[] {
@@ -96,7 +102,7 @@ export class RemoteManager {
       conn.ws.close()
       conn.ws = null
     }
-    conn.state = 'disconnected'
+    this._setState(serverId, 'disconnected')
   }
 
   send(serverId: string, message: ClientMessage): void {
@@ -136,11 +142,18 @@ export class RemoteManager {
 
   // ── Private ──────────────────────────────────────────────
 
+  private _setState(serverId: string, state: ConnectionState): void {
+    const conn = this._connections.get(serverId)
+    if (!conn) return
+    conn.state = state
+    this._stateChangeHandler?.(serverId, state)
+  }
+
   private _connect(serverId: string): void {
     const conn = this._connections.get(serverId)
     if (!conn) return
 
-    conn.state = 'connecting'
+    this._setState(serverId, 'connecting')
     const { host, port, token } = conn.config
     const url = `ws://${host}:${port}`
 
@@ -168,11 +181,11 @@ export class RemoteManager {
       // Handle auth_result
       if (msg.type === 'auth_result') {
         if (msg.success) {
-          conn.state = 'connected'
+          this._setState(serverId, 'connected')
           conn.reconnectAttempt = 0
           console.log(`[remote-manager] connected to ${url}`)
         } else {
-          conn.state = 'disconnected'
+          this._setState(serverId, 'disconnected')
           console.error(`[remote-manager] auth failed: ${msg.error}`)
           ws.close()
         }
@@ -199,7 +212,7 @@ export class RemoteManager {
     ws.on('close', () => {
       if (conn.ws === ws) {
         conn.ws = null
-        conn.state = 'disconnected'
+        this._setState(serverId, 'disconnected')
         this._rejectAllPending(conn, new Error('Connection closed'))
         this._scheduleReconnect(serverId)
       }
