@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, screen, Tray } 
 import { join } from 'path'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import type { HookResponse, Intervention } from '@coding-bubble/session-monitor'
-import { RemoteManager, RemoteHookAdapter, RemoteStreamAdapter } from '@coding-bubble/remote'
+import { RemoteManager, RemoteHookAdapter, RemoteStreamAdapter, parseRemoteSessionId } from '@coding-bubble/remote'
 import type { RemoteServerConfig } from '@coding-bubble/remote'
 import { formatToolDetail } from './format-tool-detail'
 
@@ -442,6 +442,16 @@ ipcMain.handle('session:list', () => {
 ipcMain.handle('session:approve', async (_event, sessionId: string) => {
   console.log('[main] ===== session:approve START =====')
   console.log('[main] session:approve called for session:', sessionId)
+
+  // Route remote-hook sessions to remote hook adapter
+  const parsed = parseRemoteSessionId(sessionId)
+  if (parsed && remoteHookAdapter) {
+    const toolUseId = remoteHookAdapter.getPendingToolUseId(sessionId)
+    if (toolUseId) {
+      remoteHookAdapter.approvePermission(parsed.serverId, sessionId, toolUseId)
+    }
+    return
+  }
   console.log('[main] pendingPermissionResolvers keys:', [...pendingPermissionResolvers.keys()])
 
   const entry = pendingPermissionResolvers.get(sessionId)
@@ -478,6 +488,17 @@ ipcMain.handle('session:approve', async (_event, sessionId: string) => {
 
 ipcMain.handle('session:deny', async (_event, sessionId: string, reason?: string) => {
   console.log('[main] session:deny', sessionId, 'pending keys:', [...pendingPermissionResolvers.keys()])
+
+  // Route remote-hook sessions to remote hook adapter
+  const parsed = parseRemoteSessionId(sessionId)
+  if (parsed && remoteHookAdapter) {
+    const toolUseId = remoteHookAdapter.getPendingToolUseId(sessionId)
+    if (toolUseId) {
+      remoteHookAdapter.denyPermission(parsed.serverId, sessionId, toolUseId, reason)
+    }
+    return
+  }
+
   const entry = pendingPermissionResolvers.get(sessionId)
   if (!entry) return
   pendingPermissionResolvers.delete(sessionId)
@@ -495,6 +516,16 @@ ipcMain.handle('session:always-allow', async (_event, sessionId: string) => {
 
   // Set session permission mode to 'auto' for future auto-allow
   sessionStore?.setPermissionMode(sessionId, 'auto')
+
+  // Route remote-hook sessions to remote hook adapter
+  const parsedAlwaysAllow = parseRemoteSessionId(sessionId)
+  if (parsedAlwaysAllow && remoteHookAdapter) {
+    const toolUseId = remoteHookAdapter.getPendingToolUseId(sessionId)
+    if (toolUseId) {
+      remoteHookAdapter.approvePermission(parsedAlwaysAllow.serverId, sessionId, toolUseId)
+    }
+    return
+  }
 
   // Also approve the current pending permission
   const entry = pendingPermissionResolvers.get(sessionId)
@@ -525,6 +556,34 @@ ipcMain.handle('session:always-allow', async (_event, sessionId: string) => {
 ipcMain.handle('session:answer', async (_event, sessionId: string, answer: string) => {
   console.log('[main] ===== session:answer START =====')
   console.log('[main] session:answer called for session:', sessionId, 'answer:', answer)
+
+  // Route remote-hook sessions to remote hook adapter
+  const parsedAnswer = parseRemoteSessionId(sessionId)
+  if (parsedAnswer && remoteHookAdapter) {
+    const toolUseId = remoteHookAdapter.getPendingToolUseId(sessionId)
+    if (toolUseId) {
+      const session = sessionStore?.get(sessionId)
+      const toolInput = (session?.phase as { context?: { toolInput?: Record<string, unknown> } })?.context?.toolInput
+      const response: HookResponse = { decision: 'allow' }
+      if (toolInput && Array.isArray(toolInput.questions)) {
+        let answerValue: string
+        try {
+          const parsed = JSON.parse(answer)
+          answerValue = Array.isArray(parsed) ? parsed.join(',') : String(parsed)
+        } catch {
+          answerValue = answer
+        }
+        const answers: Record<string, string> = {}
+        for (const q of toolInput.questions as Array<Record<string, unknown>>) {
+          answers[q.question as string] = answerValue
+        }
+        response.updatedInput = { questions: toolInput.questions, answers }
+      }
+      remoteHookAdapter.answerPermission(parsedAnswer.serverId, sessionId, toolUseId, response)
+      sessionStore?.resolvePermission(toolUseId, response)
+    }
+    return
+  }
 
   const entry = pendingPermissionResolvers.get(sessionId)
   if (!entry) {

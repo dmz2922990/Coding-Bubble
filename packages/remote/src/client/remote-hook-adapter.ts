@@ -117,4 +117,39 @@ export class RemoteHookAdapter {
     }
     this._remoteManager.send(serverId, response)
   }
+
+  answerPermission(serverId: string, sessionId: string, toolUseId: string, answer: HookResponse): void {
+    const key = `${sessionId}:${toolUseId}`
+    const pending = this._pendingPermissions.get(key)
+    if (!pending) return
+
+    this._pendingPermissions.delete(key)
+    this._sessionStore.resolvePermission(toolUseId, answer)
+
+    const originalSessionId = sessionId.replace(`remote:${serverId}:`, '')
+
+    const response: HookPermissionResponseMessage = {
+      type: 'hook_permission_response',
+      sessionId: originalSessionId,
+      toolUseId,
+      response: answer,
+    }
+    this._remoteManager.send(serverId, response)
+  }
+
+  /** Get toolUseId for a pending permission */
+  getPendingToolUseId(sessionId: string): string | undefined {
+    for (const [key, pending] of this._pendingPermissions) {
+      if (pending.sessionId === sessionId) return pending.toolUseId
+    }
+    return undefined
+  }
+}
+
+/** Extract serverId from compound sessionId (remote:{serverId}:{...}) */
+export function parseRemoteSessionId(sessionId: string): { serverId: string; internalId: string } | null {
+  if (!sessionId.startsWith('remote:')) return null
+  const parts = sessionId.split(':')
+  if (parts.length < 3) return null
+  return { serverId: parts[1], internalId: parts.slice(2).join(':') }
 }
