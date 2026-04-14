@@ -16,6 +16,7 @@ export type SessionPhaseType =
   | 'idle'
   | 'thinking'
   | 'processing'
+  | 'juggling'
   | 'done'
   | 'error'
   | 'waitingForInput'
@@ -34,6 +35,7 @@ export type SessionPhase =
   | { type: 'idle' }
   | { type: 'thinking' }
   | { type: 'processing' }
+  | { type: 'juggling' }
   | { type: 'done' }
   | { type: 'error' }
   | { type: 'waitingForInput' }
@@ -42,9 +44,10 @@ export type SessionPhase =
   | { type: 'ended' }
 
 export const VALID_TRANSITIONS: Record<SessionPhaseType, SessionPhaseType[]> = {
-  idle: ['thinking', 'processing', 'waitingForApproval', 'waitingForInput', 'done', 'compacting'],
-  thinking: ['processing', 'done', 'error', 'waitingForApproval', 'compacting'],
-  processing: ['thinking', 'done', 'error', 'waitingForInput', 'waitingForApproval', 'compacting'],
+  idle: ['thinking', 'processing', 'juggling', 'waitingForApproval', 'waitingForInput', 'done', 'compacting'],
+  thinking: ['processing', 'juggling', 'done', 'error', 'waitingForApproval', 'compacting'],
+  processing: ['thinking', 'juggling', 'done', 'error', 'waitingForInput', 'waitingForApproval', 'compacting'],
+  juggling: ['processing', 'done', 'error', 'waitingForInput', 'waitingForApproval', 'compacting'],
   done: ['idle', 'thinking', 'waitingForInput'],
   error: ['idle', 'thinking', 'done'],
   waitingForInput: ['thinking', 'processing', 'idle', 'done', 'compacting'],
@@ -59,6 +62,7 @@ export const STATE_PRIORITY: Record<SessionPhaseType, number> = {
   done: 6,
   waitingForInput: 5,
   compacting: 4,
+  juggling: 4,
   processing: 3,
   thinking: 2,
   idle: 1,
@@ -67,9 +71,9 @@ export const STATE_PRIORITY: Record<SessionPhaseType, number> = {
 
 export const ONESHOT_TIMEOUTS: Partial<Record<SessionPhaseType, number>> = {
   done: 3000,
-  error: 5000,
   thinking: 120_000,
   processing: 300_000,
+  juggling: 300_000,
 }
 
 // ═─ Chat History Items ──────────────────────────────────────

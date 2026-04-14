@@ -28,6 +28,7 @@ function newPhase(id: string): SessionPhase {
     case 'idle': return { type: 'idle' }
     case 'thinking': return { type: 'thinking' }
     case 'processing': return { type: 'processing' }
+    case 'juggling': return { type: 'juggling' }
     case 'done': return { type: 'done' }
     case 'error': return { type: 'error' }
     case 'waitingForInput': return { type: 'waitingForInput' }
@@ -289,10 +290,9 @@ export class SessionStore {
           this._updateToolResult(sessionId, toolUseId, toolResponse)
         }
 
-        // If session was waiting for approval and tool is now complete,
-        // transition to processing (user approved/denied in Claude Code terminal)
         if (session.phase.type === 'waitingForApproval') {
-          console.log('[SessionStore] PostToolUse: auto-transition from waitingForApproval to processing')
+          this.transition(session, 'processing')
+        } else if (session.phase.type === 'thinking') {
           this.transition(session, 'processing')
         }
         break
@@ -309,6 +309,9 @@ export class SessionStore {
         break
       }
       case 'SubagentStop':
+        if (session.phase.type === 'juggling') {
+          this.transition(session, 'processing')
+        }
         break
       case 'PreCompact':
         this.transition(session, 'compacting')
@@ -325,8 +328,8 @@ export class SessionStore {
         this.transition(session, 'error')
         break
       case 'SubagentStart':
-        if (session.phase.type === 'thinking' || session.phase.type === 'idle') {
-          this.transition(session, 'processing')
+        if (session.phase.type === 'thinking' || session.phase.type === 'idle' || session.phase.type === 'processing') {
+          this.transition(session, 'juggling')
         }
         break
     }
