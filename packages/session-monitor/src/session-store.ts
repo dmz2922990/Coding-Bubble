@@ -51,6 +51,7 @@ export class SessionStore {
     done: 15,
   }
   private _oneshotTimers = new Map<string, ReturnType<typeof setTimeout>>() // key: sessionId
+  private _notificationTimers = new Map<string, ReturnType<typeof setTimeout>>() // key: sessionId
   private _onInterventionChange?: (interventions: Intervention[]) => void
   private _onNotificationChange?: (notifications: BubbleNotification[]) => void
 
@@ -217,6 +218,9 @@ export class SessionStore {
     if (!session) return
     this.transition(session, 'ended')
     this._removeIntervention(sessionId)
+    this._notifications.delete(sessionId)
+    this._clearNotificationTimer(sessionId)
+    this._notifyNotificationChange()
     setTimeout(() => this._sessions.delete(sessionId), 0)
   }
 
@@ -794,10 +798,38 @@ export class SessionStore {
         timestamp: now(),
         autoCloseMs: config.autoCloseMs,
       })
+
+      // Start auto-close timer in main process for timed notifications
+      this._clearNotificationTimer(session.sessionId)
+      if (config.autoCloseMs > 0) {
+        const sid = session.sessionId
+        const timer = setTimeout(() => {
+          this._notificationTimers.delete(sid)
+          this._notifications.delete(sid)
+          this._notifyNotificationChange()
+        }, config.autoCloseMs)
+        this._notificationTimers.set(session.sessionId, timer)
+      }
+
+      this._notifyNotificationChange()
     } else {
-      this._notifications.delete(session.sessionId)
+      // Non-notification phase: only clear notifications without auto-close timer.
+      // Timed notifications (done/error) persist until their main-process timer fires.
+      const existing = this._notifications.get(session.sessionId)
+      if (!existing || existing.autoCloseMs === 0) {
+        this._notifications.delete(session.sessionId)
+        this._clearNotificationTimer(session.sessionId)
+        this._notifyNotificationChange()
+      }
     }
-    this._notifyNotificationChange()
+  }
+
+  private _clearNotificationTimer(sessionId: string): void {
+    const existing = this._notificationTimers.get(sessionId)
+    if (existing) {
+      clearTimeout(existing)
+      this._notificationTimers.delete(sessionId)
+    }
   }
 
   private _notifyNotificationChange(): void {
