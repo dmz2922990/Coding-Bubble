@@ -155,9 +155,9 @@ export function FloatingBall(): React.JSX.Element {
     window.electronAPI.navigateToSession(sessionId)
   }, [])
 
-  const handleNotificationClose = useCallback(() => {
-    setNotificationVisible(false)
-    setBubbleDismissed(true)
+  const handleNotificationDismiss = useCallback((sessionId: string) => {
+    setNotifications(prev => prev.filter(n => n.sessionId !== sessionId))
+    window.electronAPI.dismissNotification(sessionId)
   }, [])
 
   const handleMouseEnter = useCallback(() => {
@@ -252,7 +252,7 @@ export function FloatingBall(): React.JSX.Element {
             notifications={notifications}
             visible={notificationVisible}
             onRowClick={handleNotificationRowClick}
-            onClose={handleNotificationClose}
+            onDismissSession={handleNotificationDismiss}
           />
           <div
             ref={ballRef}

@@ -136,6 +136,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     setConfig: (config: Record<string, number>): Promise<void> =>
       ipcRenderer.invoke('notification:set-config', config),
   },
+  /** Dismiss a single notification by sessionId */
+  dismissNotification: (sessionId: string): void => {
+    ipcRenderer.send('notification:dismiss', sessionId)
+  },
   /** Directory picker dialog */
   showOpenDialog: (options: Record<string, unknown>): Promise<unknown> =>
     ipcRenderer.invoke('dialog:showOpenDialog', options),

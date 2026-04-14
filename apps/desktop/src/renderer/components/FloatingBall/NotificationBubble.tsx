@@ -16,7 +16,7 @@ interface NotificationBubbleProps {
   notifications: BubbleNotification[]
   visible: boolean
   onRowClick: (sessionId: string) => void
-  onClose: () => void
+  onDismissSession: (sessionId: string) => void
 }
 
 const MAX_ROWS = 5
@@ -36,15 +36,14 @@ const TYPE_PRIORITY: Record<NotificationType, number> = {
   done: 1,
 }
 
-export function NotificationBubble({ notifications, visible, onRowClick, onClose }: NotificationBubbleProps): React.JSX.Element | null {
+export function NotificationBubble({ notifications, visible, onRowClick, onDismissSession }: NotificationBubbleProps): React.JSX.Element | null {
+  // Auto-close timer — picks minimum autoCloseMs across all timed notifications
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Sort by priority
   const sorted = [...notifications].sort(
     (a, b) => (TYPE_PRIORITY[b.type] ?? 0) - (TYPE_PRIORITY[a.type] ?? 0)
   )
 
-  // Auto-close timer
   useEffect(() => {
     if (timerRef.current) {
       clearTimeout(timerRef.current)
@@ -57,7 +56,12 @@ export function NotificationBubble({ notifications, visible, onRowClick, onClose
     if (hasNeverClose) return
 
     const minAutoClose = Math.min(...sorted.map(n => n.autoCloseMs))
-    timerRef.current = setTimeout(onClose, minAutoClose)
+    timerRef.current = setTimeout(() => {
+      // Dismiss all timed notifications
+      for (const n of sorted) {
+        onDismissSession(n.sessionId)
+      }
+    }, minAutoClose)
 
     return () => {
       if (timerRef.current) {
@@ -65,17 +69,17 @@ export function NotificationBubble({ notifications, visible, onRowClick, onClose
         timerRef.current = null
       }
     }
-  }, [visible, sorted, onClose])
+  }, [visible, sorted, onDismissSession])
 
   const handleClick = useCallback((sessionId: string) => (e: React.MouseEvent) => {
     e.stopPropagation()
     onRowClick(sessionId)
   }, [onRowClick])
 
-  const handleClose = useCallback((e: React.MouseEvent) => {
+  const handleDismiss = useCallback((sessionId: string) => (e: React.MouseEvent) => {
     e.stopPropagation()
-    onClose()
-  }, [onClose])
+    onDismissSession(sessionId)
+  }, [onDismissSession])
 
   const handleMouseEnter = useCallback(() => {
     window.electronAPI.setIgnoreMouseEvents(false)
@@ -96,11 +100,6 @@ export function NotificationBubble({ notifications, visible, onRowClick, onClose
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <button className="notification-bubble__close" onClick={handleClose} aria-label="Close">
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-          <path d="M1.5 1.5L8.5 8.5M8.5 1.5L1.5 8.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-        </svg>
-      </button>
       <div className="notification-bubble__list">
         {displayItems.map((item) => {
           const config = NOTIFICATION_CONFIG[item.type]
@@ -118,6 +117,15 @@ export function NotificationBubble({ notifications, visible, onRowClick, onClose
                   {item.toolName && <span className="notification-bubble__tool"> {item.toolName}</span>}
                 </span>
               </div>
+              <button
+                className="notification-bubble__row-close"
+                onClick={handleDismiss(item.sessionId)}
+                aria-label="Close"
+              >
+                <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
+                  <path d="M1.5 1.5L8.5 8.5M8.5 1.5L1.5 8.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                </svg>
+              </button>
             </div>
           )
         })}

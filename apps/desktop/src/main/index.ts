@@ -412,6 +412,10 @@ ipcMain.handle('notification:set-config', (_event, config: NotificationAutoClose
   sessionStore?.updateNotificationConfig(config)
 })
 
+ipcMain.on('notification:dismiss', (_event, sessionId: string) => {
+  sessionStore?.dismissNotification(sessionId)
+})
+
 ipcMain.handle('dialog:showOpenDialog', async (_event, options: Electron.OpenDialogOptions) => {
   return dialog.showOpenDialog(options)
 })

@@ -773,6 +773,14 @@ export class SessionStore {
     return Array.from(this._notifications.values())
   }
 
+  dismissNotification(sessionId: string): void {
+    if (this._notifications.has(sessionId)) {
+      this._notifications.delete(sessionId)
+      this._clearNotificationTimer(sessionId)
+      this._notifyNotificationChange()
+    }
+  }
+
   onNotificationChange(cb: (notifications: BubbleNotification[]) => void): void {
     this._onNotificationChange = cb
   }
