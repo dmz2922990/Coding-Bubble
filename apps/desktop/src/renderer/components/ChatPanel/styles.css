@@ -724,8 +724,14 @@
 }
 
 .session-tab__phase-badge--processing {
-  background: rgba(76, 175, 80, 0.15);
-  color: rgba(76, 175, 80, 0.9);
+  background: rgba(33, 150, 243, 0.15);
+  color: rgba(33, 150, 243, 0.9);
+  animation: tool-pulse 1.5s ease infinite;
+}
+
+.session-tab__phase-badge--juggling {
+  background: rgba(171, 71, 188, 0.15);
+  color: rgba(171, 71, 188, 0.9);
   animation: tool-pulse 1.5s ease infinite;
 }
 
