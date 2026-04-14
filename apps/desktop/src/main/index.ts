@@ -778,6 +778,13 @@ ipcMain.handle('remote:stream:send', async (_event, sessionId: string, text: str
   if (!remoteStreamAdapter) return
   const serverId = remoteSessionServerMap.get(sessionId)
   if (!serverId) return
+  // Add user message to SessionStore so it shows in the chat
+  sessionStore?.process({
+    hook_event_name: 'UserPromptSubmit',
+    session_id: sessionId,
+    cwd: '',
+    payload: { prompt: text },
+  })
   remoteStreamAdapter.send(serverId, sessionId, text)
 })
 
