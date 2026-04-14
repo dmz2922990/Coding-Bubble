@@ -129,6 +129,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
       return () => ipcRenderer.removeListener('remote:state-change', cb)
     },
   },
+  /** Notification config */
+  notification: {
+    getConfig: (): Promise<Record<string, number>> =>
+      ipcRenderer.invoke('notification:get-config'),
+    setConfig: (config: Record<string, number>): Promise<void> =>
+      ipcRenderer.invoke('notification:set-config', config),
+  },
   /** Directory picker dialog */
   showOpenDialog: (options: Record<string, unknown>): Promise<unknown> =>
     ipcRenderer.invoke('dialog:showOpenDialog', options),

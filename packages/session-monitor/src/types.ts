@@ -166,6 +166,13 @@ export interface Intervention {
 
 export type NotificationType = 'approval' | 'input' | 'done' | 'error'
 
+export interface NotificationAutoCloseConfig {
+  approval: number
+  error: number
+  input: number
+  done: number
+}
+
 export interface BubbleNotification {
   sessionId: string
   projectName: string

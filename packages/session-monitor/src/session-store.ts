@@ -11,7 +11,7 @@ import type {
   InitMetadata
 } from './types'
 import { VALID_TRANSITIONS, STATE_PRIORITY, ONESHOT_TIMEOUTS } from './types'
-import type { BubbleNotification, NotificationType } from './types'
+import type { BubbleNotification, NotificationType, NotificationAutoCloseConfig } from './types'
 
 /** Derive project name from cwd */
 function projectNameFromCwd(cwd: string): string {
@@ -44,6 +44,12 @@ export class SessionStore {
   private _invalidTransitions: Array<{ sessionId: string; from: string; to: string }> = []
   private _interventions = new Map<string, Intervention>() // key: sessionId
   private _notifications = new Map<string, BubbleNotification>() // key: sessionId
+  private _notificationConfig: NotificationAutoCloseConfig = {
+    approval: 0,
+    error: 30,
+    input: 15,
+    done: 15,
+  }
   private _oneshotTimers = new Map<string, ReturnType<typeof setTimeout>>() // key: sessionId
   private _onInterventionChange?: (interventions: Intervention[]) => void
   private _onNotificationChange?: (notifications: BubbleNotification[]) => void
@@ -62,6 +68,10 @@ export class SessionStore {
       session.permissionMode = mode
       console.log('[SessionStore] set permission mode to', mode, 'for session:', sessionId)
     }
+  }
+
+  updateNotificationConfig(config: NotificationAutoCloseConfig): void {
+    this._notificationConfig = { ...config }
   }
 
   setInitMetadata(sessionId: string, metadata: InitMetadata): void {
@@ -754,11 +764,12 @@ export class SessionStore {
   }
 
   private _updateNotifications(session: SessionState): void {
+    const c = this._notificationConfig
     const phaseToType: Partial<Record<SessionPhase['type'], { type: NotificationType; autoCloseMs: number }>> = {
-      done: { type: 'done', autoCloseMs: 4000 },
-      error: { type: 'error', autoCloseMs: 8000 },
-      waitingForApproval: { type: 'approval', autoCloseMs: 0 },
-      waitingForInput: { type: 'input', autoCloseMs: 15000 },
+      done: { type: 'done', autoCloseMs: c.done * 1000 },
+      error: { type: 'error', autoCloseMs: c.error * 1000 },
+      waitingForApproval: { type: 'approval', autoCloseMs: c.approval * 1000 },
+      waitingForInput: { type: 'input', autoCloseMs: c.input * 1000 },
     }
 
     const config = phaseToType[session.phase.type]

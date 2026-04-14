@@ -218,7 +218,7 @@ function buildAppMenu(): Menu {
 const PANEL_W = 400
 const PANEL_H = 600
 const SETTINGS_W = 360
-const SETTINGS_H = 420
+const SETTINGS_H = 520
 
 function createPanelWindow(): void {
   if (panelWin) {
@@ -400,6 +400,18 @@ ipcMain.handle('config:set', (_event, config: Record<string, unknown>) => {
   writeConfig({ ...existing, ...config })
 })
 
+ipcMain.handle('notification:get-config', () => {
+  const defaultAutoClose: NotificationAutoCloseConfig = { approval: 0, error: 30, input: 15, done: 15 }
+  const savedAutoClose = readConfig().notificationAutoClose as NotificationAutoCloseConfig | undefined
+  return savedAutoClose ? { ...defaultAutoClose, ...savedAutoClose } : defaultAutoClose
+})
+
+ipcMain.handle('notification:set-config', (_event, config: NotificationAutoCloseConfig) => {
+  const existing = readConfig()
+  writeConfig({ ...existing, notificationAutoClose: config })
+  sessionStore?.updateNotificationConfig(config)
+})
+
 ipcMain.handle('dialog:showOpenDialog', async (_event, options: Electron.OpenDialogOptions) => {
   return dialog.showOpenDialog(options)
 })
@@ -417,6 +429,7 @@ ipcMain.handle('dialog:saveMarkdown', async (_event, content: string, defaultNam
 // ── Session Monitor ──────────────────────────────────────────
 
 import { SessionStore, createSocketServer, installHooks, hooksInstalled, watchJsonlFile, parseFullConversation } from '@coding-bubble/session-monitor'
+import type { NotificationAutoCloseConfig } from '@coding-bubble/session-monitor'
 import type { HookEvent } from '@coding-bubble/session-monitor'
 import { TerminalJumper } from '@coding-bubble/session-monitor'
 import { StreamAdapterManager, handleStreamEvent } from './stream-adapter'
@@ -1095,6 +1108,13 @@ app.whenReady().then(() => {
 
   sessionStore = new SessionStore()
   sessionStore.onPublish((channel: string, data: unknown) => broadcastToRenderer(channel, data))
+
+  // Load notification auto-close config from persisted config
+  const defaultAutoClose: NotificationAutoCloseConfig = { approval: 0, error: 30, input: 15, done: 15 }
+  const savedAutoClose = readConfig().notificationAutoClose as NotificationAutoCloseConfig | undefined
+  if (savedAutoClose) {
+    sessionStore.updateNotificationConfig({ ...defaultAutoClose, ...savedAutoClose })
+  }
 
   streamManager = new StreamAdapterManager({
     sessionStore,
