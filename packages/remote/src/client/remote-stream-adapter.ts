@@ -17,7 +17,8 @@ interface PendingCreate {
 export class RemoteStreamAdapter {
   private _remoteManager: RemoteManager
   private _sessionStore: SessionStore
-  private _serverSessions = new Map<string, string>() // internal sessionId -> serverId
+  private _serverSessions = new Map<string, string>() // compound sessionId -> serverId
+  private _serverInternalIds = new Map<string, string>() // compound sessionId -> server's internal sessionId
   private _pendingPermissions = new Map<string, PendingStreamPermission>() // sessionId -> pending
   private _pendingCreates = new Map<string, PendingCreate>() // requestId -> pending
 
@@ -60,60 +61,70 @@ export class RemoteStreamAdapter {
   }
 
   send(serverId: string, sessionId: string, text: string): void {
+    const internalId = this._serverInternalIds.get(sessionId)
+    if (!internalId) return
     this._remoteManager.send(serverId, {
       type: 'stream_send',
-      sessionId,
+      sessionId: internalId,
       text,
     })
   }
 
   interrupt(serverId: string, sessionId: string): void {
+    const internalId = this._serverInternalIds.get(sessionId)
+    if (!internalId) return
     this._remoteManager.send(serverId, {
       type: 'stream_interrupt',
-      sessionId,
+      sessionId: internalId,
     })
   }
 
   async destroy(serverId: string, sessionId: string): Promise<void> {
+    const internalId = this._serverInternalIds.get(sessionId)
     this._serverSessions.delete(sessionId)
+    this._serverInternalIds.delete(sessionId)
     this._pendingPermissions.delete(sessionId)
+    if (!internalId) return
     this._remoteManager.send(serverId, {
       type: 'stream_destroy',
-      sessionId,
+      sessionId: internalId,
     })
   }
 
   approvePermission(serverId: string, sessionId: string, requestId: string): void {
+    const internalId = this._serverInternalIds.get(sessionId) ?? sessionId
     const result: PermissionResult = { behavior: 'allow', updatedInput: {} }
     this._pendingPermissions.delete(sessionId)
     this._sessionStore.resolvePermission(requestId, { decision: 'allow' })
 
     this._remoteManager.send(serverId, {
       type: 'stream_permission_response',
-      sessionId,
+      sessionId: internalId,
       requestId,
       result,
     })
   }
 
   denyPermission(serverId: string, sessionId: string, requestId: string, reason?: string): void {
+    const internalId = this._serverInternalIds.get(sessionId) ?? sessionId
     const result: PermissionResult = { behavior: 'deny', message: reason ?? 'Denied by user' }
     this._pendingPermissions.delete(sessionId)
     this._sessionStore.resolvePermission(requestId, { decision: 'deny', reason })
 
     this._remoteManager.send(serverId, {
       type: 'stream_permission_response',
-      sessionId,
+      sessionId: internalId,
       requestId,
       result,
     })
   }
 
   alwaysAllowPermission(serverId: string, sessionId: string, requestId: string): void {
+    const internalId = this._serverInternalIds.get(sessionId) ?? sessionId
     this.approvePermission(serverId, sessionId, requestId)
     this._remoteManager.send(serverId, {
       type: 'stream_set_permission_mode',
-      sessionId,
+      sessionId: internalId,
       mode: 'auto',
     })
   }
@@ -303,6 +314,7 @@ export class RemoteStreamAdapter {
       (session as { source: string }).source = 'remote-stream'
     }
     this._serverSessions.set(internalSessionId, serverId)
+    this._serverInternalIds.set(internalSessionId, message.sessionId)
     pending.resolve(internalSessionId)
   }
 }
