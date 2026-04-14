@@ -11,6 +11,7 @@ interface PendingStreamPermission {
 interface PendingCreate {
   resolve: (sessionId: string) => void
   reject: (error: Error) => void
+  cwd: string
 }
 
 export class RemoteStreamAdapter {
@@ -39,7 +40,7 @@ export class RemoteStreamAdapter {
     const requestId = `create_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
 
     return new Promise((resolve, reject) => {
-      this._pendingCreates.set(requestId, { resolve, reject })
+      this._pendingCreates.set(requestId, { resolve, reject, cwd })
 
       this._remoteManager.send(serverId, {
         type: 'stream_create',
@@ -125,7 +126,10 @@ export class RemoteStreamAdapter {
 
     // Ensure session exists in SessionStore
     if (!this._sessionStore.get(internalSessionId)) {
-      this._sessionStore.createStreamSession(internalSessionId, '')
+      const projectName = message.event.cwd
+        ? message.event.cwd.split('/').filter(Boolean).pop() ?? 'remote'
+        : 'remote'
+      this._sessionStore.createStreamSession(internalSessionId, projectName)
       const session = this._sessionStore.get(internalSessionId)
       if (session) {
         (session as { source: string }).source = 'remote-stream'
@@ -302,8 +306,10 @@ export class RemoteStreamAdapter {
       return
     }
 
+    // Extract directory name from cwd as project name
+    const projectName = pending.cwd.split('/').filter(Boolean).pop() ?? 'remote'
     const internalSessionId = `remote:${serverId}:${message.sessionId}`
-    this._sessionStore.createStreamSession(internalSessionId, '')
+    this._sessionStore.createStreamSession(internalSessionId, projectName)
     const session = this._sessionStore.get(internalSessionId)
     if (session) {
       (session as { source: string }).source = 'remote-stream'
