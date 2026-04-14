@@ -1043,7 +1043,7 @@
   border-radius: 8px;
   background: rgba(255, 152, 0, 0.08);
   border: 1px solid rgba(255, 152, 0, 0.15);
-  max-height: 240px;
+  max-height: 150px;
   overflow-y: auto;
   flex-shrink: 0;
 }
@@ -1193,14 +1193,14 @@
 /* ── Permission Bar ──────────────────────────────────────── */
 
 .permission-bar {
-  padding: 10px 16px;
+  padding: 8px 12px;
   background: rgba(255, 152, 0, 0.12);
   border-top: 1px solid rgba(255, 152, 0, 0.2);
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
-  gap: 16px;
+  gap: 12px;
 }
 
 .permission-bar__content {
@@ -1421,6 +1421,9 @@
   background: rgba(255, 255, 255, 0.03);
   border-radius: 8px;
   margin: 8px 0;
+  max-height: 200px;
+  overflow-y: auto;
+  flex-shrink: 0;
 }
 
 .aqu-header {
