@@ -22,11 +22,13 @@ const HOOK_EVENTS = [
   'PermissionRequest',
   'Notification',
   'Stop',
+  'StopFailure',
   'SubagentStart',
   'SubagentStop',
   'SessionStart',
   'SessionEnd',
   'PreCompact',
+  'PostCompact',
 ]
 
 const BUBBLE_HOOK_ID = 'claude-bubble-state'
