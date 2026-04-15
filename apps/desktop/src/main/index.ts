@@ -260,7 +260,7 @@ function createPanelWindow(): void {
     resizable: true,
     minWidth: 320,
     minHeight: 400,
-    hasShadow: true,
+    hasShadow: process.platform !== 'darwin',
     show: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
