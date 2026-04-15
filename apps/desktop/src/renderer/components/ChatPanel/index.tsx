@@ -4,7 +4,7 @@ import { TabBar } from './TabBar'
 import { SessionListView } from './SessionListView'
 import { SessionTab } from './SessionTab'
 import { MessageInput } from './MessageInput'
-import type { TabItem, SessionInfo, ChatItem, SessionPhaseType, InitMetadata } from './types'
+import type { TabItem, SessionInfo, ChatItem, SessionPhaseType, InitMetadata, PermissionSuggestion } from './types'
 import './styles.css'
 
 /** Phase structure received from main process via IPC */
@@ -41,6 +41,7 @@ export function ChatPanel(): React.JSX.Element {
         const context = sessionPhase?.type === 'waitingForApproval' ? sessionPhase.context : undefined
         const toolName = context?.toolName as string | undefined
         const toolInput = context?.toolInput as Record<string, unknown> | null | undefined
+        const suggestions = context?.suggestions as PermissionSuggestion[] | undefined
 
         sessionMap.set(sessionId, {
           phase,
@@ -54,6 +55,7 @@ export function ChatPanel(): React.JSX.Element {
             toolName: toolName || undefined,
             toolInput: toolInput || undefined,
             initMetadata: s.initMetadata as InitMetadata | undefined,
+            suggestions: suggestions || undefined,
           }
         })
         itemsMap.set(sessionId, (s.chatItems as ChatItem[]) ?? [])
@@ -200,6 +202,17 @@ export function ChatPanel(): React.JSX.Element {
     }
   }, [tabManager.activeTabId, sessions])
 
+  const handleSuggestion = useCallback((index: number) => {
+    if (tabManager.activeTabId !== 'chat') {
+      const session = sessions.get(tabManager.activeTabId)
+      if (session?.session.source === 'stream' || session?.session.source === 'remote-stream') {
+        window.electronAPI.stream.suggestion(tabManager.activeTabId, index)
+      } else {
+        window.electronAPI.session.suggestion(tabManager.activeTabId, index)
+      }
+    }
+  }, [tabManager.activeTabId, sessions])
+
   const handleJumpToTerminal = useCallback((sessionId: string) => {
     window.electronAPI.session.jumpToTerminal(sessionId)
   }, [])
@@ -272,6 +285,7 @@ export function ChatPanel(): React.JSX.Element {
             onAllow={handleApprove}
             onDeny={handleDeny}
             onAlwaysAllow={handleAlwaysAllow}
+            onSuggestion={handleSuggestion}
             onAnswer={handleAnswer}
             onJumpToTerminal={isStream ? undefined : () => handleJumpToTerminal(tabManager.activeTabId)}
             onDisconnect={isStream ? () => handleTabClose(tabManager.activeTabId) : undefined}

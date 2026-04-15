@@ -2,7 +2,8 @@ import * as net from 'net'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
-import type { HookEvent, HookResponse } from './types'
+import type { HookEvent, HookResponse, PermissionSuggestion } from './types'
+import { mergeSuggestions } from './types'
 
 function getDefaultSocketPath(): string {
   if (process.platform === 'win32') {
@@ -52,7 +53,8 @@ export interface SocketServerOptions {
     sessionId: string,
     toolUseId: string,
     toolName: string,
-    toolInput: Record<string, unknown> | null
+    toolInput: Record<string, unknown> | null,
+    suggestions: PermissionSuggestion[]
   ) => Promise<HookResponse>
 }
 
@@ -93,6 +95,10 @@ export function createSocketServer(options: SocketServerOptions): SocketServer {
           console.log('[socket-server] PermissionRequest received for session:', event.session_id)
           const toolName = (payload?.tool_name as string) ?? (payload?.tool as string) ?? 'unknown'
           const toolInput = (payload?.tool_input as Record<string, unknown>) ?? (payload?.input as Record<string, unknown>) ?? null
+          const rawSuggestions = Array.isArray(payload?.permission_suggestions)
+            ? (payload!.permission_suggestions as PermissionSuggestion[])
+            : [] as PermissionSuggestion[]
+          const suggestions = mergeSuggestions(rawSuggestions)
           const key = ToolUseIdCache.makeKey(event.session_id, toolName, toolInput)
           console.log('[socket-server] cache key:', key)
           const toolUseId = cache.pop(key)
@@ -103,7 +109,8 @@ export function createSocketServer(options: SocketServerOptions): SocketServer {
             event.session_id,
             toolUseId ?? '',
             toolName,
-            toolInput
+            toolInput,
+            suggestions
           ).then((response) => {
             console.log('[socket-server] sending response:', JSON.stringify(response))
             socket.write(JSON.stringify(response) + '\n')

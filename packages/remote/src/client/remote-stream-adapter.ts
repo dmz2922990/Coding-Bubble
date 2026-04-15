@@ -1,4 +1,4 @@
-import type { SessionStore } from '@coding-bubble/session-monitor'
+import type { SessionStore, PermissionSuggestion } from '@coding-bubble/session-monitor'
 import type { PermissionResult } from '@coding-bubble/stream-json'
 import type { StreamEvent } from '@coding-bubble/stream-json'
 import type { RemoteManager } from './remote-manager'
@@ -125,6 +125,31 @@ export class RemoteStreamAdapter {
       type: 'stream_set_permission_mode',
       sessionId: internalId,
       mode: 'auto',
+    })
+  }
+
+  /** Send suggestion-based permission approval to remote server */
+  suggestionPermission(serverId: string, sessionId: string, index: number): void {
+    const internalId = this._serverInternalIds.get(sessionId) ?? sessionId
+    const session = this._sessionStore.get(sessionId)
+    const context = session?.phase.type === 'waitingForApproval'
+      ? (session.phase as { context: { toolUseId: string; suggestions: PermissionSuggestion[] } }).context
+      : undefined
+    if (!context) return
+
+    const suggestion = context.suggestions?.[index]
+    if (!suggestion) return
+
+    const result: PermissionResult = {
+      behavior: 'allow',
+      updatedInput: {},
+      updatedPermissions: [suggestion],
+    }
+    this._remoteManager.send(serverId, {
+      type: 'stream_permission_response',
+      sessionId: internalId,
+      requestId: context.toolUseId,
+      result,
     })
   }
 

@@ -47,6 +47,8 @@ export interface StreamEvent {
   signal?: string | null
   inputTokens?: number
   outputTokens?: number
+  // permission_request
+  suggestions?: PermissionSuggestion[]
   // session_state
   state?: 'idle' | 'running' | 'requires_action'
   // system_status
@@ -95,8 +97,17 @@ export interface StreamSessionOptions {
 export interface PermissionResult {
   behavior: 'allow' | 'deny'
   updatedInput?: Record<string, unknown>
+  updatedPermissions?: PermissionSuggestion[]
   message?: string
 }
+
+// ═─ Permission Suggestion ──────────────────────────────────────────
+
+export type PermissionSuggestion =
+  | { type: 'addRules'; destination: string; behavior: string; rules: Array<{ toolName: string; ruleContent: string }>; toolName?: string; ruleContent?: string }
+  | { type: 'setMode'; mode: string; destination: string }
+  | { type: 'addDirectories'; directories: string[]; destination: string }
+  | (Record<string, unknown> & { type: string })
 
 // ═─ Session Metadata ──────────────────────────────────────────
 

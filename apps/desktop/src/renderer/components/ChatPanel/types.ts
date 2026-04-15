@@ -54,7 +54,15 @@ export interface SessionInfo {
   toolName?: string
   toolInput?: Record<string, unknown> | null
   initMetadata?: InitMetadata
+  suggestions?: PermissionSuggestion[]
 }
+
+/** Permission suggestion from Claude Code */
+export type PermissionSuggestion =
+  | { type: 'addRules'; destination: string; behavior: string; rules: Array<{ toolName: string; ruleContent: string }>; toolName?: string; ruleContent?: string }
+  | { type: 'setMode'; mode: string; destination: string }
+  | { type: 'addDirectories'; directories: string[]; destination: string }
+  | (Record<string, unknown> & { type: string })
 
 /** Chat history item rendered in a session tab */
 export interface ChatItem {

@@ -8,6 +8,7 @@ import type {
   Intervention,
   InterventionPhase,
   PermissionContext,
+  PermissionSuggestion,
   InitMetadata
 } from './types'
 import { VALID_TRANSITIONS, STATE_PRIORITY, ONESHOT_TIMEOUTS } from './types'
@@ -33,7 +34,7 @@ function newPhase(id: string): SessionPhase {
     case 'done': return { type: 'done' }
     case 'error': return { type: 'error' }
     case 'waitingForInput': return { type: 'waitingForInput' }
-    case 'waitingForApproval': return { type: 'waitingForApproval', context: { toolUseId: '', toolName: '', toolInput: null, receivedAt: now() } }
+    case 'waitingForApproval': return { type: 'waitingForApproval', context: { toolUseId: '', toolName: '', toolInput: null, receivedAt: now(), suggestions: [] } }
     case 'compacting': return { type: 'compacting' }
     case 'ended': return { type: 'ended' }
     default: return { type: 'idle' }
@@ -147,7 +148,8 @@ export class SessionStore {
         const toolName = (payload?.tool as string) ?? 'unknown'
         const toolInput = (payload?.input as Record<string, unknown>) ?? null
         const toolUseId = (payload?.toolUseId as string) ?? `auto_${Date.now()}`
-        this._handlePermissionRequest(sessionId, toolUseId, toolName, toolInput)
+        const suggestions = (payload?.suggestions as PermissionSuggestion[]) ?? []
+        this._handlePermissionRequest(sessionId, toolUseId, toolName, toolInput, suggestions)
         break
       }
 
@@ -342,7 +344,8 @@ export class SessionStore {
     sessionId: string,
     toolUseId: string,
     toolName: string,
-    toolInput: Record<string, unknown> | null
+    toolInput: Record<string, unknown> | null,
+    suggestions: PermissionSuggestion[] = []
   ): void {
     const session = this._sessions.get(sessionId)
     if (!session) {
@@ -350,14 +353,14 @@ export class SessionStore {
     }
 
     const target = this._sessions.get(sessionId)!
-    // Pass context as separate properties for transition to assemble into nested structure
-    const context = {
+    const context: PermissionContext = {
       toolUseId,
       toolName,
       toolInput,
-      receivedAt: now()
+      receivedAt: now(),
+      suggestions,
     }
-    this.transition(target, 'waitingForApproval', context)
+    this.transition(target, 'waitingForApproval', context as unknown as Partial<SessionPhase>)
 
     const pending: PendingPermission = {
       sessionId,
@@ -372,7 +375,7 @@ export class SessionStore {
     queue.push(pending)
     this._pendingPermissions.set(toolUseId, queue)
 
-    this._publish('session:permission', { sessionId, toolName, toolInput })
+    this._publish('session:permission', { sessionId, toolName, toolInput, suggestions })
   }
 
   private _updateToolResult(sessionId: string, toolUseId: string, toolResponse: Record<string, unknown> | undefined): void {
@@ -695,7 +698,8 @@ export class SessionStore {
         toolUseId: (context as { toolUseId?: string }).toolUseId ?? '',
         toolName: (context as { toolName?: string }).toolName ?? '',
         toolInput: (context as { toolInput?: Record<string, unknown> | null }).toolInput ?? null,
-        receivedAt: (context as { receivedAt?: number }).receivedAt ?? now()
+        receivedAt: (context as { receivedAt?: number }).receivedAt ?? now(),
+        suggestions: (context as { suggestions?: PermissionSuggestion[] }).suggestions ?? [],
       }
     }
     session.lastActivity = now()

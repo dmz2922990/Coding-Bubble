@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, screen, Tray } from 'electron'
 import { join } from 'path'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
-import type { HookResponse, Intervention } from '@coding-bubble/session-monitor'
+import type { HookResponse, Intervention, PermissionSuggestion } from '@coding-bubble/session-monitor'
 import { RemoteManager, RemoteHookAdapter, RemoteStreamAdapter, parseRemoteSessionId } from '@coding-bubble/remote'
 import type { RemoteServerConfig } from '@coding-bubble/remote'
 import { formatToolDetail } from './format-tool-detail'
@@ -12,7 +12,7 @@ let settingsWin: BrowserWindow | null = null
 let tray: Tray | null = null
 
 /** Pending permission resolvers keyed by sessionId — for hook sessions only */
-const pendingPermissionResolvers = new Map<string, { toolUseId: string | undefined; toolName?: string; toolInput?: Record<string, unknown> | null; formattedDetail: string; resolve: (response: HookResponse) => void }>()
+const pendingPermissionResolvers = new Map<string, { toolUseId: string | undefined; toolName?: string; toolInput?: Record<string, unknown> | null; formattedDetail: string; suggestions?: PermissionSuggestion[]; resolve: (response: HookResponse) => void }>()
 
 /** 拖拽时记录光标相对于窗口左上角的偏移量 */
 let dragOffset = { x: 0, y: 0 }
@@ -664,6 +664,37 @@ ipcMain.handle('session:answer', async (_event, sessionId: string, answer: strin
   console.log('[main] ===== session:answer END =====')
 })
 
+ipcMain.handle('session:suggestion', async (_event, sessionId: string, index: number) => {
+  const entry = pendingPermissionResolvers.get(sessionId)
+  if (!entry) {
+    console.error('[main] session:suggestion FAILED - no pending resolver for session:', sessionId)
+    return
+  }
+
+  const suggestion = entry.suggestions?.[index]
+  if (!suggestion) {
+    console.error('[main] session:suggestion FAILED - no suggestion at index:', index)
+    return
+  }
+
+  pendingPermissionResolvers.delete(sessionId)
+
+  const response: HookResponse = {
+    decision: 'allow',
+    updatedPermissions: [suggestion],
+  }
+
+  sessionStore?.addSystemMessage(sessionId, entry.formattedDetail)
+  sessionStore?.process({
+    hook_event_name: 'PostToolUse',
+    session_id: sessionId,
+    cwd: '',
+    payload: {},
+  })
+
+  entry.resolve(response)
+})
+
 ipcMain.handle('session:hooks-status', () => {
   return { installed: hooksInstalled() }
 })
@@ -874,6 +905,19 @@ ipcMain.handle('stream:answer', async (_event, sessionId: string, answer: string
   streamManager.answerPermission(sessionId, answer)
 })
 
+ipcMain.handle('stream:suggestion', async (_event, sessionId: string, index: number) => {
+  if (sessionId.startsWith('remote:')) {
+    if (!remoteStreamAdapter) return
+    const serverId = remoteSessionServerMap.get(sessionId)
+    if (!serverId) return
+    remoteStreamAdapter.suggestionPermission(serverId, sessionId, index)
+    return
+  }
+
+  if (!streamManager) return
+  streamManager.suggestionPermission(sessionId, index)
+})
+
 ipcMain.handle('stream:interrupt', async (_event, sessionId: string) => {
   if (sessionId.startsWith('remote:')) {
     if (!remoteStreamAdapter) return
@@ -1032,6 +1076,13 @@ ipcMain.handle('remote:stream:always-allow', async (_event, sessionId: string) =
     })
     remoteStreamAdapter.alwaysAllowPermission(serverId, sessionId, requestId)
   }
+})
+
+ipcMain.handle('remote:stream:suggestion', async (_event, sessionId: string, index: number) => {
+  if (!remoteStreamAdapter) return
+  const serverId = remoteSessionServerMap.get(sessionId)
+  if (!serverId) return
+  remoteStreamAdapter.suggestionPermission(serverId, sessionId, index)
 })
 
 ipcMain.handle('remote:stream:interrupt', async (_event, sessionId: string) => {
@@ -1219,12 +1270,12 @@ app.whenReady().then(() => {
         }
       }
     },
-    onPermissionRequest: async (sessionId: string, toolUseId: string, toolName: string, toolInput: Record<string, unknown> | null): Promise<HookResponse> => {
+    onPermissionRequest: async (sessionId: string, toolUseId: string, toolName: string, toolInput: Record<string, unknown> | null, suggestions: PermissionSuggestion[] = []): Promise<HookResponse> => {
       // Check session permission mode - only prompt user if mode is 'default'
       const session = sessionStore?.sessions.get(sessionId)
       const permissionMode = session?.permissionMode ?? 'auto'
 
-      console.log('[main] onPermissionRequest sessionId:', sessionId, 'permissionMode:', permissionMode)
+      console.log('[main] onPermissionRequest sessionId:', sessionId, 'permissionMode:', permissionMode, 'suggestions:', suggestions.length)
 
       if (permissionMode !== 'default') {
         // Auto-allow for non-default modes
@@ -1234,12 +1285,12 @@ app.whenReady().then(() => {
 
       // Wait for user approval
       return new Promise<HookResponse>((resolve) => {
-        pendingPermissionResolvers.set(sessionId, { toolUseId, toolName, toolInput, formattedDetail: formatToolDetail(toolName, toolInput), resolve })
+        pendingPermissionResolvers.set(sessionId, { toolUseId, toolName, toolInput, formattedDetail: formatToolDetail(toolName, toolInput), suggestions, resolve })
         sessionStore?.process({
           hook_event_name: 'PermissionRequest',
           session_id: sessionId,
           cwd: '',
-          payload: { toolUseId, tool: toolName, input: toolInput }
+          payload: { toolUseId, tool: toolName, input: toolInput, suggestions }
         } as HookEvent)
       })
     }

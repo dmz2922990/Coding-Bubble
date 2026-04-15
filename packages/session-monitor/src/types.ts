@@ -24,11 +24,61 @@ export type SessionPhaseType =
   | 'compacting'
   | 'ended'
 
+// ═─ Permission Suggestions ─────────────────────────────────
+
+export interface AddRulesSuggestion {
+  type: 'addRules'
+  destination: string
+  behavior: string
+  rules: Array<{ toolName: string; ruleContent: string }>
+  /** Flat format from Claude Code (single rule) */
+  toolName?: string
+  ruleContent?: string
+}
+
+export interface SetModeSuggestion {
+  type: 'setMode'
+  mode: string
+  destination: string
+}
+
+export interface AddDirectoriesSuggestion {
+  type: 'addDirectories'
+  directories: string[]
+  destination: string
+}
+
+export type PermissionSuggestion =
+  | AddRulesSuggestion
+  | SetModeSuggestion
+  | AddDirectoriesSuggestion
+  | (Record<string, unknown> & { type: string })
+
+/** Merge multiple addRules suggestions into one (e.g. piped commands a && b) */
+export function mergeSuggestions(raw: PermissionSuggestion[]): PermissionSuggestion[] {
+  const addRulesItems = raw.filter(s => s.type === 'addRules') as AddRulesSuggestion[]
+  if (addRulesItems.length <= 1) return raw
+
+  const merged: AddRulesSuggestion = {
+    type: 'addRules',
+    destination: addRulesItems[0].destination || 'localSettings',
+    behavior: addRulesItems[0].behavior || 'allow',
+    rules: addRulesItems.flatMap(s =>
+      Array.isArray(s.rules) && s.rules.length > 0
+        ? s.rules
+        : [{ toolName: (s as unknown as Record<string, unknown>).toolName as string ?? '', ruleContent: (s as unknown as Record<string, unknown>).ruleContent as string ?? '' }]
+    ),
+  }
+
+  return [...raw.filter(s => s.type !== 'addRules'), merged]
+}
+
 export interface PermissionContext {
   toolUseId: string
   toolName: string
   toolInput: Record<string, unknown> | null
   receivedAt: number
+  suggestions?: PermissionSuggestion[]
 }
 
 export type SessionPhase =
@@ -141,6 +191,7 @@ export interface HookResponse {
   decision: 'allow' | 'deny'
   reason?: string | null
   updatedInput?: Record<string, unknown>
+  updatedPermissions?: PermissionSuggestion[]
 }
 
 // ═─ Pending Permission ──────────────────────────────────────
