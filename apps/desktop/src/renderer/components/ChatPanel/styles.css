@@ -1434,6 +1434,19 @@
   flex-shrink: 0;
 }
 
+.ask-user-question::-webkit-scrollbar {
+  width: 4px;
+}
+
+.ask-user-question::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+.ask-user-question::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 .aqu-header {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.4);

@@ -15,7 +15,8 @@ import type { BubbleNotification, NotificationType, NotificationAutoCloseConfig 
 
 /** Derive project name from cwd */
 function projectNameFromCwd(cwd: string): string {
-  const parts = cwd.split('/').filter(Boolean)
+  const normalized = cwd.replace(/\\/g, '/')
+  const parts = normalized.split('/').filter(Boolean)
   return parts[parts.length - 1] ?? 'unknown'
 }
 
