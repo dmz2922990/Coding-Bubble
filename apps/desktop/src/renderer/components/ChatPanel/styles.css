@@ -78,6 +78,7 @@
 
 .chat-panel__messages::-webkit-scrollbar {
   width: 4px;
+  height: 4px;
 }
 
 .chat-panel__messages::-webkit-scrollbar-thumb {
@@ -803,6 +804,7 @@
 
 .session-tab__messages::-webkit-scrollbar {
   width: 4px;
+  height: 4px;
 }
 
 .session-tab__messages::-webkit-scrollbar-thumb {
@@ -907,7 +909,26 @@
   color: rgba(255, 255, 255, 0.6);
   white-space: pre-wrap;
   max-height: 200px;
+  overflow-x: auto;
   overflow-y: auto;
+}
+
+.chat-msg__tool-result::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.chat-msg__tool-result::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+.chat-msg__tool-result::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-msg__tool-result::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .chat-msg__tool-subs-count {
@@ -1052,12 +1073,14 @@
   background: rgba(255, 152, 0, 0.08);
   border: 1px solid rgba(255, 152, 0, 0.15);
   max-height: 150px;
+  overflow-x: auto;
   overflow-y: auto;
   flex-shrink: 0;
 }
 
 .approval-detail::-webkit-scrollbar {
   width: 4px;
+  height: 4px;
 }
 
 .approval-detail::-webkit-scrollbar-thumb {
@@ -1066,6 +1089,10 @@
 }
 
 .approval-detail::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.approval-detail::-webkit-scrollbar-corner {
   background: transparent;
 }
 
@@ -1108,12 +1135,14 @@
   white-space: pre-wrap;
   word-break: break-all;
   max-height: 160px;
+  overflow-x: auto;
   overflow-y: auto;
   margin-top: 4px;
 }
 
 .approval-detail__json::-webkit-scrollbar {
   width: 4px;
+  height: 4px;
 }
 
 .approval-detail__json::-webkit-scrollbar-thumb {
@@ -1122,6 +1151,10 @@
 }
 
 .approval-detail__json::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.approval-detail__json::-webkit-scrollbar-corner {
   background: transparent;
 }
 
@@ -1151,6 +1184,10 @@
 }
 
 .diff-view::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.diff-view::-webkit-scrollbar-corner {
   background: transparent;
 }
 
@@ -1436,6 +1473,7 @@
 
 .ask-user-question::-webkit-scrollbar {
   width: 4px;
+  height: 4px;
 }
 
 .ask-user-question::-webkit-scrollbar-thumb {
@@ -1655,9 +1693,28 @@
   border-radius: 6px;
   margin-bottom: 2px;
   max-height: 240px;
+  overflow-x: auto;
   overflow-y: auto;
   box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
   z-index: 10;
+}
+
+.message-input__suggestions::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.message-input__suggestions::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+.message-input__suggestions::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.message-input__suggestions::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .message-input__suggestion {

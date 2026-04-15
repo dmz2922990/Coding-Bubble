@@ -202,7 +202,7 @@ export class StreamAdapterManager {
     }
 
     if (stream.pid) this._managedPids.delete(stream.pid)
-    await stream.close()
+    await stream.close(true)
     this._sessions.delete(sessionId)
     this._destroying.delete(sessionId)
 

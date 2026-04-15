@@ -159,22 +159,22 @@ export class StreamSession {
     this._writeJSON(resp)
   }
 
-  async close(): Promise<void> {
+  async close(force: boolean = false): Promise<void> {
     if (!this._proc || this._proc.exitCode !== null) return
 
-    // Phase 1: close stdin, wait up to 120s
+    // Phase 1: close stdin, wait up to 3s (reduced from 120s)
     try {
       this._proc.stdin?.end()
-      await this._waitExit(120_000)
+      await this._waitExit(force ? 500 : 3_000)
       return
     } catch {
       // timed out, proceed to phase 2
     }
 
-    // Phase 2: SIGTERM, wait 5s
+    // Phase 2: SIGTERM, wait 2s (reduced from 5s)
     try {
       this._proc.kill('SIGTERM')
-      await this._waitExit(5_000)
+      await this._waitExit(2_000)
       return
     } catch {
       // timed out, proceed to phase 3
@@ -182,7 +182,7 @@ export class StreamSession {
 
     // Phase 3: SIGKILL
     this._proc.kill('SIGKILL')
-    await this._waitExit(5_000).catch(() => {})
+    await this._waitExit(2_000).catch(() => {})
   }
 
   // ── Private ──────────────────────────────────────────────
