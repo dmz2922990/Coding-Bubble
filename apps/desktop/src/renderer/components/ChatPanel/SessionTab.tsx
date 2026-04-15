@@ -622,23 +622,21 @@ function AskUserQuestion({
     setSelected(newSelected)
   }
 
-  const handleConfirm = () => {
-    if (selected.size === 0) return
-    if (multiSelect) {
-      onAnswer(Array.from(selected))
-    } else {
-      onAnswer(Array.from(selected)[0])
-    }
-  }
-
-  const handleSendCustom = () => {
-    const trimmed = customInput.trim()
-    if (!trimmed) return
-    if (multiSelect) {
-      const lines = trimmed.split('\n').map(l => l.trim()).filter(l => l.length > 0)
-      onAnswer(lines)
-    } else {
-      onAnswer(trimmed)
+  const handleSubmit = () => {
+    if (customInput.trim()) {
+      const trimmed = customInput.trim()
+      if (multiSelect) {
+        const lines = trimmed.split('\n').map(l => l.trim()).filter(l => l.length > 0)
+        onAnswer(lines)
+      } else {
+        onAnswer(trimmed)
+      }
+    } else if (selected.size > 0) {
+      if (multiSelect) {
+        onAnswer(Array.from(selected))
+      } else {
+        onAnswer(Array.from(selected)[0])
+      }
     }
   }
 
@@ -679,24 +677,16 @@ function AskUserQuestion({
 
       <div className="aqu-actions">
         <button
-          className="aqu-btn-send"
-          onClick={handleSendCustom}
-          disabled={!customInput.trim()}
-        >
-          发送自定义答案
-        </button>
-        <button
           className="aqu-btn-confirm"
-          onClick={handleConfirm}
-          disabled={selected.size === 0}
+          onClick={handleSubmit}
+          disabled={!customInput.trim() && selected.size === 0}
         >
-          确认选择{selected.size > 0 && ` (${selected.size})`}
+          确认
+        </button>
+        <button className="aqu-btn-deny" onClick={onDeny}>
+          拒绝
         </button>
       </div>
-
-      <button className="aqu-btn-deny" onClick={onDeny}>
-        拒绝此请求
-      </button>
     </div>
   )
 }

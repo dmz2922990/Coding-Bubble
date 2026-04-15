@@ -1545,7 +1545,6 @@
   margin-top: 12px;
 }
 
-.aqu-btn-send,
 .aqu-btn-confirm {
   flex: 1;
   padding: 8px 12px;
@@ -1554,24 +1553,6 @@
   font-size: 12px;
   cursor: pointer;
   transition: all 0.2s;
-}
-
-.aqu-btn-send {
-  background: rgba(76, 175, 80, 0.9);
-  color: white;
-}
-
-.aqu-btn-send:hover:not(:disabled) {
-  background: rgba(76, 175, 80, 1);
-}
-
-.aqu-btn-send:disabled {
-  background: rgba(255, 255, 255, 0.1);
-  cursor: not-allowed;
-  color: rgba(255, 255, 255, 0.3);
-}
-
-.aqu-btn-confirm {
   background: rgba(255, 152, 0, 0.9);
   color: white;
 }
@@ -1587,14 +1568,13 @@
 }
 
 .aqu-btn-deny {
-  width: 100%;
-  padding: 6px;
-  margin-top: 8px;
+  flex: 1;
+  padding: 8px 12px;
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   color: rgba(255, 255, 255, 0.4);
-  font-size: 11px;
+  font-size: 12px;
   cursor: pointer;
   transition: all 0.2s;
 }
