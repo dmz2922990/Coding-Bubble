@@ -480,7 +480,9 @@ function getSuggestionLabel(s: PermissionSuggestion): string {
   }
   if (s.type === 'addDirectories') {
     const dirs = (s as { directories: string[] }).directories
-    return `添加工作目录 ${dirs?.[0] ?? ''}`
+    const dir = dirs?.[0] ?? ''
+    const shortDir = dir.split(/[\\/]/).pop() || dir
+    return `添加目录 ${shortDir}`
   }
   if (s.type === 'addRules') {
     const rules = (s as { rules: Array<{ toolName: string; ruleContent: string }> }).rules
