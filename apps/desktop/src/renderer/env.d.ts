@@ -23,7 +23,7 @@ declare global {
       /** 写入配置 */
       setConfig: (config: Record<string, unknown>) => Promise<void>
       /** Notification bubble listeners */
-      onBubbleShow: (cb: (event: unknown, data: unknown[]) => void) => () => void
+      onBubbleShow: (cb: (event: unknown, data: unknown[], quickApproval?: boolean) => void) => () => void
       onBubbleHide: (cb: (event: unknown) => void) => () => void
       /** Status dot listener */
       onBubbleStatus: (cb: (event: unknown, state: string | null) => void) => () => void
@@ -60,6 +60,8 @@ declare global {
       showOpenDialog: (options: Record<string, unknown>) => Promise<{ canceled: boolean; filePaths: string[] }>
       /** Save markdown file dialog */
       saveMarkdown: (content: string, defaultName: string) => Promise<{ success: boolean; path?: string }>
+      /** Quick approve permission from notification bubble */
+      quickApprove: (sessionId: string, source?: string) => Promise<void>
     }
   }
 }

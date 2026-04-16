@@ -32,7 +32,7 @@ export function SettingsPanel(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<TabId>('remote')
   const [remoteServers, setRemoteServers] = useState<RemoteConnectionInfo[]>([])
   const [newServer, setNewServer] = useState({ name: '', host: '', port: '9527', token: '' })
-  const [autoCloseConfig, setAutoCloseConfig] = useState<Record<string, number>>({
+  const [autoCloseConfig, setAutoCloseConfig] = useState<Record<string, number | boolean>>({
     approval: 0, error: 30, input: 15, done: 15,
   })
 
@@ -61,7 +61,7 @@ export function SettingsPanel(): React.JSX.Element {
 
   const loadNotificationConfig = useCallback(async () => {
     try {
-      const config = await window.electronAPI.notification.getConfig() as Record<string, number>
+      const config = await window.electronAPI.notification.getConfig() as Record<string, number | boolean>
       setAutoCloseConfig(config)
     } catch { /* ignore */ }
   }, [])
@@ -281,6 +281,25 @@ export function SettingsPanel(): React.JSX.Element {
                 </div>
               )
             })}
+            <div className="notification-config-card">
+              <div className="notification-config-card__header">
+                <span className="notification-config-card__icon">⚡</span>
+                <span className="notification-config-card__label">快速确认</span>
+                <span className="notification-config-card__desc">在通知中直接允许普通权限</span>
+                <label className="notification-config-card__toggle">
+                  <input
+                    type="checkbox"
+                    checked={!!autoCloseConfig.quickApproval}
+                    onChange={(e) => {
+                      const newConfig = { ...autoCloseConfig, quickApproval: e.target.checked }
+                      setAutoCloseConfig(newConfig)
+                      window.electronAPI.notification.setConfig(newConfig as Record<string, number>)
+                    }}
+                  />
+                  <span>{autoCloseConfig.quickApproval !== false ? '开启' : '关闭'}</span>
+                </label>
+              </div>
+            </div>
           </section>
         )}
       </div>

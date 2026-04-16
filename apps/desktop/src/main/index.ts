@@ -401,7 +401,7 @@ ipcMain.handle('config:set', (_event, config: Record<string, unknown>) => {
 })
 
 ipcMain.handle('notification:get-config', () => {
-  const defaultAutoClose: NotificationAutoCloseConfig = { approval: 0, error: 30, input: 15, done: 15 }
+  const defaultAutoClose: NotificationAutoCloseConfig = { approval: 0, error: 30, input: 15, done: 15, quickApproval: true }
   const savedAutoClose = readConfig().notificationAutoClose as NotificationAutoCloseConfig | undefined
   return savedAutoClose ? { ...defaultAutoClose, ...savedAutoClose } : defaultAutoClose
 })
@@ -1149,7 +1149,9 @@ function bubbleControllerSync(): void {
   const panelVisible = panelWin !== null && !panelWin.isDestroyed() && panelWin.isVisible()
 
   if (!panelVisible && notifications.length > 0) {
-    ballWin.webContents.send('bubble:show', notifications)
+    const savedConfig = readConfig().notificationAutoClose as NotificationAutoCloseConfig | undefined
+    const quickApproval = savedConfig?.quickApproval ?? true
+    ballWin.webContents.send('bubble:show', notifications, quickApproval)
   } else {
     ballWin.webContents.send('bubble:hide')
   }
@@ -1175,7 +1177,7 @@ app.whenReady().then(() => {
   sessionStore.onPublish((channel: string, data: unknown) => broadcastToRenderer(channel, data))
 
   // Load notification auto-close config from persisted config
-  const defaultAutoClose: NotificationAutoCloseConfig = { approval: 0, error: 30, input: 15, done: 15 }
+  const defaultAutoClose: NotificationAutoCloseConfig = { approval: 0, error: 30, input: 15, done: 15, quickApproval: true }
   const savedAutoClose = readConfig().notificationAutoClose as NotificationAutoCloseConfig | undefined
   sessionStore.updateNotificationConfig(savedAutoClose ? { ...defaultAutoClose, ...savedAutoClose } : defaultAutoClose)
 
@@ -1287,8 +1289,8 @@ app.whenReady().then(() => {
 
       console.log('[main] onPermissionRequest sessionId:', sessionId, 'permissionMode:', permissionMode, 'suggestions:', suggestions.length)
 
-      if (permissionMode !== 'default') {
-        // Auto-allow for non-default modes
+      if (permissionMode === 'bypassPermissions' || permissionMode === 'auto') {
+        // Auto-allow for bypass and auto modes only
         console.log('[main] auto-allow for permissionMode:', permissionMode)
         return { decision: 'allow' }
       }

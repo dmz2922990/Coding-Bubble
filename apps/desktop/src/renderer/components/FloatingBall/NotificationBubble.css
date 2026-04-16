@@ -85,6 +85,23 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
+.notification-bubble__approve {
+  padding: 2px 10px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(102, 187, 106, 0.2);
+  color: rgba(102, 187, 106, 0.9);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+
+.notification-bubble__approve:hover {
+  background: rgba(102, 187, 106, 0.35);
+}
+
 .notification-bubble__indicator {
   width: 8px;
   height: 8px;

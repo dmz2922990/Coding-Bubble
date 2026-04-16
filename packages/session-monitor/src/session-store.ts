@@ -284,6 +284,12 @@ export class SessionStore {
         const toolName = (prePayload?.tool_name as string) ?? ''
         const toolInput = (prePayload?.tool_input as Record<string, unknown>) ?? {}
 
+        // Update permission mode from PreToolUse payload
+        const preMode = prePayload?.permission_mode as string | undefined
+        if (preMode) {
+          session.permissionMode = preMode
+        }
+
         if (toolUseId && toolName) {
           this.addToolCall(sessionId, toolUseId, toolName, toolInput)
         }
@@ -823,6 +829,10 @@ export class SessionStore {
           : undefined,
         timestamp: now(),
         autoCloseMs: config.autoCloseMs,
+        isAskUserQuestion: session.phase.type === 'waitingForApproval'
+          ? (session.phase as { type: 'waitingForApproval'; context: { toolName: string } }).context?.toolName === 'AskUserQuestion'
+          : false,
+        source: session.source,
       })
 
       // Start auto-close timer in main process for timed notifications

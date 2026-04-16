@@ -78,6 +78,7 @@ export function FloatingBall(): React.JSX.Element {
   const [bubbles, setBubbles] = useState<BubbleItem[]>([])
   const [notificationVisible, setNotificationVisible] = useState(false)
   const [notifications, setNotifications] = useState<BubbleNotification[]>([])
+  const [quickApproval, setQuickApproval] = useState(true)
   const [bubbleDismissed, setBubbleDismissed] = useState(false)
   const [displayState, setDisplayState] = useState<string | null>(null)
   const movedRef = useRef(false)
@@ -131,8 +132,9 @@ export function FloatingBall(): React.JSX.Element {
 
   // Subscribe to notification bubble IPC events
   useEffect(() => {
-    const cleanupShow = window.electronAPI.onBubbleShow((_event, data) => {
+    const cleanupShow = window.electronAPI.onBubbleShow((_event, data, qa) => {
       setNotifications(data as BubbleNotification[])
+      if (qa !== undefined) setQuickApproval(qa)
       if (!bubbleDismissedRef.current) {
         setNotificationVisible(true)
       }
@@ -158,6 +160,11 @@ export function FloatingBall(): React.JSX.Element {
   const handleNotificationDismiss = useCallback((sessionId: string) => {
     setNotifications(prev => prev.filter(n => n.sessionId !== sessionId))
     window.electronAPI.dismissNotification(sessionId)
+  }, [])
+
+  const handleQuickApprove = useCallback((sessionId: string, source?: string) => {
+    setNotifications(prev => prev.filter(n => n.sessionId !== sessionId))
+    window.electronAPI.quickApprove(sessionId, source)
   }, [])
 
   const handleMouseEnter = useCallback(() => {
@@ -251,8 +258,10 @@ export function FloatingBall(): React.JSX.Element {
           <NotificationBubble
             notifications={notifications}
             visible={notificationVisible}
+            quickApproval={quickApproval}
             onRowClick={handleNotificationRowClick}
             onDismissSession={handleNotificationDismiss}
+            onQuickApprove={handleQuickApprove}
           />
           <div
             ref={ballRef}

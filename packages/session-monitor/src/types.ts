@@ -226,6 +226,7 @@ export interface NotificationAutoCloseConfig {
   error: number
   input: number
   done: number
+  quickApproval?: boolean
 }
 
 export interface BubbleNotification {
@@ -235,4 +236,6 @@ export interface BubbleNotification {
   toolName?: string
   timestamp: number
   autoCloseMs: number
+  isAskUserQuestion?: boolean
+  source?: 'hook' | 'stream' | 'remote-hook' | 'remote-stream'
 }

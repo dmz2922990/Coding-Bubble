@@ -10,13 +10,17 @@ export interface BubbleNotification {
   toolName?: string
   timestamp: number
   autoCloseMs: number
+  isAskUserQuestion?: boolean
+  source?: 'hook' | 'stream' | 'remote-hook' | 'remote-stream'
 }
 
 interface NotificationBubbleProps {
   notifications: BubbleNotification[]
   visible: boolean
+  quickApproval: boolean
   onRowClick: (sessionId: string) => void
   onDismissSession: (sessionId: string) => void
+  onQuickApprove: (sessionId: string, source?: string) => void
 }
 
 const MAX_ROWS = 5
@@ -36,7 +40,7 @@ const TYPE_PRIORITY: Record<NotificationType, number> = {
   done: 1,
 }
 
-export function NotificationBubble({ notifications, visible, onRowClick, onDismissSession }: NotificationBubbleProps): React.JSX.Element | null {
+export function NotificationBubble({ notifications, visible, quickApproval, onRowClick, onDismissSession, onQuickApprove }: NotificationBubbleProps): React.JSX.Element | null {
   // Auto-close timer — picks minimum autoCloseMs across all timed notifications
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -81,6 +85,11 @@ export function NotificationBubble({ notifications, visible, onRowClick, onDismi
     onDismissSession(sessionId)
   }, [onDismissSession])
 
+  const handleApprove = useCallback((sessionId: string, source?: string) => (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onQuickApprove(sessionId, source)
+  }, [onQuickApprove])
+
   const handleMouseEnter = useCallback(() => {
     window.electronAPI.setIgnoreMouseEvents(false)
   }, [])
@@ -117,6 +126,14 @@ export function NotificationBubble({ notifications, visible, onRowClick, onDismi
                   {item.toolName && <span className="notification-bubble__tool"> {item.toolName}</span>}
                 </span>
               </div>
+              {quickApproval && item.type === 'approval' && !item.isAskUserQuestion && (
+                <button
+                  className="notification-bubble__approve"
+                  onClick={handleApprove(item.sessionId, item.source)}
+                >
+                  允许
+                </button>
+              )}
               <button
                 className="notification-bubble__row-close"
                 onClick={handleDismiss(item.sessionId)}

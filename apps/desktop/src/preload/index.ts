@@ -27,7 +27,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   /** 写入配置 */
   setConfig: (config: Record<string, unknown>): Promise<void> => ipcRenderer.invoke('config:set', config),
   /** Notification bubble: show/hide listeners (Main → Ball) */
-  onBubbleShow: (cb: (event: unknown, interventions: unknown[]) => void) => {
+  onBubbleShow: (cb: (event: unknown, interventions: unknown[], quickApproval?: boolean) => void) => {
     ipcRenderer.on('bubble:show', cb)
     return () => ipcRenderer.removeListener('bubble:show', cb)
   },
@@ -144,6 +144,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   /** Dismiss a single notification by sessionId */
   dismissNotification: (sessionId: string): void => {
     ipcRenderer.send('notification:dismiss', sessionId)
+  },
+  /** Quick approve a permission from notification bubble */
+  quickApprove: (sessionId: string, source?: string): Promise<void> => {
+    if (source === 'stream') {
+      return ipcRenderer.invoke('stream:approve', sessionId)
+    } else if (source === 'remote-stream') {
+      return ipcRenderer.invoke('remote:stream:approve', sessionId)
+    }
+    // hook + remote-hook both go through session:approve
+    return ipcRenderer.invoke('session:approve', sessionId)
   },
   /** Directory picker dialog */
   showOpenDialog: (options: Record<string, unknown>): Promise<unknown> =>
