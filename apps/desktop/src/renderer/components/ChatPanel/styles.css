@@ -385,9 +385,32 @@
   color: rgba(244, 67, 54, 0.9);
 }
 
-/* Stream session card accent */
+/* Session card mode accents */
+.session-card--hook {
+  border-left: 3px solid rgba(158, 158, 158, 0.4);
+}
+
 .session-card--stream {
   border-left: 3px solid #4fc3f7;
+}
+
+.session-card--remote-hook {
+  border-left: 3px solid rgba(158, 158, 158, 0.4);
+}
+
+.session-card--remote-stream {
+  border-left: 3px solid #4fc3f7;
+}
+
+.session-card__remote-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(102, 187, 106, 0.15);
+  color: rgba(102, 187, 106, 0.9);
+  font-weight: 500;
+  flex-shrink: 0;
+  margin-left: 6px;
 }
 
 /* Session list wrapper with create button */
@@ -701,9 +724,35 @@
   justify-content: space-between;
 }
 
+.session-tab__header--hook {
+  border-left: 3px solid rgba(158, 158, 158, 0.4);
+  margin-left: 2px;
+}
+
 .session-tab__header--stream {
   border-left: 3px solid #4fc3f7;
   margin-left: 2px;
+}
+
+.session-tab__header--remote-hook {
+  border-left: 3px solid rgba(158, 158, 158, 0.4);
+  margin-left: 2px;
+}
+
+.session-tab__header--remote-stream {
+  border-left: 3px solid #4fc3f7;
+  margin-left: 2px;
+}
+
+.session-tab__remote-badge {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: rgba(102, 187, 106, 0.15);
+  color: rgba(102, 187, 106, 0.9);
+  font-weight: 500;
+  margin-left: 6px;
+  vertical-align: middle;
 }
 
 .session-tab__name {

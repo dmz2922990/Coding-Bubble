@@ -229,15 +229,16 @@ function RemoteSessionDialog({ onClose, onCreate }: { onClose: () => void; onCre
 function SessionCard({ session, onClick, onJumpToTerminal, onDestroy }: { session: SessionInfo; onClick: () => void; onJumpToTerminal?: () => void; onDestroy?: () => void }): React.JSX.Element {
   const statusDotColor = PHASE_COLORS[session.phase] ?? '#888'
   const isWaitingApproval = session.phase === 'waitingForApproval'
-  const isStream = session.source === 'stream' || session.source === 'remote-stream'
+  const isRemote = session.source?.startsWith('remote')
 
   return (
-    <div className={`session-card${isStream ? ' session-card--stream' : ''}`} onClick={onClick}>
+    <div className={`session-card session-card--${session.source ?? 'hook'}`} onClick={onClick}>
       <div className="session-card__row">
         <div className="session-card__info">
           <div className="session-card__header">
             <span className="session-card__dot" style={{ backgroundColor: statusDotColor }} />
             <span className="session-card__name">{session.projectName}</span>
+            {isRemote && <span className="session-card__remote-badge">远程</span>}
           </div>
           <div className="session-card__path">{session.cwd}</div>
           <div className="session-card__status" style={{ color: statusDotColor }}>

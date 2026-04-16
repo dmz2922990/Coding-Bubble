@@ -64,12 +64,26 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
-.tab-bar__stream-dot {
+/* Source mode indicator in tab bar */
+.tab-bar__source-indicator {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #4fc3f7;
+  background: rgba(158, 158, 158, 0.5);
   flex-shrink: 0;
+}
+
+.tab-bar__source-indicator--stream {
+  background: #4fc3f7;
+}
+
+.tab-bar__source-indicator--remote {
+  border-radius: 1px;
+  transform: rotate(45deg);
+}
+
+.tab-bar__source-indicator--remote.tab-bar__source-indicator--stream {
+  background: #4fc3f7;
 }
 
 .tab-bar__title {

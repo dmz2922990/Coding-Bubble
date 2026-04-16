@@ -92,8 +92,11 @@ export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onS
 
   return (
     <div className="session-tab">
-      <div className={`session-tab__header${onDisconnect ? ' session-tab__header--stream' : ''}`}>
-        <span className="session-tab__name">{session.projectName}</span>
+      <div className={`session-tab__header session-tab__header--${session.source ?? 'hook'}`}>
+        <span className="session-tab__name">
+          {session.projectName}
+          {session.source?.startsWith('remote') && <span className="session-tab__remote-badge">远程</span>}
+        </span>
         <div className="session-tab__header-actions">
           <span className={`session-tab__phase-badge session-tab__phase-badge--${session.phase}`}>
             {PHASE_LABELS[session.phase] ?? session.phase}

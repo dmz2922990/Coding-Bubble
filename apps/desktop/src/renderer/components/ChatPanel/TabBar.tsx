@@ -175,26 +175,32 @@ export function TabBar({ tabs, chatTab, activeTabId, onTabSelect, onTabClose }: 
                 </button>
               )}
               <div className="tab-bar" ref={tabsRef} onScroll={updateScrollButtons} onWheel={handleWheel}>
-                {scrollableTabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    className={`tab-bar__tab${activeTabId === tab.id ? ' tab-bar__tab--active' : ''}`}
-                    onClick={() => handleTabClick(tab.id)}
-                    title={tab.title}
-                    style={getTabStyle(tab)}
-                  >
-                    <span className="tab-bar__title">{tab.title}</span>
-                    {tab.closable !== false && (
-                      <button
-                        className="tab-bar__close"
-                        onClick={(e) => handleCloseClick(e, tab.id)}
-                        title="关闭"
-                      >
-                        ×
-                      </button>
-                    )}
-                  </button>
-                ))}
+                {scrollableTabs.map((tab) => {
+                  const tabSource = tab.source ?? 'hook'
+                  const isStream = tabSource === 'stream' || tabSource === 'remote-stream'
+                  const isRemote = tabSource.startsWith('remote')
+                  return (
+                    <button
+                      key={tab.id}
+                      className={`tab-bar__tab${activeTabId === tab.id ? ' tab-bar__tab--active' : ''}`}
+                      onClick={() => handleTabClick(tab.id)}
+                      title={tab.title}
+                      style={getTabStyle(tab)}
+                    >
+                      <span className={`tab-bar__source-indicator${isStream ? ' tab-bar__source-indicator--stream' : ''}${isRemote ? ' tab-bar__source-indicator--remote' : ''}`} />
+                      <span className="tab-bar__title">{tab.title}</span>
+                      {tab.closable !== false && (
+                        <button
+                          className="tab-bar__close"
+                          onClick={(e) => handleCloseClick(e, tab.id)}
+                          title="关闭"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
               {showScrollBtns.right && (
                 <button

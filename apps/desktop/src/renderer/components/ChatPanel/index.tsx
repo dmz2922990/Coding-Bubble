@@ -146,7 +146,7 @@ export function ChatPanel(): React.JSX.Element {
           title: tabTitle,
           content: null,
           closable: false,
-          source: isStream ? 'stream' : 'hook',
+          source: info.session.source ?? 'hook',
         })
       } else if (existing.title !== tabTitle) {
         existing.title = tabTitle
@@ -320,7 +320,7 @@ export function ChatPanel(): React.JSX.Element {
     () => tabManager.tabs.map((t) => {
       if (t.id === 'chat') return { ...t, content: null }
       const s = sessions.get(t.id)
-      return { ...t, content: null, phase: s?.phase as SessionPhaseType | undefined }
+      return { ...t, content: null, phase: s?.phase as SessionPhaseType | undefined, source: t.source }
     }),
     [tabManager.tabs, sessions]
   )
