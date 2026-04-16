@@ -138,9 +138,11 @@ export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onS
         {items.length === 0 && session.phase !== 'waitingForApproval' ? (
           <div className="session-tab__empty">暂无对话记录</div>
         ) : (
-          items.map((item) => (
-            <MessageItem key={item.id} item={item} />
-          ))
+          groupConsecutiveToolCalls(items).map((group) =>
+            group.type === 'single'
+              ? <MessageItem key={group.item.id} item={group.item} />
+              : <ToolCallGroup key={`tg-${group.items[0].id}`} items={group.items} />
+          )
         )}
       </div>
 
@@ -230,6 +232,103 @@ function MessageItem({ item }: { item: ChatItem }): React.JSX.Element {
     default:
       return null
   }
+}
+
+type ItemGroup = { type: 'single'; item: ChatItem } | { type: 'toolGroup'; items: ChatItem[] }
+
+function groupConsecutiveToolCalls(items: ChatItem[]): ItemGroup[] {
+  const result: ItemGroup[] = []
+  let i = 0
+  while (i < items.length) {
+    if (items[i].type === 'toolCall') {
+      const group: ChatItem[] = []
+      while (i < items.length && items[i].type === 'toolCall') {
+        group.push(items[i])
+        i++
+      }
+      result.push(group.length === 1 ? { type: 'single', item: group[0] } : { type: 'toolGroup', items: group })
+    } else {
+      result.push({ type: 'single', item: items[i] })
+      i++
+    }
+  }
+  return result
+}
+
+function ToolCallGroup({ items }: { items: ChatItem[] }): React.JSX.Element {
+  const [expanded, setExpanded] = useState(false)
+  const [detailIndex, setDetailIndex] = useState<number | null>(null)
+  const runningCount = items.filter(i => i.tool?.status === 'running').length
+  const errorCount = items.filter(i => i.tool?.status === 'error').length
+
+  const nameCounts = new Map<string, number>()
+  items.forEach(i => {
+    const name = i.tool?.name ?? 'unknown'
+    nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1)
+  })
+  const nameSummary = [...nameCounts.entries()]
+    .map(([name, count]) => count > 1 ? `${name} ×${count}` : name)
+    .join(', ')
+
+  const statusColor = errorCount > 0 ? '#f44336'
+    : runningCount > 0 ? '#ff9800'
+    : '#4caf50'
+
+  return (
+    <div className="tool-group">
+      <div className="tool-group__header" onClick={() => setExpanded(!expanded)}>
+        <span className="tool-group__dot" style={{ backgroundColor: statusColor }} />
+        <span className="tool-group__count">{items.length} 个工具调用</span>
+        <span className="tool-group__names">{nameSummary}</span>
+        <span className="tool-group__toggle">{expanded ? '收起' : '展开'}</span>
+      </div>
+      {expanded && (
+        <div className="tool-group__list">
+          {items.map((item, idx) => {
+            const tool = item.tool!
+            const color = TOOL_STATUS_COLORS[tool.status] ?? '#888'
+            const isEdit = (tool.name === 'Edit' || tool.name === 'edit') && tool.input.old_string && tool.input.new_string
+            const filePath = tool.input.file_path || tool.input.path || ''
+            const showDetail = detailIndex === idx
+            return (
+              <div key={item.id} className="tool-group__item">
+                <div className="tool-group__item-row" onClick={() => setDetailIndex(showDetail ? null : idx)}>
+                  <span className="chat-msg__tool-dot" style={{ backgroundColor: color }} />
+                  <span className="tool-group__item-name">{tool.name}</span>
+                  {item.elapsedSeconds != null && item.elapsedSeconds > 0 && (
+                    <span className="chat-msg__tool-elapsed">· {item.elapsedSeconds}s</span>
+                  )}
+                  <span className="tool-group__item-input">{JSON.stringify(tool.input).slice(0, 80)}</span>
+                </div>
+                {showDetail && (
+                  <div className="tool-group__item-detail">
+                    {filePath && (
+                      <div className="chat-msg__tool-file">{filePath.split(/[\\/]/).pop()}</div>
+                    )}
+                    {isEdit ? (
+                      <DiffView oldString={tool.input.old_string} newString={tool.input.new_string} />
+                    ) : (
+                      <div className="chat-msg__tool-detail">
+                        {Object.entries(tool.input).map(([key, value]) => (
+                          <div key={key} className="chat-msg__tool-detail-row">
+                            <span className="chat-msg__tool-detail-key">{key}</span>
+                            <pre className="chat-msg__tool-detail-value">{typeof value === 'string' ? value : JSON.stringify(value, null, 2)}</pre>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {tool.result && (
+                      <pre className="chat-msg__tool-result">{tool.result}</pre>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function ToolItem({ tool, elapsedSeconds }: { tool: { name: string; input: Record<string, string>; status: string; result?: string; subTools?: Array<{ id: string; name: string; input: Record<string, string>; status: string; result?: string }> }; elapsedSeconds?: number }): React.JSX.Element {
