@@ -235,6 +235,10 @@ function ToolItem({ tool, elapsedSeconds }: { tool: { name: string; input: Recor
   const inputPreview = JSON.stringify(tool.input).slice(0, 80)
   const hasSubTools = tool.subTools && tool.subTools.length > 0
 
+  // Detect Edit-like tools with diff content
+  const isEdit = (tool.name === 'Edit' || tool.name === 'edit') && tool.input.old_string && tool.input.new_string
+  const filePath = tool.input.file_path || tool.input.path || ''
+
   return (
     <div className="chat-msg chat-msg--tool">
       <div className="chat-msg__tool" onClick={() => setExpanded(!expanded)}>
@@ -251,8 +255,27 @@ function ToolItem({ tool, elapsedSeconds }: { tool: { name: string; input: Recor
             <span className="chat-msg__tool-input">{inputPreview}</span>
           )}
         </div>
-        {expanded && !hasSubTools && tool.result && (
-          <pre className="chat-msg__tool-result">{tool.result}</pre>
+        {expanded && !hasSubTools && (
+          <>
+            {filePath && (
+              <div className="chat-msg__tool-file">{filePath.split(/[\\/]/).pop()}</div>
+            )}
+            {isEdit ? (
+              <DiffView oldString={tool.input.old_string} newString={tool.input.new_string} />
+            ) : (
+              <div className="chat-msg__tool-detail">
+                {Object.entries(tool.input).map(([key, value]) => (
+                  <div key={key} className="chat-msg__tool-detail-row">
+                    <span className="chat-msg__tool-detail-key">{key}</span>
+                    <pre className="chat-msg__tool-detail-value">{typeof value === 'string' ? value : JSON.stringify(value, null, 2)}</pre>
+                  </div>
+                ))}
+              </div>
+            )}
+            {tool.result && (
+              <pre className="chat-msg__tool-result">{tool.result}</pre>
+            )}
+          </>
         )}
         {expanded && hasSubTools && (
           <div className="chat-msg__tool-subs">

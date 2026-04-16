@@ -278,11 +278,21 @@ export class SessionStore {
         this.transition(session, 'thinking')
         break
       }
-      case 'PreToolUse':
+      case 'PreToolUse': {
+        const prePayload = event.payload as Record<string, unknown> | undefined
+        const toolUseId = (prePayload?.tool_use_id as string) ?? ''
+        const toolName = (prePayload?.tool_name as string) ?? ''
+        const toolInput = (prePayload?.tool_input as Record<string, unknown>) ?? {}
+
+        if (toolUseId && toolName) {
+          this.addToolCall(sessionId, toolUseId, toolName, toolInput)
+        }
+
         if (session.phase.type === 'thinking' || session.phase.type === 'error') {
           this.transition(session, 'processing')
         }
         break
+      }
       case 'PostToolUse': {
         const payload = event.payload as Record<string, unknown> | undefined
         const toolUseId = payload?.tool_use_id as string

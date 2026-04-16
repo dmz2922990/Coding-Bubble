@@ -301,7 +301,6 @@ export function handleStreamEvent(
             tool_input: event.toolInput,
           },
         })
-        store.addToolCall(sessionId, toolUseId, event.toolName ?? 'unknown', event.toolInput ?? {})
       }
       break
     }
