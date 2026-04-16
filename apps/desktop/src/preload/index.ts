@@ -56,6 +56,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     deny: (sessionId: string, reason?: string): Promise<void> => ipcRenderer.invoke('session:deny', sessionId, reason),
     alwaysAllow: (sessionId: string): Promise<void> => ipcRenderer.invoke('session:always-allow', sessionId),
     answer: (sessionId: string, answer: string): Promise<void> => ipcRenderer.invoke('session:answer', sessionId, answer),
+    suggestion: (sessionId: string, index: number): Promise<void> => ipcRenderer.invoke('session:suggestion', sessionId, index),
     hooksStatus: (): Promise<{ installed: boolean }> => ipcRenderer.invoke('session:hooks-status'),
     installHooks: (): Promise<void> => ipcRenderer.invoke('session:install-hooks'),
     jumpToTerminal: (sessionId: string): Promise<{ success: boolean; error?: string }> =>
@@ -83,6 +84,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('stream:always-allow', sessionId),
     answer: (sessionId: string, answer: string): Promise<void> =>
       ipcRenderer.invoke('stream:answer', sessionId, answer),
+    suggestion: (sessionId: string, index: number): Promise<void> =>
+      ipcRenderer.invoke('stream:suggestion', sessionId, index),
     interrupt: (sessionId: string): Promise<void> =>
       ipcRenderer.invoke('stream:interrupt', sessionId),
     onEvent: (cb: (event: unknown, data: unknown) => void) => {
@@ -115,6 +118,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.invoke('remote:stream:deny', sessionId, reason),
       alwaysAllow: (sessionId: string): Promise<void> =>
         ipcRenderer.invoke('remote:stream:always-allow', sessionId),
+      suggestion: (sessionId: string, index: number): Promise<void> =>
+        ipcRenderer.invoke('remote:stream:suggestion', sessionId, index),
       interrupt: (sessionId: string): Promise<void> =>
         ipcRenderer.invoke('remote:stream:interrupt', sessionId),
       destroy: (sessionId: string): Promise<void> =>

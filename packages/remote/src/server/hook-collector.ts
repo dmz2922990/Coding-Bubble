@@ -1,6 +1,6 @@
 import type { WebSocket } from 'ws'
 import { createSocketServer, installHooks, uninstallHooks } from '@coding-bubble/session-monitor'
-import type { HookEvent, HookResponse } from '@coding-bubble/session-monitor'
+import type { HookEvent, HookResponse, PermissionSuggestion } from '@coding-bubble/session-monitor'
 import type { RemoteServer } from './server'
 import type { HookPermissionResponseMessage } from '../shared/protocol'
 
@@ -38,7 +38,8 @@ export class HookCollector {
         sessionId: string,
         toolUseId: string,
         toolName: string,
-        toolInput: Record<string, unknown> | null
+        toolInput: Record<string, unknown> | null,
+        suggestions: PermissionSuggestion[] = []
       ): Promise<HookResponse> => {
         if (!this._server.hasClient) {
           return { decision: 'deny', reason: 'No client connected' }
@@ -53,6 +54,7 @@ export class HookCollector {
             tool: toolName,
             input: toolInput,
             toolUseId,
+            suggestions,
           },
         }
         this._server.send({ type: 'hook_event', sessionId, event })

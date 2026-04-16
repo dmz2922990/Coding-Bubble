@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import type { ChatItem, SessionInfo } from './types'
+import type { ChatItem, SessionInfo, PermissionSuggestion } from './types'
 import './styles.css'
 
 const TOOL_STATUS_COLORS: Record<string, string> = {
@@ -31,12 +31,13 @@ interface Props {
   onAllow?: () => void
   onDeny?: () => void
   onAlwaysAllow?: () => void
+  onSuggestion?: (index: number) => void
   onAnswer?: (answer: string) => void
   onJumpToTerminal?: () => void
   onDisconnect?: () => void
 }
 
-export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onAnswer, onJumpToTerminal, onDisconnect }: Props): React.JSX.Element {
+export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onSuggestion, onAnswer, onJumpToTerminal, onDisconnect }: Props): React.JSX.Element {
   const listRef = useRef<HTMLDivElement>(null)
   const autoScrollRef = useRef(true)
   const [newCount, setNewCount] = useState(0)
@@ -171,9 +172,11 @@ export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onA
         <PermissionBar
           toolName={session.toolName ?? 'unknown'}
           toolInput={session.toolInput}
+          suggestions={session.suggestions}
           onAllow={onAllow}
           onDeny={onDeny}
           onAlwaysAllow={onAlwaysAllow}
+          onSuggestion={onSuggestion}
         />
       ) : null}
     </div>
@@ -462,12 +465,58 @@ function ApprovalDetail({ toolName, toolInput }: { toolName: string; toolInput?:
 interface PermissionBarProps {
   toolName: string
   toolInput?: Record<string, unknown> | null
+  suggestions?: PermissionSuggestion[]
   onAllow?: () => void
   onDeny?: () => void
   onAlwaysAllow?: () => void
+  onSuggestion?: (index: number) => void
 }
 
-function PermissionBar({ toolName, onAllow, onDeny, onAlwaysAllow }: PermissionBarProps): React.JSX.Element {
+function getSuggestionLabel(s: PermissionSuggestion): string {
+  if (s.type === 'setMode') {
+    if ((s as { mode: string }).mode === 'acceptEdits') return '自动接受编辑'
+    if ((s as { mode: string }).mode === 'plan') return '切换到 Plan 模式'
+    return (s as { mode: string }).mode
+  }
+  if (s.type === 'addDirectories') {
+    const dirs = (s as { directories: string[] }).directories
+    const dir = dirs?.[0] ?? ''
+    const shortDir = dir.split(/[\\/]/).pop() || dir
+    return `添加目录 ${shortDir}`
+  }
+  if (s.type === 'addRules') {
+    const rules = (s as { rules: Array<{ toolName: string; ruleContent: string }> }).rules
+    const rule = rules?.[0] ?? s
+    const rc = (rule as { ruleContent?: string }).ruleContent ?? (s as { ruleContent?: string }).ruleContent ?? ''
+    const tn = (rule as { toolName?: string }).toolName ?? (s as { toolName?: string }).toolName ?? ''
+    if (rc) {
+      if (rc.includes('**')) {
+        const dir = rc.split('**')[0].replace(/[\\/]$/, '').split(/[\\/]/).pop() || rc
+        return tn ? `允许 ${tn} 在 ${dir}/` : `允许在 ${dir}/`
+      }
+      const short = rc.length > 30 ? rc.slice(0, 29) + '…' : rc
+      return `始终允许 \`${short}\``
+    }
+  }
+  return '始终允许'
+}
+
+function PermissionBar({ toolName, suggestions, onAllow, onDeny, onAlwaysAllow, onSuggestion }: PermissionBarProps): React.JSX.Element {
+  const hasSuggestions = suggestions && suggestions.length > 0
+
+  // Deduplicate suggestion buttons by label
+  const uniqueSuggestions: Array<{ index: number; label: string }> = []
+  const seenLabels = new Set<string>()
+  if (hasSuggestions) {
+    suggestions.forEach((s, i) => {
+      const label = getSuggestionLabel(s)
+      if (!seenLabels.has(label)) {
+        seenLabels.add(label)
+        uniqueSuggestions.push({ index: i, label })
+      }
+    })
+  }
+
   return (
     <div className="permission-bar">
       <div className="permission-bar__content">
@@ -477,7 +526,18 @@ function PermissionBar({ toolName, onAllow, onDeny, onAlwaysAllow }: PermissionB
       <div className="permission-bar__actions">
         <button className="permission-bar__btn permission-bar__btn--deny" onClick={onDeny}>拒绝</button>
         <button className="permission-bar__btn permission-bar__btn--allow" onClick={onAllow}>允许</button>
-        <button className="permission-bar__btn permission-bar__btn--always" onClick={onAlwaysAllow}>一直允许</button>
+        {!hasSuggestions && onAlwaysAllow && (
+          <button className="permission-bar__btn permission-bar__btn--always" onClick={onAlwaysAllow}>始终允许</button>
+        )}
+        {uniqueSuggestions.map(({ index, label }) => (
+          <button
+            key={index}
+            className="permission-bar__btn permission-bar__btn--suggestion"
+            onClick={() => onSuggestion?.(index)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
     </div>
   )

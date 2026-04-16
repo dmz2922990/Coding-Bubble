@@ -1,6 +1,7 @@
 import { StreamSession } from '@coding-bubble/stream-json'
 import type { StreamEvent, PermissionResult } from '@coding-bubble/stream-json'
-import type { SessionStore, HookResponse } from '@coding-bubble/session-monitor'
+import type { SessionStore, HookResponse, PermissionSuggestion } from '@coding-bubble/session-monitor'
+import { mergeSuggestions } from '@coding-bubble/session-monitor'
 import { formatToolDetail } from './format-tool-detail'
 
 interface PendingStreamPermission {
@@ -8,6 +9,7 @@ interface PendingStreamPermission {
   toolName: string
   toolInput: Record<string, unknown> | null
   formattedDetail: string
+  suggestions: PermissionSuggestion[]
   resolve: (response: HookResponse) => void
 }
 
@@ -157,6 +159,35 @@ export class StreamAdapterManager {
   alwaysAllowPermission(sessionId: string): void {
     this._store.setPermissionMode(sessionId, 'auto')
     this.approvePermission(sessionId)
+  }
+
+  suggestionPermission(sessionId: string, index: number): void {
+    const entry = this._pendingPermissions.get(sessionId)
+    if (!entry) return
+
+    const suggestion = entry.suggestions[index]
+    if (!suggestion) return
+
+    this._pendingPermissions.delete(sessionId)
+    this._store.addSystemMessage(sessionId, entry.formattedDetail)
+
+    const stream = this._sessions.get(sessionId)
+    if (stream?.alive) {
+      stream.respondPermission(entry.requestId, {
+        behavior: 'allow',
+        updatedInput: entry.toolInput ?? undefined,
+        updatedPermissions: [suggestion],
+      })
+    }
+
+    this._store.process({
+      hook_event_name: 'PostToolUse',
+      session_id: sessionId,
+      cwd: '',
+      payload: {},
+    })
+
+    entry.resolve({ decision: 'allow', updatedPermissions: [suggestion] })
   }
 
   interrupt(sessionId: string): void {
@@ -356,6 +387,8 @@ export function handleStreamEvent(
       const requestId = event.requestId ?? ''
       const toolName = event.toolName ?? 'unknown'
       const toolInput = event.toolInput ?? null
+      const rawSuggestions = (event.suggestions ?? []) as PermissionSuggestion[]
+      const suggestions = mergeSuggestions(rawSuggestions)
 
       _cleanupPending(ctx.pendingPermissions, sessionId)
 
@@ -365,6 +398,7 @@ export function handleStreamEvent(
           toolName,
           toolInput,
           formattedDetail: formatToolDetail(toolName, toolInput),
+          suggestions,
           resolve,
         })
 
@@ -372,7 +406,7 @@ export function handleStreamEvent(
           hook_event_name: 'PermissionRequest',
           session_id: sessionId,
           cwd: '',
-          payload: { toolUseId: requestId, tool: toolName, input: toolInput },
+          payload: { toolUseId: requestId, tool: toolName, input: toolInput, suggestions },
         })
       }).catch((err) => {
         console.error('[stream-adapter] permission handler error:', err)

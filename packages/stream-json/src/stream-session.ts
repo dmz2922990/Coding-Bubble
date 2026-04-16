@@ -1,7 +1,7 @@
 import { spawn, ChildProcess } from 'child_process'
 import * as readline from 'readline'
 import { EventEmitter } from 'events'
-import type { StreamEvent, StreamSessionOptions, PermissionResult, SkillCommand } from './types'
+import type { StreamEvent, StreamSessionOptions, PermissionResult, SkillCommand, PermissionSuggestion } from './types'
 
 export interface StreamSessionEvents {
   event: (event: StreamEvent) => void
@@ -142,6 +142,9 @@ export class StreamSession {
     if (result.behavior === 'allow') {
       // Claude Code requires updatedInput — echo back original input or empty object
       innerResponse.updatedInput = result.updatedInput ?? {}
+      if (result.updatedPermissions) {
+        innerResponse.updatedPermissions = result.updatedPermissions
+      }
     } else if (result.behavior === 'deny') {
       innerResponse.message = result.message ?? 'Permission denied.'
     }
@@ -412,11 +415,16 @@ export class StreamSession {
       return
     }
 
+    const rawSuggestions = Array.isArray(request?.permission_suggestions)
+      ? request!.permission_suggestions as PermissionSuggestion[]
+      : [] as PermissionSuggestion[]
+
     this._emit({
       type: 'permission_request',
       requestId: raw.request_id as string,
       toolName: request?.tool_name as string,
       toolInput: request?.input as Record<string, unknown>,
+      suggestions: rawSuggestions,
     })
   }
 
