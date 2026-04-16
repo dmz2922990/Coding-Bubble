@@ -1,5 +1,5 @@
 import type { SessionStore } from '@coding-bubble/session-monitor'
-import type { HookEvent, HookResponse } from '@coding-bubble/session-monitor'
+import type { HookEvent, HookResponse, PermissionSuggestion } from '@coding-bubble/session-monitor'
 import type { RemoteManager } from './remote-manager'
 import type { ServerMessage, HookEventMessage, HookPermissionResponseMessage } from '../shared/protocol'
 
@@ -135,6 +135,42 @@ export class RemoteHookAdapter {
       response: answer,
     }
     this._remoteManager.send(serverId, response)
+  }
+
+  /** Approve with a dynamic permission suggestion (updatedPermissions) */
+  suggestionPermission(serverId: string, sessionId: string, toolUseId: string, index: number): void {
+    const key = `${sessionId}:${toolUseId}`
+    const pending = this._pendingPermissions.get(key)
+    if (!pending) return
+
+    // Retrieve suggestions from the session's current phase context
+    const session = this._sessionStore.get(sessionId)
+    const phase = session?.phase
+    const suggestions: PermissionSuggestion[] =
+      phase?.type === 'waitingForApproval'
+        ? (phase.context as { suggestions?: PermissionSuggestion[] }).suggestions ?? []
+        : []
+
+    const suggestion = suggestions[index]
+    if (!suggestion) return
+
+    this._pendingPermissions.delete(key)
+
+    const response: HookResponse = {
+      decision: 'allow',
+      updatedPermissions: [suggestion],
+    }
+    this._sessionStore.resolvePermission(toolUseId, response)
+
+    const originalSessionId = sessionId.replace(`remote:${serverId}:`, '')
+
+    const msg: HookPermissionResponseMessage = {
+      type: 'hook_permission_response',
+      sessionId: originalSessionId,
+      toolUseId,
+      response,
+    }
+    this._remoteManager.send(serverId, msg)
   }
 
   /** Get toolUseId for a pending permission */

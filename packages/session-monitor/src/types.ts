@@ -99,7 +99,7 @@ export const VALID_TRANSITIONS: Record<SessionPhaseType, SessionPhaseType[]> = {
   processing: ['thinking', 'juggling', 'done', 'error', 'waitingForInput', 'waitingForApproval', 'compacting'],
   juggling: ['processing', 'done', 'error', 'waitingForInput', 'waitingForApproval', 'compacting'],
   done: ['idle', 'thinking', 'waitingForInput'],
-  error: ['idle', 'thinking', 'done', 'waitingForApproval'],
+  error: ['idle', 'thinking', 'processing', 'done', 'waitingForApproval'],
   waitingForInput: ['thinking', 'processing', 'idle', 'done', 'compacting'],
   waitingForApproval: ['processing', 'idle', 'waitingForInput', 'done'],
   compacting: ['processing', 'idle', 'waitingForInput', 'done'],

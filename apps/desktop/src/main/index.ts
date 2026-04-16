@@ -665,6 +665,16 @@ ipcMain.handle('session:answer', async (_event, sessionId: string, answer: strin
 })
 
 ipcMain.handle('session:suggestion', async (_event, sessionId: string, index: number) => {
+  // Route remote-hook sessions to remote hook adapter
+  const parsedRemote = parseRemoteSessionId(sessionId)
+  if (parsedRemote && remoteHookAdapter) {
+    const toolUseId = remoteHookAdapter.getPendingToolUseId(sessionId)
+    if (toolUseId) {
+      remoteHookAdapter.suggestionPermission(parsedRemote.serverId, sessionId, toolUseId, index)
+    }
+    return
+  }
+
   const entry = pendingPermissionResolvers.get(sessionId)
   if (!entry) {
     console.error('[main] session:suggestion FAILED - no pending resolver for session:', sessionId)

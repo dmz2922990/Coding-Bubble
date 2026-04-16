@@ -279,7 +279,7 @@ export class SessionStore {
         break
       }
       case 'PreToolUse':
-        if (session.phase.type === 'thinking') {
+        if (session.phase.type === 'thinking' || session.phase.type === 'error') {
           this.transition(session, 'processing')
         }
         break
