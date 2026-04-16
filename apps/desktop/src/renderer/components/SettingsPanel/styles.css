@@ -69,6 +69,10 @@
   border-radius: 2px;
 }
 
+.settings-panel__body::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 /* ── Section ─────────────────────────────────────────── */
 
 .settings-section {

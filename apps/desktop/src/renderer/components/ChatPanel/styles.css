@@ -85,6 +85,10 @@
   border-radius: 2px;
 }
 
+.chat-panel__messages::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 .chat-panel__empty {
   flex: 1;
   display: flex;
@@ -810,6 +814,10 @@
   border-radius: 2px;
 }
 
+.session-tab__messages::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 .session-tab__details {
   padding: 8px 12px;
   background: rgba(255, 255, 255, 0.02);
@@ -1069,6 +1077,10 @@
   background: transparent;
 }
 
+.approval-detail::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 .approval-detail__title {
   font-size: 12px;
   font-weight: 600;
@@ -1125,6 +1137,10 @@
   background: transparent;
 }
 
+.approval-detail__json::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 /* ── Diff View ─────────────────────────────────────────────── */
 
 .diff-view {
@@ -1151,6 +1167,10 @@
 }
 
 .diff-view::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.diff-view::-webkit-scrollbar-corner {
   background: transparent;
 }
 
@@ -1457,6 +1477,10 @@
 }
 
 .ask-user-question::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ask-user-question::-webkit-scrollbar-corner {
   background: transparent;
 }
 

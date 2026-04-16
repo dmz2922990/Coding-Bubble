@@ -42,6 +42,10 @@
   border-radius: 2px;
 }
 
+.notification-bubble__list::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 .notification-bubble__row {
   display: flex;
   align-items: center;
