@@ -21,6 +21,7 @@ jobs:
         with:
           name: remote-server
           path: packages/remote/dist/coding-bubble-remote-server.js
+          retention-days: 1
 
   build-mac:
     runs-on: macos-latest
@@ -41,6 +42,7 @@ jobs:
           path: |
             apps/desktop/release/*.dmg
             apps/desktop/release/*.zip
+          retention-days: 1
 
   build-win:
     runs-on: windows-latest
@@ -60,6 +62,7 @@ jobs:
           name: release-win
           path: |
             apps/desktop/release/*.exe
+          retention-days: 1
 
   publish:
     needs: [build-mac, build-win, build-remote]
