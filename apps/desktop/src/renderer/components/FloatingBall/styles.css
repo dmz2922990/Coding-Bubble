@@ -73,6 +73,7 @@ body,
 
 /* ── 悬浮球 ──────────────────────────────── */
 .ball {
+  position: relative;
   width: 56px;
   height: 56px;
   border-radius: 50%;

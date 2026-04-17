@@ -40,6 +40,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('bubble:status', cb)
     return () => ipcRenderer.removeListener('bubble:status', cb)
   },
+  /** Bubble side: left/right alignment listener (Main → Ball) */
+  onBubbleSide: (cb: (event: unknown, side: 'left' | 'right') => void) => {
+    ipcRenderer.on('bubble:side', cb)
+    return () => ipcRenderer.removeListener('bubble:side', cb)
+  },
   /** Navigate to session tab (Ball → Main) */
   navigateToSession: (sessionId: string): void => {
     ipcRenderer.send('panel:navigate-to-session', sessionId)
@@ -140,6 +145,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('notification:get-config'),
     setConfig: (config: Record<string, number>): Promise<void> =>
       ipcRenderer.invoke('notification:set-config', config),
+  },
+  /** Notification window: report content size to main process */
+  notificationResize: (width: number, height: number): void => {
+    ipcRenderer.send('notification:resize', width, height)
   },
   /** Dismiss a single notification by sessionId */
   dismissNotification: (sessionId: string): void => {

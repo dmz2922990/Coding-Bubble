@@ -9,6 +9,7 @@ import { formatToolDetail } from './format-tool-detail'
 let ballWin: BrowserWindow | null = null
 let panelWin: BrowserWindow | null = null
 let settingsWin: BrowserWindow | null = null
+let notificationWin: BrowserWindow | null = null
 let tray: Tray | null = null
 
 /** Pending permission resolvers keyed by sessionId — for hook sessions only */
@@ -16,6 +17,113 @@ const pendingPermissionResolvers = new Map<string, { toolUseId: string | undefin
 
 /** 拖拽时记录光标相对于窗口左上角的偏移量 */
 let dragOffset = { x: 0, y: 0 }
+
+/** Last measured notification content size (used during drag to reposition) */
+let lastNotifSize = { width: 0, height: 0 }
+
+/** Push bubble alignment side to notification renderer based on ball window position */
+function sendBubbleSide(): void {
+  if (!ballWin || ballWin.isDestroyed()) return
+  const bounds = ballWin.getBounds()
+  const display = screen.getDisplayMatching(bounds)
+  const workArea = display.workArea
+  const ballCenterX = bounds.x + Math.round(bounds.width / 2)
+  const side: 'left' | 'right' = ballCenterX < workArea.x + workArea.width / 2 ? 'left' : 'right'
+  if (notificationWin && !notificationWin.isDestroyed()) {
+    notificationWin.webContents.send('bubble:side', side)
+  }
+}
+
+/** Calculate notification window position above the ball */
+function positionNotificationWin(contentWidth: number, contentHeight: number): void {
+  lastNotifSize = { width: contentWidth, height: contentHeight }
+  if (!notificationWin || notificationWin.isDestroyed()) return
+  if (!ballWin || ballWin.isDestroyed()) return
+
+  const ballBounds = ballWin.getBounds()
+  const display = screen.getDisplayMatching(ballBounds)
+  const workArea = display.workArea
+  const ballCenterX = ballBounds.x + Math.round(ballBounds.width / 2)
+  const onLeft = ballCenterX < workArea.x + workArea.width / 2
+
+  const BALL_SIZE = 56
+  const ballIconBottom = ballBounds.y + ballBounds.height - 8
+  const ballIconCenterX = ballBounds.x + Math.round(ballBounds.width / 2)
+  const ballIconLeft = ballIconCenterX - Math.round(BALL_SIZE / 2)
+  const ballIconRight = ballIconCenterX + Math.round(BALL_SIZE / 2)
+
+  const GAP = 8
+  const winH = contentHeight + 4
+  const winW = contentWidth + 4
+
+  let x: number
+  if (onLeft) {
+    x = ballIconLeft - 2
+  } else {
+    x = ballIconRight - winW + 2
+  }
+  let y = ballIconBottom - BALL_SIZE - GAP - winH
+
+  if (x < workArea.x) x = workArea.x
+  if (x + winW > workArea.x + workArea.width) x = workArea.x + workArea.width - winW
+  if (y < workArea.y) y = workArea.y
+
+  notificationWin.setBounds({ x, y, width: winW, height: winH })
+}
+
+function createNotificationWindow(): void {
+  if (notificationWin && !notificationWin.isDestroyed()) {
+    notificationWin.show()
+    return
+  }
+
+  notificationWin = new BrowserWindow({
+    width: 1,
+    height: 1,
+    x: -9999,
+    y: -9999,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: false,
+    hasShadow: false,
+    show: false,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false
+    }
+  })
+
+  if (process.platform === 'darwin') {
+    notificationWin.setAlwaysOnTop(true, 'floating')
+  } else {
+    notificationWin.setAlwaysOnTop(true)
+  }
+
+  notificationWin.on('closed', () => {
+    notificationWin = null
+  })
+
+  notificationWin.on('ready-to-show', () => {
+    notificationWin?.show()
+    sendBubbleSide()
+  })
+
+  const notifParam = '?view=notification'
+  if (process.env['NODE_ENV'] === 'development' && process.env['ELECTRON_RENDERER_URL']) {
+    notificationWin.loadURL(process.env['ELECTRON_RENDERER_URL'] + notifParam)
+  } else {
+    notificationWin.loadFile(join(__dirname, '../renderer/index.html'), { search: 'view=notification' })
+  }
+}
+
+function closeNotificationWindow(): void {
+  if (notificationWin && !notificationWin.isDestroyed()) {
+    notificationWin.close()
+  }
+  notificationWin = null
+}
 
 /** 计算数据目录：dev 用项目内 data/，prod 用 Application Support */
 function resolveDataDir(): string {
@@ -117,7 +225,10 @@ function createBallWindow(): void {
     holdNonIgnoringUntil = Date.now() + 600
   })
 
-  ballWin.on('ready-to-show', () => ballWin?.show())
+  ballWin.on('ready-to-show', () => {
+    ballWin?.show()
+    sendBubbleSide()
+  })
 
   ballWin.on('closed', () => {
     clearInterval(pollTimer)
@@ -148,6 +259,8 @@ ipcMain.on('drag:move', (event) => {
     Math.round(x - dragOffset.x),
     Math.round(y - dragOffset.y)
   )
+  sendBubbleSide()
+  positionNotificationWin(lastNotifSize.width, lastNotifSize.height)
 })
 
 ipcMain.on('drag:end', (event) => {
@@ -159,6 +272,7 @@ ipcMain.on('drag:end', (event) => {
     const existing = readConfig()
     writeConfig({ ...existing, ballPosition: { x: bx, y: by } })
   }
+  sendBubbleSide()
 })
 
 // ── IPC: 透明区域点击穿透 ──────────────────────────────────
@@ -169,6 +283,11 @@ ipcMain.on('set-ignore-mouse-events', (_event, ignore: boolean) => {
   } else {
     ballWin.setIgnoreMouseEvents(false)
   }
+})
+
+// ── IPC: notification window resize ───────────────────────
+ipcMain.on('notification:resize', (_event, width: number, height: number) => {
+  positionNotificationWin(width, height)
 })
 
 // ── IPC: 调试 ──────────────────────────────────────────────
@@ -1151,12 +1270,21 @@ function bubbleControllerSync(): void {
   if (!panelVisible && notifications.length > 0) {
     const savedConfig = readConfig().notificationAutoClose as NotificationAutoCloseConfig | undefined
     const quickApproval = savedConfig?.quickApproval ?? true
-    ballWin.webContents.send('bubble:show', notifications, quickApproval)
+    if (!notificationWin || notificationWin.isDestroyed()) {
+      createNotificationWindow()
+      // Wait for renderer to load before sending data
+      notificationWin?.webContents.once('did-finish-load', () => {
+        notificationWin?.webContents.send('bubble:show', notifications, quickApproval)
+        sendBubbleSide()
+      })
+    } else {
+      notificationWin.webContents.send('bubble:show', notifications, quickApproval)
+    }
   } else {
-    ballWin.webContents.send('bubble:hide')
+    closeNotificationWindow()
   }
 
-  // Send display state for status dot
+  // Send display state for status dot (still goes to ball window)
   const displayState = sessionStore?.resolveDisplayState()
   if (!panelVisible && displayState && displayState.type !== 'idle' && displayState.type !== 'ended') {
     ballWin.webContents.send('bubble:status', displayState.type)

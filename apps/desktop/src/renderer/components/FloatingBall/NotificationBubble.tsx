@@ -18,6 +18,7 @@ interface NotificationBubbleProps {
   notifications: BubbleNotification[]
   visible: boolean
   quickApproval: boolean
+  side: 'left' | 'right'
   onRowClick: (sessionId: string) => void
   onDismissSession: (sessionId: string) => void
   onQuickApprove: (sessionId: string, source?: string) => void
@@ -40,7 +41,7 @@ const TYPE_PRIORITY: Record<NotificationType, number> = {
   done: 1,
 }
 
-export function NotificationBubble({ notifications, visible, quickApproval, onRowClick, onDismissSession, onQuickApprove }: NotificationBubbleProps): React.JSX.Element | null {
+export function NotificationBubble({ notifications, visible, quickApproval, side, onRowClick, onDismissSession, onQuickApprove }: NotificationBubbleProps): React.JSX.Element | null {
   // Auto-close timer — picks minimum autoCloseMs across all timed notifications
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -105,7 +106,7 @@ export function NotificationBubble({ notifications, visible, quickApproval, onRo
 
   return (
     <div
-      className="notification-bubble"
+      className={`notification-bubble notification-bubble--${side}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >

@@ -1,6 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { ChatBubble } from '../ChatBubble'
-import { NotificationBubble } from './NotificationBubble'
 import type { BubbleNotification } from './NotificationBubble'
 import bubbleIcon from '../../assets/bubble-icon.png'
 import './styles.css'
@@ -76,9 +75,7 @@ interface BubbleItem {
 
 export function FloatingBall(): React.JSX.Element {
   const [bubbles, setBubbles] = useState<BubbleItem[]>([])
-  const [notificationVisible, setNotificationVisible] = useState(false)
   const [notifications, setNotifications] = useState<BubbleNotification[]>([])
-  const [quickApproval, setQuickApproval] = useState(true)
   const [bubbleDismissed, setBubbleDismissed] = useState(false)
   const [displayState, setDisplayState] = useState<string | null>(null)
   const movedRef = useRef(false)
@@ -130,41 +127,24 @@ export function FloatingBall(): React.JSX.Element {
     setBubbles((prev) => prev.filter((b) => b.id !== id))
   }, [])
 
-  // Subscribe to notification bubble IPC events
+  // Subscribe to status dot IPC events (notification IPC handled by separate window)
   useEffect(() => {
-    const cleanupShow = window.electronAPI.onBubbleShow((_event, data, qa) => {
-      setNotifications(data as BubbleNotification[])
-      if (qa !== undefined) setQuickApproval(qa)
-      if (!bubbleDismissedRef.current) {
-        setNotificationVisible(true)
-      }
-    })
-    const cleanupHide = window.electronAPI.onBubbleHide(() => {
-      setNotificationVisible(false)
-      setBubbleDismissed(false)
-    })
     const cleanupStatus = window.electronAPI.onBubbleStatus((_event, state) => {
       setDisplayState(state)
     })
+    // Track notification state for badge display
+    const cleanupShow = window.electronAPI.onBubbleShow((_event, data) => {
+      setNotifications(data as BubbleNotification[])
+    })
+    const cleanupHide = window.electronAPI.onBubbleHide(() => {
+      setNotifications([])
+      setBubbleDismissed(false)
+    })
     return () => {
+      cleanupStatus()
       cleanupShow()
       cleanupHide()
-      cleanupStatus()
     }
-  }, [])
-
-  const handleNotificationRowClick = useCallback((sessionId: string) => {
-    window.electronAPI.navigateToSession(sessionId)
-  }, [])
-
-  const handleNotificationDismiss = useCallback((sessionId: string) => {
-    setNotifications(prev => prev.filter(n => n.sessionId !== sessionId))
-    window.electronAPI.dismissNotification(sessionId)
-  }, [])
-
-  const handleQuickApprove = useCallback((sessionId: string, source?: string) => {
-    setNotifications(prev => prev.filter(n => n.sessionId !== sessionId))
-    window.electronAPI.quickApprove(sessionId, source)
   }, [])
 
   const handleMouseEnter = useCallback(() => {
@@ -255,14 +235,6 @@ export function FloatingBall(): React.JSX.Element {
       </div>
       <div className="bottom-section">
         <div className="ball-container">
-          <NotificationBubble
-            notifications={notifications}
-            visible={notificationVisible}
-            quickApproval={quickApproval}
-            onRowClick={handleNotificationRowClick}
-            onDismissSession={handleNotificationDismiss}
-            onQuickApprove={handleQuickApprove}
-          />
           <div
             ref={ballRef}
             className="ball"
@@ -273,9 +245,9 @@ export function FloatingBall(): React.JSX.Element {
             title="Coding-bubble 💬"
           >
             <img className="ball__icon" src={bubbleIcon} alt="bubble" draggable={false} />
+            {showBadge && <span className="ball__badge" />}
+            {displayState && <span className={`ball__status-dot ball__status-dot--${displayState}`} />}
           </div>
-          {showBadge && <span className="ball__badge" />}
-          {displayState && <span className={`ball__status-dot ball__status-dot--${displayState}`} />}
         </div>
       </div>
     </div>

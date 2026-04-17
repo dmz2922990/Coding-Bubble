@@ -1,27 +1,16 @@
-/* ── Notification Bubble ──────────────────────────────── */
+/* ── Notification Window ────────────────────────────── */
 
-.notification-bubble {
-  position: absolute;
-  bottom: calc(56px + 16px);
-  width: 220px;
-  max-height: 260px;
+.notification-win {
+  display: inline-block;
+  min-width: 60px;
+  padding: 0;
   background: rgba(24, 24, 28, 0.95);
   border-radius: 12px;
-  box-shadow: none;
   overflow: hidden;
-  z-index: 10;
-  animation: bubble-in 0.2s ease-out;
+  animation: notification-in 0.2s ease-out;
 }
 
-.notification-bubble--right {
-  right: calc((100% - 56px) / 2);
-}
-
-.notification-bubble--left {
-  left: calc((100% - 56px) / 2);
-}
-
-@keyframes bubble-in {
+@keyframes notification-in {
   from {
     opacity: 0;
     transform: translateY(8px);
@@ -32,27 +21,12 @@
   }
 }
 
-.notification-bubble__list {
+.notification-win__list {
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  max-height: 220px;
 }
 
-.notification-bubble__list::-webkit-scrollbar {
-  width: 4px;
-}
-
-.notification-bubble__list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 2px;
-}
-
-.notification-bubble__list::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
-.notification-bubble__row {
+.notification-win__row {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -60,13 +34,14 @@
   cursor: pointer;
   transition: background 0.12s ease;
   position: relative;
+  white-space: nowrap;
 }
 
-.notification-bubble__row:hover {
+.notification-win__row:hover {
   background: rgba(255, 255, 255, 0.08);
 }
 
-.notification-bubble__row-close {
+.notification-win__row-close {
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -82,16 +57,16 @@
   transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 
-.notification-bubble__row:hover .notification-bubble__row-close {
+.notification-win__row:hover .notification-win__row-close {
   opacity: 1;
 }
 
-.notification-bubble__row-close:hover {
+.notification-win__row-close:hover {
   background: rgba(255, 255, 255, 0.2);
   color: rgba(255, 255, 255, 0.8);
 }
 
-.notification-bubble__approve {
+.notification-win__approve {
   padding: 2px 10px;
   border: none;
   border-radius: 10px;
@@ -104,18 +79,18 @@
   transition: background 0.15s ease;
 }
 
-.notification-bubble__approve:hover {
+.notification-win__approve:hover {
   background: rgba(102, 187, 106, 0.35);
 }
 
-.notification-bubble__indicator {
+.notification-win__indicator {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
-.notification-bubble__info {
+.notification-win__info {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -124,7 +99,7 @@
   min-width: 0;
 }
 
-.notification-bubble__name {
+.notification-win__name {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.9);
   white-space: nowrap;
@@ -132,14 +107,13 @@
   text-overflow: ellipsis;
 }
 
-.notification-bubble__status {
+.notification-win__status {
   font-size: 11px;
   font-weight: 500;
-  /* Emoji support across platforms */
   font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
 }
 
-.notification-bubble__overflow {
+.notification-win__overflow {
   padding: 8px 14px;
   font-size: 11px;
   color: rgba(255, 255, 255, 0.5);

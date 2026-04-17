@@ -27,6 +27,8 @@ declare global {
       onBubbleHide: (cb: (event: unknown) => void) => () => void
       /** Status dot listener */
       onBubbleStatus: (cb: (event: unknown, state: string | null) => void) => () => void
+      /** Bubble side listener */
+      onBubbleSide: (cb: (event: unknown, side: 'left' | 'right') => void) => () => void
       /** Navigate to session */
       navigateToSession: (sessionId: string) => void
       /** Tab navigation listener */
@@ -62,6 +64,8 @@ declare global {
       saveMarkdown: (content: string, defaultName: string) => Promise<{ success: boolean; path?: string }>
       /** Quick approve permission from notification bubble */
       quickApprove: (sessionId: string, source?: string) => Promise<void>
+      /** Notification window: report content size to main */
+      notificationResize: (width: number, height: number) => void
     }
   }
 }
