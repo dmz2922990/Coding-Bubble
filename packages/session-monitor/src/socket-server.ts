@@ -56,6 +56,8 @@ export interface SocketServerOptions {
     toolInput: Record<string, unknown> | null,
     suggestions: PermissionSuggestion[]
   ) => Promise<HookResponse>
+  /** Called when hook script disconnects before permission was resolved (user answered in terminal) */
+  onPermissionCancel?: (sessionId: string) => void
 }
 
 export interface SocketServer {
@@ -105,6 +107,7 @@ export function createSocketServer(options: SocketServerOptions): SocketServer {
           console.log('[socket-server] toolUseId from cache:', toolUseId)
 
           // Keep socket open; wait for renderer decision
+          let permissionResolved = false
           options.onPermissionRequest(
             event.session_id,
             toolUseId ?? '',
@@ -112,13 +115,25 @@ export function createSocketServer(options: SocketServerOptions): SocketServer {
             toolInput,
             suggestions
           ).then((response) => {
+            permissionResolved = true
             console.log('[socket-server] sending response:', JSON.stringify(response))
             socket.write(JSON.stringify(response) + '\n')
             socket.end()
           }).catch((err) => {
+            permissionResolved = true
             console.error('[socket-server] permission handler error:', err)
-            socket.write(JSON.stringify({ decision: 'allow', reason: 'handler error' }) + '\n')
-            socket.end()
+            if (!socket.destroyed) {
+              socket.write(JSON.stringify({ decision: 'deny', reason: 'handler error' }) + '\n')
+              socket.end()
+            }
+          })
+
+          // Hook script disconnected before we resolved — user answered in terminal
+          socket.on('close', () => {
+            if (!permissionResolved) {
+              console.log('[socket-server] hook disconnected during PermissionRequest, cancelling:', event.session_id)
+              options.onPermissionCancel?.(event.session_id)
+            }
           })
           return
         }

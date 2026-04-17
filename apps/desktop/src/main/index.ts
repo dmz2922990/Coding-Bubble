@@ -1243,7 +1243,7 @@ app.whenReady().then(() => {
         if (pending && session && session.phase.type !== 'waitingForApproval') {
           console.log('[main] clearing stale pending permission for session:', event.session_id, 'due to:', event.hook_event_name, 'phase:', session.phase.type)
           pendingPermissionResolvers.delete(event.session_id)
-          pending.resolve({ decision: 'allow' })
+          pending.resolve({ decision: 'deny', reason: 'stale' })
         }
       }
 
@@ -1305,6 +1305,18 @@ app.whenReady().then(() => {
           payload: { toolUseId, tool: toolName, input: toolInput, suggestions }
         } as HookEvent)
       })
+    },
+    onPermissionCancel: (sessionId: string) => {
+      const pending = pendingPermissionResolvers.get(sessionId)
+      if (pending) {
+        console.log('[main] cancelling pending permission for session:', sessionId, '(user answered in terminal)')
+        pendingPermissionResolvers.delete(sessionId)
+        const response: HookResponse = { decision: 'deny', reason: 'cancelled' }
+        if (pending.toolUseId) {
+          sessionStore?.resolvePermission(pending.toolUseId, response)
+        }
+        pending.resolve(response)
+      }
     }
   })
 
