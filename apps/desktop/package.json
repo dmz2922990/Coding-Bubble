@@ -23,12 +23,12 @@
     ],
     "extraResources": [
       {
-        "from": "resources/tray-iconTemplate.png",
-        "to": "tray-iconTemplate.png"
+        "from": "resources/tray-icon.png",
+        "to": "tray-icon.png"
       },
       {
-        "from": "resources/tray-iconTemplate@2x.png",
-        "to": "tray-iconTemplate@2x.png"
+        "from": "resources/tray-icon@2x.png",
+        "to": "tray-icon@2x.png"
       },
       {
         "from": "../../packages/session-monitor/resources/claude-bubble-state.js",

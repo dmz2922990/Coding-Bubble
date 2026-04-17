@@ -3,6 +3,8 @@ import { join } from 'path'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import type { HookResponse, Intervention, PermissionSuggestion } from '@coding-bubble/session-monitor'
 import { RemoteManager, RemoteHookAdapter, RemoteStreamAdapter, parseRemoteSessionId } from '@coding-bubble/remote'
+
+app.setName('Coding-bubble')
 import type { RemoteServerConfig } from '@coding-bubble/remote'
 import { formatToolDetail } from './format-tool-detail'
 
@@ -1457,8 +1459,8 @@ app.whenReady().then(() => {
 
   // Create system tray
   const trayIconPath = app.isPackaged
-    ? join(process.resourcesPath, 'tray-iconTemplate.png')
-    : join(__dirname, '../../resources/tray-iconTemplate.png')
+    ? join(process.resourcesPath, 'tray-icon.png')
+    : join(__dirname, '../../resources/tray-icon.png')
   const trayIcon = nativeImage.createFromPath(trayIconPath)
   tray = new Tray(trayIcon)
   tray.setToolTip('Coding-bubble')
