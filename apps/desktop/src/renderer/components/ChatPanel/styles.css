@@ -1725,7 +1725,7 @@
   background: rgba(255, 255, 255, 0.03);
   border-radius: 8px;
   margin: 8px 0;
-  max-height: 200px;
+  max-height: 400px;
   overflow-y: auto;
   flex-shrink: 0;
 }
