@@ -264,13 +264,14 @@ export class StreamSession {
         console.log('[stream-json] system init (fallback), session_id:', sid,
           'skills:', Array.isArray(raw.skills) ? (raw.skills as string[]).length : 'N/A',
           'slash_commands:', Array.isArray(raw.slash_commands) ? (raw.slash_commands as string[]).length : 'N/A')
+        const initPermMode = raw.permissionMode as string | undefined
         this._emit({
           type: 'session_init',
           initMetadata: {
             skills: Array.isArray(raw.skills) ? raw.skills as string[] : [],
             slashCommands: Array.isArray(raw.slash_commands) ? raw.slash_commands as string[] : [],
           },
-          permissionMode: raw.permissionMode as string | undefined,
+          ...(initPermMode && initPermMode !== 'default' ? { permissionMode: initPermMode } : {}),
         })
         break
       case 'session_state_changed':
@@ -283,8 +284,11 @@ export class StreamSession {
         if (raw.status === 'compacting') {
           this._emit({ type: 'system_status', statusKind: 'compacting' })
         }
-        if (raw.permissionMode) {
-          this._emit({ type: 'session_state', state: undefined, permissionMode: raw.permissionMode as string })
+        {
+          const statusPermMode = raw.permissionMode as string | undefined
+          if (statusPermMode && statusPermMode !== 'default') {
+            this._emit({ type: 'session_state', state: undefined, permissionMode: statusPermMode })
+          }
         }
         break
       case 'compact_boundary':
@@ -465,7 +469,10 @@ export class StreamSession {
         slashCommands: [],
         commands,
       },
-      permissionMode: (inner?.permissionMode ?? response?.permissionMode) as string | undefined,
+      ...(() => {
+        const mode = (inner?.permissionMode ?? response?.permissionMode) as string | undefined
+        return mode && mode !== 'default' ? { permissionMode: mode } : {}
+      })(),
     })
   }
 
