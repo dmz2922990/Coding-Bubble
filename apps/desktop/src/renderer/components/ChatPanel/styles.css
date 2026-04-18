@@ -1890,7 +1890,7 @@
 .message-input {
   flex-shrink: 0;
   background: rgba(24, 24, 28, 0.95);
-  padding-bottom: 12px;
+  padding-bottom: 4px;
 }
 
 .message-input__line {

@@ -236,6 +236,7 @@ export function MessageInput({ onSend, phase, initMetadata, permissionMode }: Pr
           </div>
         )}
       </div>
+      <div className="message-input__line" />
       <PermissionStatusBar mode={permissionMode} />
     </div>
   )
