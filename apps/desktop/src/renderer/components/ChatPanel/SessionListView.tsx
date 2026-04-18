@@ -196,20 +196,24 @@ function RemoteSessionDialog({ onClose, onCreate }: { onClose: () => void; onCre
           <div className="remote-dialog__empty">加载中...</div>
         ) : error ? (
           <div className="remote-dialog__empty remote-dialog__empty--error">{error}</div>
-        ) : entries.length === 0 ? (
-          <div className="remote-dialog__empty">无子目录</div>
         ) : (
           <>
-            <button className="remote-dialog__entry remote-dialog__entry--back" onClick={handleGoUp}>
-              <span className="remote-dialog__entry-icon">📁</span>
-              <span className="remote-dialog__entry-name">..</span>
-            </button>
-            {entries.map((e) => (
-              <button key={e.path} className="remote-dialog__entry" onClick={() => handleNavigate(e)}>
+            {currentPath !== '~' && (
+              <button className="remote-dialog__entry remote-dialog__entry--back" onClick={handleGoUp}>
                 <span className="remote-dialog__entry-icon">📁</span>
-                <span className="remote-dialog__entry-name">{e.name}</span>
+                <span className="remote-dialog__entry-name">..</span>
               </button>
-            ))}
+            )}
+            {entries.length === 0 ? (
+              <div className="remote-dialog__empty">无子目录</div>
+            ) : (
+              entries.map((e) => (
+                <button key={e.path} className="remote-dialog__entry" onClick={() => handleNavigate(e)}>
+                  <span className="remote-dialog__entry-icon">📁</span>
+                  <span className="remote-dialog__entry-name">{e.name}</span>
+                </button>
+              ))
+            )}
           </>
         )}
       </div>
