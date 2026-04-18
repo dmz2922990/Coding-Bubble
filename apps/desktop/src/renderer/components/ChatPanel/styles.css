@@ -2132,8 +2132,6 @@
   display: flex;
   align-items: center;
   padding: 4px 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.02);
   flex-shrink: 0;
 }
 
