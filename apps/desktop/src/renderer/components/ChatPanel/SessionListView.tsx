@@ -44,7 +44,7 @@ interface Props {
   onSessionClick: (sessionId: string) => void
   onJumpToTerminal?: (sessionId: string) => void
   onCreateStreamSession?: (cwd: string, options?: { continue?: boolean; bypassPermissions?: boolean }) => void
-  onCreateRemoteStreamSession?: (serverId: string, cwd: string) => void
+  onCreateRemoteStreamSession?: (serverId: string, cwd: string, options?: { continue?: boolean; bypassPermissions?: boolean }) => void
   onDestroyStream?: (sessionId: string) => void
 }
 
@@ -198,13 +198,15 @@ function LocalSessionDialog({ onClose, onCreate }: { onClose: () => void; onCrea
 
 // ── Remote Session Dialog ────────────────────────────────
 
-function RemoteSessionDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (serverId: string, cwd: string) => void }): React.JSX.Element {
+function RemoteSessionDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (serverId: string, cwd: string, options?: { continue?: boolean; bypassPermissions?: boolean }) => void }): React.JSX.Element {
   const [servers, setServers] = useState<RemoteServerInfo[]>([])
   const [selectedServer, setSelectedServer] = useState<RemoteServerInfo | null>(null)
   const [entries, setEntries] = useState<DirEntry[]>([])
   const [currentPath, setCurrentPath] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [continueSession, setContinueSession] = useState(false)
+  const [bypassPermissions, setBypassPermissions] = useState(false)
 
   useEffect(() => {
     window.electronAPI.remote.listServers().then((list) => {
@@ -247,9 +249,9 @@ function RemoteSessionDialog({ onClose, onCreate }: { onClose: () => void; onCre
 
   const handleCreate = useCallback(() => {
     if (!selectedServer || !currentPath) return
-    onCreate(selectedServer.config.id, currentPath)
+    onCreate(selectedServer.config.id, currentPath, { continue: continueSession, bypassPermissions })
     onClose()
-  }, [selectedServer, currentPath, onCreate, onClose])
+  }, [selectedServer, currentPath, continueSession, bypassPermissions, onCreate, onClose])
 
   if (!selectedServer) {
     return (
@@ -317,6 +319,14 @@ function RemoteSessionDialog({ onClose, onCreate }: { onClose: () => void; onCre
         )}
       </div>
       <div className="remote-dialog__footer">
+        <label className="remote-dialog__option">
+          <input type="checkbox" checked={continueSession} onChange={(e) => setContinueSession(e.target.checked)} />
+          <span>继续之前的任务</span>
+        </label>
+        <label className="remote-dialog__option">
+          <input type="checkbox" checked={bypassPermissions} onChange={(e) => setBypassPermissions(e.target.checked)} />
+          <span>Bypass 模式</span>
+        </label>
         <button
           className="remote-dialog__create-btn"
           onClick={handleCreate}

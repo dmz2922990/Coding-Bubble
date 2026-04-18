@@ -58,6 +58,7 @@ export interface StreamCreateMessage {
   sessionId?: string
   model?: string
   permissionMode?: string
+  bypassPermissions?: boolean
 }
 
 export interface StreamCreateResultMessage {

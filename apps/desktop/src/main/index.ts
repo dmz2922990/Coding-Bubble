@@ -955,10 +955,17 @@ ipcMain.handle('stream:deny', async (_event, sessionId: string, reason?: string)
       const remoteCtx = (globalThis as Record<string, StreamEventContext>).__remoteStreamCtx
       const pending = remoteCtx?.pendingPermissions.get(sessionId)
       if (pending) {
+        sessionStore?.addSystemMessage(sessionId, pending.formattedDetail)
         remoteCtx.pendingPermissions.delete(sessionId)
         pending.resolve({ decision: 'deny', reason })
       }
       remoteStreamAdapter.denyPermission(serverId, sessionId, requestId, reason)
+      sessionStore?.process({
+        hook_event_name: 'PostToolUse',
+        session_id: sessionId,
+        cwd: '',
+        payload: {},
+      })
     }
     return
   }
@@ -1122,10 +1129,11 @@ ipcMain.handle('remote:list-directory', async (_event, serverId: string, dirPath
   return remoteManager.listDirectory(serverId, dirPath)
 })
 
-ipcMain.handle('remote:stream:create', async (_event, serverId: string, cwd: string) => {
+ipcMain.handle('remote:stream:create', async (_event, serverId: string, cwd: string, options?: { continue?: boolean; bypassPermissions?: boolean }) => {
+  console.log('[main] remote:stream:create', { serverId, cwd, options })
   if (!remoteStreamAdapter) return { error: 'Remote not initialized' }
   try {
-    const sessionId = await remoteStreamAdapter.create(serverId, cwd)
+    const sessionId = await remoteStreamAdapter.create(serverId, cwd, options?.continue ? 'continue' : undefined, options)
     remoteSessionServerMap.set(sessionId, serverId)
     return { sessionId }
   } catch (err) {
@@ -1186,10 +1194,17 @@ ipcMain.handle('remote:stream:deny', async (_event, sessionId: string, reason?: 
     const remoteCtx = (globalThis as Record<string, StreamEventContext>).__remoteStreamCtx
     const pending = remoteCtx?.pendingPermissions.get(sessionId)
     if (pending) {
+      sessionStore?.addSystemMessage(sessionId, pending.formattedDetail)
       remoteCtx.pendingPermissions.delete(sessionId)
       pending.resolve({ decision: 'deny', reason })
     }
     remoteStreamAdapter.denyPermission(serverId, sessionId, requestId, reason)
+    sessionStore?.process({
+      hook_event_name: 'PostToolUse',
+      session_id: sessionId,
+      cwd: '',
+      payload: {},
+    })
   }
 })
 

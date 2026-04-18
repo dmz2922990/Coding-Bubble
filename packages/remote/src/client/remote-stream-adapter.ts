@@ -40,7 +40,8 @@ export class RemoteStreamAdapter {
     })
   }
 
-  async create(serverId: string, cwd: string, sessionId?: string): Promise<string> {
+  async create(serverId: string, cwd: string, sessionId?: string, options?: { bypassPermissions?: boolean }): Promise<string> {
+    console.log('[remote-stream-adapter] create:', { serverId, cwd, sessionId, options })
     const requestId = `create_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
 
     return new Promise((resolve, reject) => {
@@ -51,6 +52,7 @@ export class RemoteStreamAdapter {
         requestId,
         cwd,
         sessionId,
+        bypassPermissions: options?.bypassPermissions,
       })
 
       // Timeout after 10s

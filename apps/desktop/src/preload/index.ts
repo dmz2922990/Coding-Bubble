@@ -118,8 +118,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     listDirectory: (serverId: string, path?: string): Promise<unknown[]> =>
       ipcRenderer.invoke('remote:list-directory', serverId, path),
     stream: {
-      create: (serverId: string, cwd: string): Promise<{ sessionId?: string; error?: string }> =>
-        ipcRenderer.invoke('remote:stream:create', serverId, cwd),
+      create: (serverId: string, cwd: string, options?: { continue?: boolean; bypassPermissions?: boolean }): Promise<{ sessionId?: string; error?: string }> =>
+        ipcRenderer.invoke('remote:stream:create', serverId, cwd, options),
       send: (sessionId: string, text: string): Promise<void> =>
         ipcRenderer.invoke('remote:stream:send', sessionId, text),
       approve: (sessionId: string): Promise<void> =>

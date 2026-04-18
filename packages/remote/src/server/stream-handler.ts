@@ -36,7 +36,10 @@ export class StreamHandler {
         sessionId: message.sessionId,
         model: message.model,
         permissionMode: message.permissionMode,
+        bypassPermissions: message.bypassPermissions,
       }
+
+      console.log('[stream-handler] handleCreate options:', JSON.stringify(options))
 
       // Send result BEFORE registering event listener
       // WebSocket preserves message order, so client receives result first

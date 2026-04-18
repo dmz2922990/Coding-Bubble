@@ -226,8 +226,8 @@ export function ChatPanel(): React.JSX.Element {
   }, [loadSessions])
 
   // Remote stream session creation
-  const handleCreateRemoteStreamSession = useCallback(async (serverId: string, cwd: string) => {
-    const result = await window.electronAPI.remote.stream.create(serverId, cwd)
+  const handleCreateRemoteStreamSession = useCallback(async (serverId: string, cwd: string, options?: { continue?: boolean; bypassPermissions?: boolean }) => {
+    const result = await window.electronAPI.remote.stream.create(serverId, cwd, options)
     if (result?.sessionId) {
       loadSessions()
     }
