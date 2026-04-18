@@ -4,17 +4,140 @@ A lightweight desktop AI companion that lives as a floating ball on your screen.
 
 ## Architecture
 
-pnpm monorepo with three packages:
+pnpm monorepo with three core packages:
 
 ```
 coding-bubble/
 ├── apps/desktop/              # Electron desktop app
 ├── packages/session-monitor/  # Session monitoring core logic
+├── packages/stream-json/      # Stream-json protocol adapter
+├── packages/remote/           # Remote session support
 ├── packages/shared/           # Shared types and utilities
 ├── openspec/                  # Design documents (OpenSpec)
 ├── docs/                      # Analysis and design docs
 └── data/                      # Runtime config (config.json)
 ```
+
+## Supported Session Modes
+
+Coding-bubble supports four session source modes, allowing flexibility in how Claude Code sessions are created and managed:
+
+| Mode | Source | Description |
+|------|--------|-------------|
+| `hook` | Local Hook | Claude Code runs independently in a terminal. The hook script (`claude-bubble-state.js`) intercepts session events and forwards them via Unix domain socket. |
+| `stream` | Local Stream | The desktop app spawns its own Claude Code process with `--output-format stream-json --input-format stream-json`. Full control over stdin/stdout. |
+| `remote-hook` | Remote Hook | A remote server runs Claude Code with hooks installed. Events are forwarded to the local desktop app via WebSocket. |
+| `remote-stream` | Remote Stream | The desktop app creates a Claude Code session on a remote server via WebSocket, with bidirectional event streaming. |
+
+### Permission Modes
+
+Within each session, the following permission modes are available:
+
+| Permission Mode | Behavior |
+|-----------------|----------|
+| `default` | Prompt user for approval on each permission request (normal interactive mode) |
+| `auto` | Auto-approve all permission requests |
+| `bypassPermissions` | Auto-approve (set by Claude Code itself) |
+
+## Status & Display Logic
+
+### Session Phase State Machine
+
+Each Claude Code session follows a strict state machine with 10 phases and validated transitions:
+
+```
+                    ┌──────────────────────────────┐
+                    │            idle               │
+                    └──┬───┬───┬───┬───┬───┬───┬───┘
+                       │   │   │   │   │   │   │
+            thinking◄──┘   │   │   │   │   │   │
+               │           │   │   │   │   │   │
+               ├──►processing◄──┘   │   │   │   │
+               │      │             │   │   │   │
+               │      ├──►juggling──┘   │   │   │
+               │      │      │         │   │   │
+               │      │      └──►waitingForApproval
+               │      │               │  │   │
+               │      └──►done◄───────┘  │   │
+               │            │            │   │
+               │      error◄┼────────────┘   │
+               │       │    │                │
+               │       └──►idle              │
+               │                             │
+               └──►waitingForInput◄──────────┘
+                        │        ▲
+                        └────────┘
+                    compacting ◄──► (from processing/idle/waitingForInput)
+                        │
+                        └──► ended (terminal state)
+```
+
+### Phase Priority (Floating Ball Display)
+
+When multiple sessions are active, the floating ball shows the highest-priority phase:
+
+| Priority | Phase | Meaning |
+|----------|-------|---------|
+| 8 | `error` | Session encountered an error |
+| 7 | `waitingForApproval` | Waiting for user to approve a permission request |
+| 6 | `done` | Session completed current task |
+| 5 | `waitingForInput` | Waiting for user text input |
+| 4 | `compacting` / `juggling` | Context compaction / subagent running |
+| 3 | `processing` | Executing tool calls |
+| 2 | `thinking` | Claude is thinking |
+| 1 | `idle` | No active work |
+| 0 | `ended` | Session terminated |
+
+### Auto-Revert Timeouts
+
+Certain phases automatically revert to `idle` if no new events arrive:
+
+| Phase | Timeout |
+|-------|---------|
+| `done` | 10 seconds |
+| `thinking` | 10 minutes |
+| `processing` | 10 minutes |
+| `juggling` | 10 minutes |
+
+### Notifications
+
+Four notification types with configurable auto-close timing:
+
+| Type | Trigger | Default Auto-Close |
+|------|---------|--------------------|
+| `approval` | Session enters `waitingForApproval` | Never (requires user action) |
+| `input` | Session enters `waitingForInput` | 15 seconds |
+| `done` | Session enters `done` | 15 seconds |
+| `error` | Session enters `error` | 30 seconds |
+
+Notifications appear in a dedicated transparent window positioned above the floating ball. A quick-approval button allows one-click permission granting directly from the notification.
+
+## Terminal Jump Support
+
+The terminal jump feature allows users to click a button in the session list and instantly switch focus to the terminal window running that Claude Code session. Currently **macOS only**.
+
+### Supported Terminals
+
+| Terminal | Detection | Focus Strategy |
+|----------|-----------|----------------|
+| **Ghostty** | Process name matching | AppleScript (working directory match) |
+| **iTerm2** | Process name matching | AppleScript (TTY session match) |
+| **Terminal.app** | Process name matching | AppleScript (TTY tab match) |
+| **Warp** | Process name matching | Bundle ID activation |
+| **kitty** | Process name matching | Remote control (`kitty @ focus-window --match cwd:`) |
+| **WezTerm** | Process name matching | CLI (`wezterm cli activate-pane`) |
+| **Alacritty** | Process name matching | Bundle ID activation |
+| **cmux** | Process name matching | CLI (`cmux find-window --select`) |
+| **VS Code** | Process name matching | Bundle ID activation |
+| **Cursor** | Process name matching | Bundle ID activation |
+| **Zed** | Process name matching | Bundle ID activation |
+
+### Detection & Focus Strategy
+
+1. **Process tree tracing**: Builds a process tree via `ps`, walks ancestors from the Claude Code PID upward to identify the parent terminal
+2. **Terminal-specific activation**: Uses the best available strategy for each terminal (AppleScript, CLI, remote control)
+3. **tmux support**: When tmux is detected, uses `tmux select-window`/`tmux select-pane` to navigate to the correct pane
+4. **Fallback chain**: Ghostty → iTerm2 → Terminal.app → Warp → kitty
 
 ## Core Modules
 
@@ -22,60 +145,68 @@ coding-bubble/
 
 | Layer | Path | Responsibility |
 |-------|------|----------------|
-| Main | `src/main/index.ts` | Window management (ball/panel/settings), IPC, permission approval, system tray, session bridge |
-| Renderer | `src/renderer/App.tsx` | Routes to three views via `?view=` URL parameter |
+| Main | `src/main/index.ts` | Window management (ball/panel/settings/notification), IPC, permission approval, system tray, session bridge |
+| Renderer | `src/renderer/App.tsx` | Routes to views via `?view=` URL parameter |
 | Preload | `src/preload/index.ts` | contextBridge IPC bridge |
 
 **UI Components:**
 
 | Component | Path | Description |
 |-----------|------|-------------|
-| FloatingBall | `components/FloatingBall/` | Floating ball + notification bubble (NotificationBubble) |
-| ChatPanel | `components/ChatPanel/` | Conversation panel with TabBar, SessionTab, SessionListView |
-| SettingsPanel | `components/SettingsPanel/` | Settings panel |
-
-**Supporting modules:**
-
-- `hooks/useTabManager.ts` — Tab switching management
-- `lib/backend-client.ts` — Backend IPC call wrapper
+| FloatingBall | `components/FloatingBall/` | Draggable floating ball with status dot + chat bubbles |
+| NotificationWindow | `components/NotificationWindow/` | Separate transparent window for notifications above the ball |
+| ChatPanel | `components/ChatPanel/` | Conversation panel with TabBar, SessionTab, SessionListView, MessageInput |
+| SettingsPanel | `components/SettingsPanel/` | Settings panel (remote servers, notification config) |
 
 ### packages/session-monitor — Session Monitoring
 
 | File | Responsibility |
 |------|----------------|
-| `session-store.ts` | Session state machine (phase transitions, permission modes, notification management) |
+| `session-store.ts` | Session state machine (phase transitions, permission modes, notifications) |
 | `socket-server.ts` | WebSocket server receiving Claude Code hook events |
 | `hook-installer.ts` | Claude Code hook install/uninstall |
 | `jsonl-parser.ts` | JSONL session file parsing and watching |
-| `terminal-jumper.ts` | Terminal window focus switching |
-| `types.ts` | Type definitions |
+| `terminal-jumper.ts` | Terminal window detection and focus switching |
+| `types.ts` | Type definitions, state machine, phase priorities |
 
-### packages/shared — Shared Types
+### packages/stream-json — Stream Protocol
 
-Exports `EmotionState` and `EmotionSnapshot` types shared across packages.
+| File | Responsibility |
+|------|----------------|
+| `stream-session.ts` | Spawns Claude Code with `--output-format stream-json`, manages stdio pipes |
+| `types.ts` | Stream event type definitions |
+
+### packages/remote — Remote Sessions
+
+| File | Responsibility |
+|------|----------------|
+| `shared/protocol.ts` | WebSocket message protocol types |
+| `client/remote-manager.ts` | WebSocket connection manager |
+| `client/remote-hook-adapter.ts` | Remote hook event handling |
+| `client/remote-stream-adapter.ts` | Remote stream session handling |
 
 ## Data Flow
 
 ```
-Claude Code Hook → socket-server → SessionStore.process()
-                                       │
-                              ┌────────┴────────┐
-                              ▼                 ▼
-                    broadcastToRenderer    BubbleController
-                              │                 │
-                              ▼                 ▼
-                       ChatPanel update   FloatingBall notification
-                              ▲
-                    User approve/deny (IPC)
-                              │
+Claude Code Hook ──► socket-server ──► SessionStore.process()
+                                           │
+                                  ┌────────┴────────┐
+                                  ▼                 ▼
+                        broadcastToRenderer    resolveDisplayState
+                                  │                 │
+                                  ▼                 ▼
+                         ChatPanel update     FloatingBall status dot
+                                  ▲                 │
+                        User approve/deny           ▼
+                              │              NotificationWindow
                               ▼
-                    pendingPermissionResolvers → Hook response
+                    pendingPermissionResolvers ──► Hook response
 ```
 
 ## Key Design Decisions
 
-1. **Three-window architecture** — Floating ball (transparent, click-through), conversation panel, and settings panel are independent BrowserWindows.
-2. **State machine driven** — SessionStore maintains phase state transitions for each Claude Code session.
+1. **Multi-window architecture** — Floating ball, conversation panel, settings panel, and notification window are independent BrowserWindows.
+2. **State machine driven** — SessionStore maintains validated phase transitions for each Claude Code session.
 3. **Permission proxy** — Hook `onPermissionRequest` suspends via Promise, resolves when user approves in UI.
 4. **Real-time JSONL watching** — Incremental session content parsing for live conversation sync.
 5. **Dock hidden + system tray** — `LSUIElement` + `app.dock.hide()` for tray-only mode on macOS.
