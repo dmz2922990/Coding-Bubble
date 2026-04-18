@@ -44,7 +44,7 @@ function loadHookScript(): string {
 
   const candidates = [
     // Production: bundled via electron-builder extraResources
-    join(process.resourcesPath ?? '', 'claude-bubble-state.js'),
+    join((process as unknown as Record<string, unknown>).resourcesPath as string ?? '', 'claude-bubble-state.js'),
     // Dev: resources next to out/main/
     join(__dirname, '..', 'resources', 'claude-bubble-state.js'),
     // Dev: workspace package location

@@ -410,7 +410,7 @@ export class SessionStore {
             tool: {
               ...tool,
               status: toolResponse?.interrupted ? 'interrupted' : 'success',
-              result: this._formatToolResult(toolResponse)
+              result: this._formatToolResult(toolResponse ?? {})
             }
           }
           console.log('[SessionStore] updated tool result for:', toolUseId)
