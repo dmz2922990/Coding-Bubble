@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState, useMemo } from 'react'
 import { useTabManager } from '../../hooks/useTabManager'
 import { TabBar } from './TabBar'
 import { SessionListView } from './SessionListView'
-import { SessionTab } from './SessionTab'
+import { SessionTab, PermissionStatusBar } from './SessionTab'
 import { MessageInput } from './MessageInput'
 import type { TabItem, SessionInfo, ChatItem, SessionPhaseType, InitMetadata, PermissionSuggestion } from './types'
 import './styles.css'
@@ -299,6 +299,7 @@ export function ChatPanel(): React.JSX.Element {
               permissionMode={sessionData.session.permissionMode}
             />
           )}
+          {!isStream && <PermissionStatusBar mode={sessionData.session.permissionMode} />}
         </>
       )
     }
