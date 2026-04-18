@@ -149,11 +149,19 @@ export class StreamAdapterManager {
     if (!entry) return
 
     this._pendingPermissions.delete(sessionId)
+    this._store.addSystemMessage(sessionId, entry.formattedDetail)
 
     const stream = this._sessions.get(sessionId)
     if (stream?.alive) {
       stream.respondPermission(entry.requestId, { behavior: 'deny', message: reason ?? 'Permission denied.' })
     }
+
+    this._store.process({
+      hook_event_name: 'PostToolUse',
+      session_id: sessionId,
+      cwd: '',
+      payload: {},
+    })
 
     entry.resolve({ decision: 'deny', reason })
   }
