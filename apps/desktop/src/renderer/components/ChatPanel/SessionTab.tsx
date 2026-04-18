@@ -184,8 +184,6 @@ export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onS
           onSuggestion={onSuggestion}
         />
       ) : null}
-
-      <PermissionStatusBar mode={session.permissionMode} />
     </div>
   )
 }
@@ -889,7 +887,7 @@ const PERMISSION_MODE_CONFIG: Record<string, { symbol: string; label: string; co
   auto:             { symbol: '⏵⏵',  label: 'Auto',              color: 'rgb(255,193,7)' },
 }
 
-function PermissionStatusBar({ mode }: { mode?: string }): React.JSX.Element | null {
+export function PermissionStatusBar({ mode }: { mode?: string }): React.JSX.Element | null {
   if (!mode) return null
   const config = PERMISSION_MODE_CONFIG[mode]
   if (!config) return null
