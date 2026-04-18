@@ -55,6 +55,9 @@ export class StreamAdapterManager {
     const internalId = sessionId ?? `stream_${Date.now()}`
 
     this._store.createStreamSession(internalId, cwd)
+    if (options?.bypassPermissions) {
+      this._store.setPermissionMode(internalId, 'bypassPermissions')
+    }
     this._sessions.set(internalId, stream)
 
     stream.on('event', (event: StreamEvent) => this._handleEvent(internalId, event))

@@ -10,6 +10,7 @@ interface PendingCreate {
   resolve: (sessionId: string) => void
   reject: (error: Error) => void
   cwd: string
+  bypassPermissions?: boolean
 }
 
 export class RemoteStreamAdapter {
@@ -45,7 +46,7 @@ export class RemoteStreamAdapter {
     const requestId = `create_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
 
     return new Promise((resolve, reject) => {
-      this._pendingCreates.set(requestId, { resolve, reject, cwd })
+      this._pendingCreates.set(requestId, { resolve, reject, cwd, bypassPermissions: options?.bypassPermissions })
 
       this._remoteManager.send(serverId, {
         type: 'stream_create',
@@ -189,6 +190,9 @@ export class RemoteStreamAdapter {
     const session = this._sessionStore.get(internalSessionId)
     if (session) {
       (session as { source: string }).source = 'remote-stream'
+    }
+    if (pending.bypassPermissions) {
+      this._sessionStore.setPermissionMode(internalSessionId, 'bypassPermissions')
     }
     this._serverSessions.set(internalSessionId, serverId)
     this._serverInternalIds.set(internalSessionId, message.sessionId)
