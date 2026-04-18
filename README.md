@@ -39,6 +39,74 @@ Within each session, the following permission modes are available:
 | `auto` | Auto-approve all permission requests |
 | `bypassPermissions` | Auto-approve (set by Claude Code itself) |
 
+## Remote Mode
+
+Remote mode allows you to monitor and control Claude Code sessions running on **remote devices** from your local desktop app, using WebSocket communication.
+
+### Architecture
+
+```
+Remote Device (Server)                     Local Desktop (Client)
+┌─────────────────────┐                    ┌──────────────────────────┐
+│ Claude Code CLI     │                    │ Electron Desktop App    │
+│   ↕ hook script     │                    │   ↕ SessionStore / UI   │
+│ SocketServer        │                    │   ↕ RemoteManager       │
+│   ↕ HookCollector   │◄─── WebSocket ────►│   ↕ RemoteHookAdapter   │
+│   ↕ StreamHandler   │   (port 9527)      │   ↕ RemoteStreamAdapter │
+│ StreamSession       │                    └──────────────────────────┘
+└─────────────────────┘
+```
+
+### Quick Start
+
+**1. Start the remote server on the remote device:**
+
+```bash
+# Build the server
+pnpm --filter @coding-bubble/remote build
+
+# Run (development)
+npx tsx packages/remote/src/server/index.ts --port 9527 --token mysecret
+
+# Or run the bundled version
+node packages/remote/dist/coding-bubble-remote-server.js --port 9527 --token mysecret
+```
+
+| CLI Option | Default | Description |
+|------------|---------|-------------|
+| `--port <number>` | `9527` | WebSocket listen port |
+| `--token <string>` | none (no auth) | Authentication token |
+
+**2. Configure the desktop app:**
+
+1. Click the floating ball to open the panel
+2. Open **Settings** → **Remote Devices** tab
+3. Click **Add Server**, fill in:
+   - **Name**: a friendly name (e.g. "Dev Server")
+   - **Host**: remote device IP or hostname
+   - **Port**: `9527` (or your custom port)
+   - **Token**: the token you set on the server (optional)
+4. Click **Connect**
+
+**3. Use remote sessions:**
+
+- **Remote Hook**: Once connected, any Claude Code session started on the remote device's terminal will automatically appear in the session list. You can approve/deny permission requests from the desktop app.
+- **Remote Stream**: Click **"+ Remote Session"** in the session list, select a connected server, browse the remote filesystem to choose a working directory, then create the session.
+
+### Remote Hook vs Remote Stream
+
+| | Remote Hook | Remote Stream |
+|---|---|---|
+| **Who starts Claude** | You (on remote terminal) | Desktop app (via WebSocket) |
+| **Session creation** | Automatic (passive) | Manual via dialog (active) |
+| **Message input** | Via remote terminal | Via desktop app input box |
+| **Terminal jump** | Supported | Not applicable |
+| **Use case** | Monitor existing sessions | Start new sessions remotely |
+
+### Reconnection
+
+The client automatically reconnects with exponential backoff (1s → 2s → 4s → ... → 30s max) when the connection drops.
+
 ## Status & Display Logic
 
 ### Session Phase State Machine
