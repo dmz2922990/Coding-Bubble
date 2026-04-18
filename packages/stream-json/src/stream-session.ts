@@ -47,7 +47,7 @@ export class StreamSession {
     ]
 
     if (options.sessionId === 'continue') {
-      args.push('--continue', '--fork-session')
+      args.push('-c')
     } else if (options.sessionId) {
       args.push('--resume', options.sessionId)
     }
@@ -59,6 +59,12 @@ export class StreamSession {
     if (options.permissionMode) {
       args.push('--permission-mode', options.permissionMode)
     }
+
+    if (options.bypassPermissions) {
+      args.push('--dangerously-skip-permissions')
+    }
+
+    console.log('[stream-json] spawn command: claude', args.join(' '), 'cwd:', options.cwd)
 
     // Filter CLAUDECODE env vars to prevent nested session detection
     const env: Record<string, string | undefined> = {}

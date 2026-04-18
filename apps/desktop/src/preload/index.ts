@@ -73,8 +73,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   /** Stream session management */
   stream: {
-    create: (cwd: string): Promise<{ sessionId?: string; error?: string }> =>
-      ipcRenderer.invoke('stream:create', cwd),
+    create: (cwd: string, options?: { continue?: boolean; bypassPermissions?: boolean }): Promise<{ sessionId?: string; error?: string }> =>
+      ipcRenderer.invoke('stream:create', cwd, options),
     send: (sessionId: string, text: string): Promise<{ success?: boolean; error?: string }> =>
       ipcRenderer.invoke('stream:send', sessionId, text),
     destroy: (sessionId: string): Promise<void> =>
@@ -97,6 +97,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.on('session:update', cb)
       return () => ipcRenderer.removeListener('session:update', cb)
     }
+  },
+  /** Local directory browsing */
+  local: {
+    listDirectory: (path?: string): Promise<unknown[]> =>
+      ipcRenderer.invoke('local:list-directory', path),
   },
   /** Remote server management */
   remote: {

@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from 'react'
+import React, { useCallback, useState, useEffect, useRef } from 'react'
 import type { SessionInfo } from './types'
 import './styles.css'
 
@@ -43,24 +43,14 @@ interface Props {
   sessions: SessionInfo[]
   onSessionClick: (sessionId: string) => void
   onJumpToTerminal?: (sessionId: string) => void
-  onCreateStreamSession?: (cwd: string) => void
+  onCreateStreamSession?: (cwd: string, options?: { continue?: boolean; bypassPermissions?: boolean }) => void
   onCreateRemoteStreamSession?: (serverId: string, cwd: string) => void
   onDestroyStream?: (sessionId: string) => void
 }
 
 export function SessionListView({ sessions, onSessionClick, onJumpToTerminal, onCreateStreamSession, onCreateRemoteStreamSession, onDestroyStream }: Props): React.JSX.Element {
+  const [showLocalDialog, setShowLocalDialog] = useState(false)
   const [showRemoteDialog, setShowRemoteDialog] = useState(false)
-
-  const handleCreate = useCallback(async () => {
-    if (!onCreateStreamSession) return
-    const result = await window.electronAPI.showOpenDialog({
-      properties: ['openDirectory'],
-      title: 'Select working directory',
-    }) as { canceled: boolean; filePaths: string[] }
-    if (!result.canceled && result.filePaths[0]) {
-      onCreateStreamSession(result.filePaths[0])
-    }
-  }, [onCreateStreamSession])
 
   return (
     <div className="session-list-wrapper">
@@ -77,7 +67,7 @@ export function SessionListView({ sessions, onSessionClick, onJumpToTerminal, on
       </div>
       <div className="session-list__actions">
         {onCreateStreamSession && (
-          <button className="session-list__create-btn" onClick={handleCreate}>
+          <button className="session-list__create-btn" onClick={() => setShowLocalDialog(true)}>
             + 本地对话
           </button>
         )}
@@ -87,12 +77,121 @@ export function SessionListView({ sessions, onSessionClick, onJumpToTerminal, on
           </button>
         )}
       </div>
+      {showLocalDialog && (
+        <LocalSessionDialog
+          onClose={() => setShowLocalDialog(false)}
+          onCreate={onCreateStreamSession!}
+        />
+      )}
       {showRemoteDialog && (
         <RemoteSessionDialog
           onClose={() => setShowRemoteDialog(false)}
           onCreate={onCreateRemoteStreamSession!}
         />
       )}
+    </div>
+  )
+}
+
+// ── Local Session Dialog ─────────────────────────────────
+
+function LocalSessionDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (cwd: string, options?: { continue?: boolean; bypassPermissions?: boolean }) => void }): React.JSX.Element {
+  const [entries, setEntries] = useState<{ name: string; path: string }[]>([])
+  const [currentPath, setCurrentPath] = useState('~')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [continueSession, setContinueSession] = useState(false)
+  const [bypassPermissions, setBypassPermissions] = useState(false)
+  const listRef = useRef<HTMLDivElement>(null)
+
+  const loadDirectory = useCallback(async (dirPath?: string) => {
+    setLoading(true)
+    setError('')
+    try {
+      const result = await window.electronAPI.local.listDirectory(dirPath)
+      setEntries(result)
+      setCurrentPath(dirPath ?? '~')
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { loadDirectory() }, [loadDirectory])
+
+  useEffect(() => {
+    listRef.current?.scrollTo(0, 0)
+  }, [entries])
+
+  const handleNavigate = useCallback((entry: { path: string }) => {
+    loadDirectory(entry.path)
+  }, [loadDirectory])
+
+  const handleGoUp = useCallback(() => {
+    if (currentPath === '~') return
+    const parts = currentPath.split('/')
+    parts.pop()
+    const parentPath = parts.join('/') || '~'
+    loadDirectory(parentPath === '' ? '~' : parentPath)
+  }, [currentPath, loadDirectory])
+
+  const handleCreate = useCallback(() => {
+    const cwd = currentPath === '~' ? '~' : currentPath
+    onCreate(cwd, { continue: continueSession, bypassPermissions })
+    onClose()
+  }, [currentPath, continueSession, bypassPermissions, onCreate, onClose])
+
+  return (
+    <div className="remote-dialog">
+      <div className="remote-dialog__header">
+        <span className="remote-dialog__title">选择工作目录</span>
+        <button className="remote-dialog__close" onClick={onClose}>×</button>
+      </div>
+      <div className="remote-dialog__path">{currentPath}</div>
+      <div className="remote-dialog__body" ref={listRef}>
+        {loading ? (
+          <div className="remote-dialog__empty">加载中...</div>
+        ) : error ? (
+          <div className="remote-dialog__empty remote-dialog__empty--error">{error}</div>
+        ) : (
+          <>
+            {currentPath !== '~' && (
+              <button className="remote-dialog__entry remote-dialog__entry--back" onClick={handleGoUp}>
+                <span className="remote-dialog__entry-icon">📁</span>
+                <span className="remote-dialog__entry-name">..</span>
+              </button>
+            )}
+            {entries.length === 0 ? (
+              <div className="remote-dialog__empty">无子目录</div>
+            ) : (
+              entries.map((e) => (
+                <button key={e.path} className="remote-dialog__entry" onClick={() => handleNavigate(e)}>
+                  <span className="remote-dialog__entry-icon">📁</span>
+                  <span className="remote-dialog__entry-name">{e.name}</span>
+                </button>
+              ))
+            )}
+          </>
+        )}
+      </div>
+      <div className="remote-dialog__footer">
+        <label className="remote-dialog__option">
+          <input type="checkbox" checked={continueSession} onChange={(e) => setContinueSession(e.target.checked)} />
+          <span>继续之前的任务</span>
+        </label>
+        <label className="remote-dialog__option">
+          <input type="checkbox" checked={bypassPermissions} onChange={(e) => setBypassPermissions(e.target.checked)} />
+          <span>Bypass 模式</span>
+        </label>
+        <button
+          className="remote-dialog__create-btn"
+          onClick={handleCreate}
+          disabled={!currentPath}
+        >
+          在此目录创建会话
+        </button>
+      </div>
     </div>
   )
 }

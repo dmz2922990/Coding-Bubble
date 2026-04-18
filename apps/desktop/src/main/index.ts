@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, screen, Tray } from 'electron'
 import { join } from 'path'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs'
 import type { HookResponse, Intervention, PermissionSuggestion } from '@coding-bubble/session-monitor'
 import { RemoteManager, RemoteHookAdapter, RemoteStreamAdapter, parseRemoteSessionId } from '@coding-bubble/remote'
 
@@ -541,6 +541,18 @@ ipcMain.handle('dialog:showOpenDialog', async (_event, options: Electron.OpenDia
   return dialog.showOpenDialog(options)
 })
 
+ipcMain.handle('local:list-directory', async (_event, dirPath?: string) => {
+  const target = dirPath ? dirPath.replace(/^~/, app.getPath('home')) : app.getPath('home')
+  try {
+    const entries = readdirSync(target, { withFileTypes: true })
+    return entries
+      .filter(e => e.isDirectory() && !e.name.startsWith('.'))
+      .map(e => ({ name: e.name, path: join(target, e.name), type: 'directory' }))
+  } catch {
+    return []
+  }
+})
+
 ipcMain.handle('dialog:saveMarkdown', async (_event, content: string, defaultName: string) => {
   const result = await dialog.showSaveDialog({
     defaultPath: defaultName,
@@ -844,10 +856,10 @@ ipcMain.handle('session:jump-to-terminal', async (_event, sessionId: string) => 
 
 // ── IPC: Stream Session Management ────────────────────────────
 
-ipcMain.handle('stream:create', async (_event, cwd: string) => {
+ipcMain.handle('stream:create', async (_event, cwd: string, options?: { continue?: boolean; bypassPermissions?: boolean }) => {
   if (!streamManager) return { error: 'Stream manager not initialized' }
   try {
-    const sessionId = await streamManager.create(cwd)
+    const sessionId = await streamManager.create(cwd, undefined, options)
     return { sessionId }
   } catch (err) {
     return { error: String(err) }

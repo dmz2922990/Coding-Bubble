@@ -90,6 +90,7 @@ export interface StreamSessionOptions {
   sessionId?: string
   model?: string
   permissionMode?: string
+  bypassPermissions?: boolean
 }
 
 // ═─ Permission Result ─────────────────────────────────────────

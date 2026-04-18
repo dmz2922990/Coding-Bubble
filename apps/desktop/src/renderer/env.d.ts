@@ -47,7 +47,7 @@ declare global {
       }
       /** Stream session management */
       stream: {
-        create: (cwd: string) => Promise<{ sessionId?: string; error?: string }>
+        create: (cwd: string, options?: { continue?: boolean; bypassPermissions?: boolean }) => Promise<{ sessionId?: string; error?: string }>
         send: (sessionId: string, text: string) => Promise<{ success?: boolean; error?: string }>
         destroy: (sessionId: string) => Promise<void>
         resume: (claudeSessionId: string, cwd: string) => Promise<{ sessionId?: string; error?: string }>
@@ -57,6 +57,10 @@ declare global {
         answer: (sessionId: string, answer: string) => Promise<void>
         interrupt: (sessionId: string) => Promise<void>
         onEvent: (cb: (event: unknown, data: unknown) => void) => () => void
+      }
+      /** Local directory browsing */
+      local: {
+        listDirectory: (path?: string) => Promise<{ name: string; path: string; type: string }[]>
       }
       /** Directory picker dialog */
       showOpenDialog: (options: Record<string, unknown>) => Promise<{ canceled: boolean; filePaths: string[] }>

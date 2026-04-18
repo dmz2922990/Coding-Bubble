@@ -49,7 +49,8 @@ export class StreamAdapterManager {
     return pid != null && this._managedPids.has(pid)
   }
 
-  async create(cwd: string, sessionId?: string): Promise<string> {
+  async create(cwd: string, sessionId?: string, options?: { continue?: boolean; bypassPermissions?: boolean }): Promise<string> {
+    console.log('[stream-adapter] create:', { cwd, sessionId, options })
     const stream = new StreamSession()
     const internalId = sessionId ?? `stream_${Date.now()}`
 
@@ -60,7 +61,8 @@ export class StreamAdapterManager {
 
     stream.spawn({
       cwd,
-      sessionId: sessionId ?? '',
+      sessionId: options?.continue ? 'continue' : (sessionId ?? ''),
+      bypassPermissions: options?.bypassPermissions,
     })
 
     if (stream.pid) this._managedPids.add(stream.pid)

@@ -218,8 +218,8 @@ export function ChatPanel(): React.JSX.Element {
   }, [])
 
   // Stream session creation
-  const handleCreateStreamSession = useCallback(async (cwd: string) => {
-    const result = await window.electronAPI.stream.create(cwd)
+  const handleCreateStreamSession = useCallback(async (cwd: string, options?: { continue?: boolean; bypassPermissions?: boolean }) => {
+    const result = await window.electronAPI.stream.create(cwd, options)
     if (result?.sessionId) {
       loadSessions()
     }
