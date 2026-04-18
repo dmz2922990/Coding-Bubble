@@ -55,6 +55,7 @@ export interface SessionInfo {
   toolInput?: Record<string, unknown> | null
   initMetadata?: InitMetadata
   suggestions?: PermissionSuggestion[]
+  permissionMode?: string
 }
 
 /** Permission suggestion from Claude Code */

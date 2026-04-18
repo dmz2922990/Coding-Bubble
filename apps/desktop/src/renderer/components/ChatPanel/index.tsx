@@ -56,6 +56,7 @@ export function ChatPanel(): React.JSX.Element {
             toolInput: toolInput || undefined,
             initMetadata: s.initMetadata as InitMetadata | undefined,
             suggestions: suggestions || undefined,
+            permissionMode: (s.permissionMode as string) || undefined,
           }
         })
         itemsMap.set(sessionId, (s.chatItems as ChatItem[]) ?? [])
