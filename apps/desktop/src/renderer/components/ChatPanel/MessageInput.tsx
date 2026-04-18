@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { InputHistory } from '@coding-bubble/stream-json/src/input-history'
 import type { HistoryEntry } from '@coding-bubble/stream-json/src/input-history'
 import type { InitMetadata, SkillCommand } from './types'
+import { PermissionStatusBar } from './SessionTab'
 import './styles.css'
 
 const BUSY_PHASES = new Set(['thinking', 'processing', 'compacting'])
@@ -16,6 +17,7 @@ interface Props {
   onSend: (text: string) => void
   phase: string
   initMetadata?: InitMetadata
+  permissionMode?: string
 }
 
 function buildSuggestions(initMetadata?: InitMetadata): SuggestionItem[] {
@@ -40,7 +42,7 @@ function buildSuggestions(initMetadata?: InitMetadata): SuggestionItem[] {
   }))
 }
 
-export function MessageInput({ onSend, phase, initMetadata }: Props): React.JSX.Element {
+export function MessageInput({ onSend, phase, initMetadata, permissionMode }: Props): React.JSX.Element {
   const [text, setText] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [highlightIndex, setHighlightIndex] = useState(0)
@@ -234,7 +236,7 @@ export function MessageInput({ onSend, phase, initMetadata }: Props): React.JSX.
           </div>
         )}
       </div>
-      <div className="message-input__line" />
+      <PermissionStatusBar mode={permissionMode} />
     </div>
   )
 }

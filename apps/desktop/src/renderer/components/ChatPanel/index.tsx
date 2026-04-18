@@ -296,9 +296,10 @@ export function ChatPanel(): React.JSX.Element {
               onSend={handleSendMessage}
               phase={sessionData.phase}
               initMetadata={sessionData.session.initMetadata}
+              permissionMode={sessionData.session.permissionMode}
             />
           )}
-          <PermissionStatusBar mode={sessionData.session.permissionMode} />
+          {!isStream && <PermissionStatusBar mode={sessionData.session.permissionMode} />}
         </>
       )
     }
