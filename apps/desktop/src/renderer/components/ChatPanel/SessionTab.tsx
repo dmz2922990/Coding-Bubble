@@ -881,7 +881,7 @@ function AskUserQuestion({
 // ── Permission Status Bar ──────────────────────────────────────
 
 const PERMISSION_MODE_CONFIG: Record<string, { symbol: string; label: string; color: string }> = {
-  default:          { symbol: '',     label: 'Default',           color: '#ffffff' },
+  default:          { symbol: '',     label: 'Default',           color: 'rgba(255,255,255,0.35)' },
   plan:             { symbol: '⏸',    label: 'Plan Mode',         color: 'rgb(72,150,140)' },
   acceptEdits:      { symbol: '⏵⏵',  label: 'Accept Edits',      color: 'rgb(175,135,255)' },
   bypassPermissions:{ symbol: '⏵⏵',  label: 'Bypass Permissions',color: 'rgb(255,107,128)' },
@@ -893,7 +893,6 @@ function PermissionStatusBar({ mode }: { mode?: string }): React.JSX.Element | n
   if (!mode) return null
   const config = PERMISSION_MODE_CONFIG[mode]
   if (!config) return null
-  if (mode === 'default') return null
 
   return (
     <div className="permission-status-bar">
