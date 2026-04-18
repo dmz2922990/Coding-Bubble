@@ -22,12 +22,12 @@ coding-bubble/
 
 Coding-bubble supports four session source modes, allowing flexibility in how Claude Code sessions are created and managed:
 
-| Mode | Source | Description |
-|------|--------|-------------|
-| `hook` | Local Hook | Claude Code runs independently in a terminal. The hook script (`claude-bubble-state.js`) intercepts session events and forwards them via Unix domain socket. |
-| `stream` | Local Stream | The desktop app spawns its own Claude Code process with `--output-format stream-json --input-format stream-json`. Full control over stdin/stdout. |
-| `remote-hook` | Remote Hook | A remote server runs Claude Code with hooks installed. Events are forwarded to the local desktop app via WebSocket. |
-| `remote-stream` | Remote Stream | The desktop app creates a Claude Code session on a remote server via WebSocket, with bidirectional event streaming. |
+| Mode | Source | Indicator | Description |
+|------|--------|-----------|-------------|
+| `hook` | Local Hook | Gray dot ● | Claude Code runs independently in a terminal. The hook script (`claude-bubble-state.js`) intercepts session events and forwards them via Unix domain socket. |
+| `stream` | Local Stream | Light blue dot ● `#4fc3f7` | The desktop app spawns its own Claude Code process with `--output-format stream-json --input-format stream-json`. Full control over stdin/stdout. |
+| `remote-hook` | Remote Hook | Gray diamond ◆ | A remote server runs Claude Code with hooks installed. Events are forwarded to the local desktop app via WebSocket. |
+| `remote-stream` | Remote Stream | Light blue diamond ◆ `#4fc3f7` | The desktop app creates a Claude Code session on a remote server via WebSocket, with bidirectional event streaming. |
 
 ### Permission Modes
 
@@ -72,6 +72,23 @@ Each Claude Code session follows a strict state machine with 10 phases and valid
                         └──► ended (terminal state)
 ```
 
+### Phase Colors
+
+Each session phase has a consistent color used across the floating ball status dot, tab indicator, session list card, and notification badge:
+
+| Phase | Color | Swatch | Animation |
+|-------|-------|--------|-----------|
+| `idle` | Gray `#888` | ![#888](https://via.placeholder.com/14/888888/888888.png) | — |
+| `thinking` | Purple `#ab47bc` | ![#ab47bc](https://via.placeholder.com/14/ab47bc/ab47bc.png) | — |
+| `processing` | Blue `#2196f3` | ![#2196f3](https://via.placeholder.com/14/2196f3/2196f3.png) | — |
+| `juggling` | Purple `#ab47bc` | ![#ab47bc](https://via.placeholder.com/14/ab47bc/ab47bc.png) | — |
+| `done` | Green `#66bb6a` | ![#66bb6a](https://via.placeholder.com/14/66bb6a/66bb6a.png) | — |
+| `error` | Red `#f44336` | ![#f44336](https://via.placeholder.com/14/f44336/f44336.png) | Blink (1s) |
+| `waitingForInput` | Blue-Gray `#78909c` | ![#78909c](https://via.placeholder.com/14/78909c/78909c.png) | — |
+| `waitingForApproval` | Orange `#ff9800` | ![#ff9800](https://via.placeholder.com/14/ff9800/ff9800.png) | Pulse (1.5s) |
+| `compacting` | Blue `#2196f3` | ![#2196f3](https://via.placeholder.com/14/2196f3/2196f3.png) | — |
+| `ended` | Light Gray `#9e9e9e` | ![#9e9e9e](https://via.placeholder.com/14/9e9e9e/9e9e9e.png) | — |
+
 ### Phase Priority (Floating Ball Display)
 
 When multiple sessions are active, the floating ball shows the highest-priority phase:
@@ -103,12 +120,12 @@ Certain phases automatically revert to `idle` if no new events arrive:
 
 Four notification types with configurable auto-close timing:
 
-| Type | Trigger | Default Auto-Close |
-|------|---------|--------------------|
-| `approval` | Session enters `waitingForApproval` | Never (requires user action) |
-| `input` | Session enters `waitingForInput` | 15 seconds |
-| `done` | Session enters `done` | 15 seconds |
-| `error` | Session enters `error` | 30 seconds |
+| Type | Trigger | Default Auto-Close | Color |
+|------|---------|--------------------|-------|
+| `approval` | Session enters `waitingForApproval` | Never (requires user action) | Orange `#ff9800` 🔐 |
+| `input` | Session enters `waitingForInput` | 15 seconds | Blue-Gray `#78909c` 💬 |
+| `done` | Session enters `done` | 15 seconds | Green `#66bb6a` ✅ |
+| `error` | Session enters `error` | 30 seconds | Red `#f44336` ❌ |
 
 Notifications appear in a dedicated transparent window positioned above the floating ball. A quick-approval button allows one-click permission granting directly from the notification.
 

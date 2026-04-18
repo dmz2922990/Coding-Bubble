@@ -22,12 +22,12 @@ coding-bubble/
 
 Coding-bubble 支持四种会话来源模式，灵活适配不同的 Claude Code 使用方式：
 
-| 模式 | 来源 | 说明 |
-|------|------|------|
-| `hook` | 本地 Hook | Claude Code 在终端中独立运行。Hook 脚本 (`claude-bubble-state.js`) 拦截会话事件，通过 Unix 域套接字转发。 |
-| `stream` | 本地流式 | 桌面应用自行启动 Claude Code 进程，使用 `--output-format stream-json --input-format stream-json` 参数，完全控制 stdin/stdout。 |
-| `remote-hook` | 远程 Hook | 远程服务器运行 Claude Code 并安装 Hook，事件通过 WebSocket 转发到本地桌面应用。 |
-| `remote-stream` | 远程流式 | 桌面应用通过 WebSocket 在远程服务器上创建 Claude Code 会话，双向事件流式传输。 |
+| 模式 | 来源 | 指示器 | 说明 |
+|------|------|--------|------|
+| `hook` | 本地 Hook | 灰色圆点 ● | Claude Code 在终端中独立运行。Hook 脚本 (`claude-bubble-state.js`) 拦截会话事件，通过 Unix 域套接字转发。 |
+| `stream` | 本地流式 | 浅蓝圆点 ● `#4fc3f7` | 桌面应用自行启动 Claude Code 进程，使用 `--output-format stream-json --input-format stream-json` 参数，完全控制 stdin/stdout。 |
+| `remote-hook` | 远程 Hook | 灰色菱形 ◆ | 远程服务器运行 Claude Code 并安装 Hook，事件通过 WebSocket 转发到本地桌面应用。 |
+| `remote-stream` | 远程流式 | 浅蓝菱形 ◆ `#4fc3f7` | 桌面应用通过 WebSocket 在远程服务器上创建 Claude Code 会话，双向事件流式传输。 |
 
 ### 权限模式
 
@@ -72,6 +72,23 @@ Coding-bubble 支持四种会话来源模式，灵活适配不同的 Claude Code
                         └──► ended (终态)
 ```
 
+### 阶段颜色
+
+每个会话阶段在悬浮球状态灯、Tab 指示条、会话列表卡片和通知徽标中使用统一的颜色：
+
+| 阶段 | 颜色 | 色值 | 动画 |
+|------|------|------|------|
+| `idle` | 灰色 | `#888` | — |
+| `thinking` | 紫色 | `#ab47bc` | — |
+| `processing` | 蓝色 | `#2196f3` | — |
+| `juggling` | 紫色 | `#ab47bc` | — |
+| `done` | 绿色 | `#66bb6a` | — |
+| `error` | 红色 | `#f44336` | 闪烁 (1s) |
+| `waitingForInput` | 蓝灰色 | `#78909c` | — |
+| `waitingForApproval` | 橙色 | `#ff9800` | 脉冲 (1.5s) |
+| `compacting` | 蓝色 | `#2196f3` | — |
+| `ended` | 浅灰色 | `#9e9e9e` | — |
+
 ### 阶段优先级（悬浮球显示）
 
 当多个会话同时活跃时，悬浮球显示优先级最高的阶段：
@@ -103,12 +120,12 @@ Coding-bubble 支持四种会话来源模式，灵活适配不同的 Claude Code
 
 四种通知类型，支持配置自动关闭时间：
 
-| 类型 | 触发条件 | 默认自动关闭 |
-|------|----------|-------------|
-| `approval` | 会话进入 `waitingForApproval` | 永不关闭（需用户操作） |
-| `input` | 会话进入 `waitingForInput` | 15 秒 |
-| `done` | 会话进入 `done` | 15 秒 |
-| `error` | 会话进入 `error` | 30 秒 |
+| 类型 | 触发条件 | 默认自动关闭 | 颜色 |
+|------|----------|-------------|------|
+| `approval` | 会话进入 `waitingForApproval` | 永不关闭（需用户操作） | 橙色 `#ff9800` 🔐 |
+| `input` | 会话进入 `waitingForInput` | 15 秒 | 蓝灰色 `#78909c` 💬 |
+| `done` | 会话进入 `done` | 15 秒 | 绿色 `#66bb6a` ✅ |
+| `error` | 会话进入 `error` | 30 秒 | 红色 `#f44336` ❌ |
 
 通知显示在悬浮球上方独立的透明窗口中。快速审批按钮支持一键授权，无需打开对话面板。
 
