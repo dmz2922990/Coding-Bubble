@@ -424,6 +424,9 @@ export function handleStreamEvent(
     }
 
     case 'session_state': {
+      if (event.permissionMode) {
+        store.setPermissionMode(sessionId, event.permissionMode)
+      }
       const state = event.state
       if (!state) break
       if (state === 'idle') {
@@ -450,8 +453,11 @@ export function handleStreamEvent(
     case 'session_init': {
       if (event.initMetadata) {
         store.setInitMetadata(sessionId, event.initMetadata)
-        broadcast('session:update', { sessionId, initMetadata: event.initMetadata })
       }
+      if (event.permissionMode) {
+        store.setPermissionMode(sessionId, event.permissionMode)
+      }
+      broadcast('session:update', { sessionId, initMetadata: event.initMetadata, permissionMode: event.permissionMode })
       break
     }
 

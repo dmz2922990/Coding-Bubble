@@ -80,6 +80,8 @@ export interface StreamEvent {
   title?: string
   // session_init
   initMetadata?: InitMetadata
+  // permission mode from init/status
+  permissionMode?: string
 }
 
 // ═─ Session Options ────────────────────────────────────────────

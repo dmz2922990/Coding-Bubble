@@ -270,6 +270,7 @@ export class StreamSession {
             skills: Array.isArray(raw.skills) ? raw.skills as string[] : [],
             slashCommands: Array.isArray(raw.slash_commands) ? raw.slash_commands as string[] : [],
           },
+          permissionMode: raw.permissionMode as string | undefined,
         })
         break
       case 'session_state_changed':
@@ -281,6 +282,9 @@ export class StreamSession {
       case 'status':
         if (raw.status === 'compacting') {
           this._emit({ type: 'system_status', statusKind: 'compacting' })
+        }
+        if (raw.permissionMode) {
+          this._emit({ type: 'session_state', state: undefined, permissionMode: raw.permissionMode as string })
         }
         break
       case 'compact_boundary':
@@ -461,6 +465,7 @@ export class StreamSession {
         slashCommands: [],
         commands,
       },
+      permissionMode: (inner?.permissionMode ?? response?.permissionMode) as string | undefined,
     })
   }
 
