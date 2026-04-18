@@ -9,11 +9,12 @@ export interface RemoteServerConfig {
   token?: string
 }
 
-export type ConnectionState = 'disconnected' | 'connecting' | 'connected'
+export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting'
 
 export interface ConnectionInfo {
   config: RemoteServerConfig
   state: ConnectionState
+  nextReconnectAt?: number
 }
 
 interface PendingRequest<T> {
@@ -26,7 +27,7 @@ const RECONNECT_BASE_MS = 1000
 const RECONNECT_MAX_MS = 30_000
 
 export type ServerMessageHandler = (serverId: string, message: ServerMessage) => void
-export type StateChangeHandler = (serverId: string, state: ConnectionState) => void
+export type StateChangeHandler = (serverId: string, state: ConnectionState, extra?: { nextReconnectAt?: number }) => void
 
 export class RemoteManager {
   private _connections = new Map<string, {
@@ -35,6 +36,7 @@ export class RemoteManager {
     state: ConnectionState
     reconnectTimer: ReturnType<typeof setTimeout> | null
     reconnectAttempt: number
+    nextReconnectAt: number | null
     pendingRequests: Map<string, PendingRequest<unknown>>
   }>()
 
@@ -53,6 +55,7 @@ export class RemoteManager {
     return Array.from(this._connections.values()).map(c => ({
       config: c.config,
       state: c.state,
+      nextReconnectAt: c.nextReconnectAt ?? undefined,
     }))
   }
 
@@ -70,6 +73,7 @@ export class RemoteManager {
       state: 'disconnected',
       reconnectTimer: null,
       reconnectAttempt: 0,
+      nextReconnectAt: null,
       pendingRequests: new Map(),
     })
     this._connect(config.id)
@@ -89,6 +93,10 @@ export class RemoteManager {
   connect(serverId: string): void {
     const conn = this._connections.get(serverId)
     if (!conn || conn.state === 'connected' || conn.state === 'connecting') return
+    if (conn.state === 'reconnecting') {
+      this._clearReconnectTimer(serverId)
+      conn.nextReconnectAt = null
+    }
     this._connect(serverId)
   }
 
@@ -98,6 +106,7 @@ export class RemoteManager {
     this._clearReconnectTimer(serverId)
     this._rejectAllPending(conn, new Error('Disconnected'))
     conn.reconnectAttempt = 0
+    conn.nextReconnectAt = null
     if (conn.ws) {
       conn.ws.close()
       conn.ws = null
@@ -146,7 +155,10 @@ export class RemoteManager {
     const conn = this._connections.get(serverId)
     if (!conn) return
     conn.state = state
-    this._stateChangeHandler?.(serverId, state)
+    const extra = state === 'reconnecting' && conn.nextReconnectAt
+      ? { nextReconnectAt: conn.nextReconnectAt }
+      : undefined
+    this._stateChangeHandler?.(serverId, state, extra)
   }
 
   private _connect(serverId: string): void {
@@ -159,9 +171,9 @@ export class RemoteManager {
 
     console.log(`[remote-manager] connecting to ${url}`)
     const ws = new WebSocket(url)
+    conn.ws = ws
 
     ws.on('open', () => {
-      conn.ws = ws
       // Send auth
       if (token) {
         ws.send(JSON.stringify({ type: 'auth', token }))
@@ -230,10 +242,14 @@ export class RemoteManager {
     this._clearReconnectTimer(serverId)
     const delay = Math.min(RECONNECT_BASE_MS * Math.pow(2, conn.reconnectAttempt), RECONNECT_MAX_MS)
     conn.reconnectAttempt++
+    conn.nextReconnectAt = Date.now() + delay
     console.log(`[remote-manager] reconnecting in ${delay}ms (attempt ${conn.reconnectAttempt})`)
+
+    this._setState(serverId, 'reconnecting')
 
     conn.reconnectTimer = setTimeout(() => {
       conn.reconnectTimer = null
+      conn.nextReconnectAt = null
       this._connect(serverId)
     }, delay)
   }

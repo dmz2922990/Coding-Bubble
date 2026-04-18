@@ -188,7 +188,7 @@ export function SessionTab({ session, items, onAllow, onDeny, onAlwaysAllow, onS
   )
 }
 
-function MessageItem({ item }: { item: ChatItem }): React.JSX.Element {
+function MessageItem({ item }: { item: ChatItem }): React.JSX.Element | null {
   switch (item.type) {
     case 'user':
       return (
@@ -216,7 +216,7 @@ function MessageItem({ item }: { item: ChatItem }): React.JSX.Element {
     case 'system':
       return (
         <div className="chat-msg chat-msg--system">
-          <div className="chat-msg__system" dangerouslySetInnerHTML={{ __html: item.content }} />
+          <div className="chat-msg__system" dangerouslySetInnerHTML={{ __html: item.content ?? '' }} />
         </div>
       )
 
@@ -472,8 +472,12 @@ function formatTokens(n?: number): string {
 }
 
 function ResultSummaryItem({ durationMs, inputTokens, outputTokens, costUsd, interrupted }: {
-  durationMs?: number; inputTokens?: number; outputTokens?: number; costUsd?: number; interrupted?: boolean
-}): React.JSX.Element {
+  durationMs?: number
+  inputTokens?: number
+  outputTokens?: number
+  costUsd?: number
+  interrupted?: boolean
+}): React.JSX.Element | null {
   const parts: string[] = []
   if (interrupted) parts.push('已中断')
   if (durationMs != null) parts.push(formatDuration(durationMs))

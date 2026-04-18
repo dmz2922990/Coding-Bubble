@@ -233,6 +233,11 @@
   animation: status-pulse 1.2s ease-in-out infinite;
 }
 
+.remote-server-card__status--reconnecting {
+  background: #ff9800;
+  animation: status-pulse 1.2s ease-in-out infinite;
+}
+
 .remote-server-card__status--disconnected {
   background: #666;
 }

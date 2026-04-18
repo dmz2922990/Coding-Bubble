@@ -11,7 +11,8 @@ interface RemoteServerConfig {
 
 interface RemoteConnectionInfo {
   config: RemoteServerConfig
-  state: 'disconnected' | 'connecting' | 'connected'
+  state: 'disconnected' | 'connecting' | 'connected' | 'reconnecting'
+  nextReconnectAt?: number
 }
 
 type TabId = 'remote' | 'notification'
@@ -41,10 +42,10 @@ export function SettingsPanel(): React.JSX.Element {
     loadNotificationConfig()
 
     const unsubscribe = window.electronAPI.remote.onStateChange(
-      (_event: unknown, data: { serverId: string; state: 'disconnected' | 'connecting' | 'connected' }) => {
+      (_event: unknown, data) => {
         setRemoteServers(prev =>
           prev.map(s =>
-            s.config.id === data.serverId ? { ...s, state: data.state } : s
+            s.config.id === data.serverId ? { ...s, state: data.state as RemoteConnectionInfo['state'], nextReconnectAt: data.nextReconnectAt } : s
           )
         )
       }
@@ -136,36 +137,12 @@ export function SettingsPanel(): React.JSX.Element {
         {activeTab === 'remote' && (
           <section className="settings-section">
             {remoteServers.map((server) => (
-              <div key={server.config.id} className="remote-server-card">
-                <div className="remote-server-card__info">
-                  <div className="remote-server-card__header">
-                    <span className={`remote-server-card__status remote-server-card__status--${server.state}`} />
-                    <span className="remote-server-card__name">{server.config.name}</span>
-                  </div>
-                  <span className="remote-server-card__address">
-                    {server.config.host}:{server.config.port}
-                  </span>
-                  <span className="remote-server-card__state">
-                    {server.state === 'connected' ? '已连接' : server.state === 'connecting' ? '连接中...' : '未连接'}
-                  </span>
-                </div>
-                <div className="remote-server-card__actions">
-                  <button
-                    className={`remote-server-card__btn remote-server-card__btn--${server.state === 'connected' ? 'disconnect' : 'connect'}`}
-                    onClick={() => handleToggleConnection(server)}
-                    title={server.state === 'connected' ? '断开' : '连接'}
-                  >
-                    {server.state === 'connected' ? '断开' : '连接'}
-                  </button>
-                  <button
-                    className="remote-server-card__btn remote-server-card__btn--remove"
-                    onClick={() => handleRemoveServer(server.config.id)}
-                    title="移除"
-                  >
-                    移除
-                  </button>
-                </div>
-              </div>
+              <RemoteServerCard
+                key={server.config.id}
+                server={server}
+                onToggle={handleToggleConnection}
+                onRemove={handleRemoveServer}
+              />
             ))}
 
             <div className="remote-server-form">
@@ -261,7 +238,7 @@ export function SettingsPanel(): React.JSX.Element {
                         min={5}
                         max={300}
                         step={1}
-                        value={val}
+                        value={val as number}
                         onChange={(e) => handleAutoCloseChange(key, parseInt(e.target.value, 10))}
                       />
                       <input
@@ -269,7 +246,7 @@ export function SettingsPanel(): React.JSX.Element {
                         className="notification-config-card__number"
                         min={5}
                         max={300}
-                        value={val}
+                        value={val as number}
                         onChange={(e) => {
                           const v = parseInt(e.target.value, 10)
                           if (!isNaN(v)) handleAutoCloseChange(key, v)
@@ -293,7 +270,7 @@ export function SettingsPanel(): React.JSX.Element {
                     onChange={(e) => {
                       const newConfig = { ...autoCloseConfig, quickApproval: e.target.checked }
                       setAutoCloseConfig(newConfig)
-                      window.electronAPI.notification.setConfig(newConfig as Record<string, number>)
+                      window.electronAPI.notification.setConfig(newConfig)
                     }}
                   />
                   <span>{autoCloseConfig.quickApproval !== false ? '开启' : '关闭'}</span>
@@ -302,6 +279,67 @@ export function SettingsPanel(): React.JSX.Element {
             </div>
           </section>
         )}
+      </div>
+    </div>
+  )
+}
+
+function RemoteServerCard({ server, onToggle, onRemove }: {
+  server: RemoteConnectionInfo
+  onToggle: (server: RemoteConnectionInfo) => void
+  onRemove: (id: string) => void
+}): React.JSX.Element {
+  const [countdown, setCountdown] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (server.state !== 'reconnecting' || !server.nextReconnectAt) {
+      setCountdown(null)
+      return
+    }
+    const update = () => {
+      const remaining = Math.max(0, Math.ceil((server.nextReconnectAt! - Date.now()) / 1000))
+      setCountdown(remaining)
+    }
+    update()
+    const timer = setInterval(update, 1000)
+    return () => clearInterval(timer)
+  }, [server.state, server.nextReconnectAt])
+
+  const stateText = server.state === 'connected' ? '已连接'
+    : server.state === 'connecting' ? '连接中...'
+    : server.state === 'reconnecting' ? (countdown !== null ? `重连中... ${countdown}s` : '重连中...')
+    : '未连接'
+
+  const btnLabel = server.state === 'connected' ? '断开'
+    : server.state === 'reconnecting' ? '立即连接'
+    : server.state === 'connecting' ? '连接中' : '连接'
+
+  return (
+    <div className="remote-server-card">
+      <div className="remote-server-card__info">
+        <div className="remote-server-card__header">
+          <span className={`remote-server-card__status remote-server-card__status--${server.state}`} />
+          <span className="remote-server-card__name">{server.config.name}</span>
+        </div>
+        <span className="remote-server-card__address">{server.config.host}:{server.config.port}</span>
+        <span className="remote-server-card__state">{stateText}</span>
+      </div>
+      <div className="remote-server-card__actions">
+        <button
+          className={`remote-server-card__btn remote-server-card__btn--${server.state === 'connected' ? 'disconnect' : 'connect'}`}
+          onClick={() => onToggle(server)}
+          disabled={server.state === 'connecting'}
+          title={btnLabel}
+        >
+          {btnLabel}
+        </button>
+        <button
+          className="remote-server-card__btn remote-server-card__btn--remove"
+          onClick={() => onRemove(server.config.id)}
+          title="移除"
+        >
+          移除
+        </button>
       </div>
     </div>
   )

@@ -882,7 +882,7 @@ ipcMain.handle('stream:destroy', async (_event, sessionId: string) => {
     const serverId = remoteSessionServerMap.get(sessionId)
     if (!serverId) return
     remoteSessionServerMap.delete(sessionId)
-    const remoteCtx = (globalThis as Record<string, StreamEventContext>).__remoteStreamCtx
+    const remoteCtx = (globalThis as unknown as Record<string, StreamEventContext>).__remoteStreamCtx
     remoteCtx?.destroying.add(sessionId)
     await remoteStreamAdapter.destroy(serverId, sessionId)
     sessionStore?.process({
@@ -920,7 +920,7 @@ ipcMain.handle('stream:approve', async (_event, sessionId: string) => {
       ? (session.phase as { context: { toolUseId: string } }).context?.toolUseId
       : undefined
     if (requestId) {
-      const remoteCtx = (globalThis as Record<string, StreamEventContext>).__remoteStreamCtx
+      const remoteCtx = (globalThis as unknown as Record<string, StreamEventContext>).__remoteStreamCtx
       const pending = remoteCtx?.pendingPermissions.get(sessionId)
       if (pending) {
         remoteCtx.pendingPermissions.delete(sessionId)
@@ -952,7 +952,7 @@ ipcMain.handle('stream:deny', async (_event, sessionId: string, reason?: string)
       ? (session.phase as { context: { toolUseId: string } }).context?.toolUseId
       : undefined
     if (requestId) {
-      const remoteCtx = (globalThis as Record<string, StreamEventContext>).__remoteStreamCtx
+      const remoteCtx = (globalThis as unknown as Record<string, StreamEventContext>).__remoteStreamCtx
       const pending = remoteCtx?.pendingPermissions.get(sessionId)
       if (pending) {
         sessionStore?.addSystemMessage(sessionId, pending.formattedDetail)
@@ -985,7 +985,7 @@ ipcMain.handle('stream:always-allow', async (_event, sessionId: string) => {
       ? (session.phase as { context: { toolUseId: string } }).context?.toolUseId
       : undefined
     if (requestId) {
-      const remoteCtx = (globalThis as Record<string, StreamEventContext>).__remoteStreamCtx
+      const remoteCtx = (globalThis as unknown as Record<string, StreamEventContext>).__remoteStreamCtx
       const pending = remoteCtx?.pendingPermissions.get(sessionId)
       if (pending) {
         remoteCtx.pendingPermissions.delete(sessionId)
@@ -1018,7 +1018,7 @@ ipcMain.handle('stream:answer', async (_event, sessionId: string, answer: string
       : undefined
     if (!requestId) return
 
-    const remoteCtx = (globalThis as Record<string, StreamEventContext>).__remoteStreamCtx
+    const remoteCtx = (globalThis as unknown as Record<string, StreamEventContext>).__remoteStreamCtx
     const pending = remoteCtx?.pendingPermissions.get(sessionId)
     if (pending) {
       remoteCtx.pendingPermissions.delete(sessionId)
@@ -1073,7 +1073,7 @@ ipcMain.handle('stream:interrupt', async (_event, sessionId: string) => {
     if (!remoteStreamAdapter) return
     const serverId = remoteSessionServerMap.get(sessionId)
     if (!serverId) return
-    const remoteCtx = (globalThis as Record<string, StreamEventContext>).__remoteStreamCtx
+    const remoteCtx = (globalThis as unknown as Record<string, StreamEventContext>).__remoteStreamCtx
     remoteCtx?.interrupted.add(sessionId)
     remoteStreamAdapter.interrupt(serverId, sessionId)
     return
@@ -1165,7 +1165,7 @@ ipcMain.handle('remote:stream:approve', async (_event, sessionId: string) => {
     : undefined
   if (requestId) {
     // Clean up shared ctx pending permission and resolve its promise
-    const remoteCtx = (globalThis as Record<string, StreamEventContext>).__remoteStreamCtx
+    const remoteCtx = (globalThis as unknown as Record<string, StreamEventContext>).__remoteStreamCtx
     const pending = remoteCtx?.pendingPermissions.get(sessionId)
     if (pending) {
       remoteCtx.pendingPermissions.delete(sessionId)
@@ -1191,7 +1191,7 @@ ipcMain.handle('remote:stream:deny', async (_event, sessionId: string, reason?: 
     ? (session.phase as { context: { toolUseId: string } }).context?.toolUseId
     : undefined
   if (requestId) {
-    const remoteCtx = (globalThis as Record<string, StreamEventContext>).__remoteStreamCtx
+    const remoteCtx = (globalThis as unknown as Record<string, StreamEventContext>).__remoteStreamCtx
     const pending = remoteCtx?.pendingPermissions.get(sessionId)
     if (pending) {
       sessionStore?.addSystemMessage(sessionId, pending.formattedDetail)
@@ -1218,7 +1218,7 @@ ipcMain.handle('remote:stream:always-allow', async (_event, sessionId: string) =
     ? (session.phase as { context: { toolUseId: string } }).context?.toolUseId
     : undefined
   if (requestId) {
-    const remoteCtx = (globalThis as Record<string, StreamEventContext>).__remoteStreamCtx
+    const remoteCtx = (globalThis as unknown as Record<string, StreamEventContext>).__remoteStreamCtx
     const pending = remoteCtx?.pendingPermissions.get(sessionId)
     if (pending) {
       remoteCtx.pendingPermissions.delete(sessionId)
@@ -1359,9 +1359,9 @@ app.whenReady().then(() => {
   remoteStreamAdapter.register()
 
   // Push connection state changes to settings window
-  remoteManager.onStateChange((serverId, state) => {
+  remoteManager.onStateChange((serverId, state, extra) => {
     if (settingsWin && !settingsWin.isDestroyed()) {
-      settingsWin.webContents.send('remote:state-change', { serverId, state })
+      settingsWin.webContents.send('remote:state-change', { serverId, state, ...extra })
     }
   })
 
