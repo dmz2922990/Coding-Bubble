@@ -694,11 +694,6 @@ function AssistantMessage({ item }: { item: ChatItem }): React.JSX.Element {
     setMenuOpen(false)
   }, [item.content])
 
-  const handleForward = useCallback(() => {
-    navigator.clipboard.writeText(item.content ?? '')
-    setMenuOpen(false)
-  }, [item.content])
-
   const handleSaveTo = useCallback(() => {
     const content = item.content ?? ''
     const firstLine = content.split('\n')[0]?.slice(0, 40) ?? 'message'
@@ -758,9 +753,6 @@ function AssistantMessage({ item }: { item: ChatItem }): React.JSX.Element {
               <div className="chat-msg__menu">
                 <button className="chat-msg__menu-item" onClick={handleCopy}>
                   复制
-                </button>
-                <button className="chat-msg__menu-item" onClick={handleForward}>
-                  转发
                 </button>
                 <button className="chat-msg__menu-item" onClick={handleSaveTo}>
                   Save to
