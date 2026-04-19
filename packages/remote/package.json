@@ -1,6 +1,6 @@
 {
   "name": "@coding-bubble/remote",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "private": true,
   "main": "src/client/index.ts",
   "types": "src/client/index.ts",
