@@ -5,10 +5,9 @@ import * as path from 'path'
 import type { HookEvent, HookResponse, PermissionSuggestion } from './types'
 import { mergeSuggestions } from './types'
 
+const WINDOWS_TCP_PORT = 19527
+
 function getDefaultSocketPath(): string {
-  if (process.platform === 'win32') {
-    return '\\\\.\\pipe\\claude-bubble'
-  }
   return path.join(os.tmpdir(), 'claude-bubble.sock')
 }
 
@@ -68,11 +67,15 @@ export function createSocketServer(options: SocketServerOptions): SocketServer {
   const socketPath = options.socketPath ?? DEFAULT_SOCKET_PATH
   const cache = new ToolUseIdCache()
 
-  // Remove stale socket if it exists
-  try {
-    if (fs.existsSync(socketPath)) fs.unlinkSync(socketPath)
-  } catch {
-    // ignore
+  const isWindows = process.platform === 'win32'
+
+  // Remove stale socket if it exists (Unix only)
+  if (!isWindows) {
+    try {
+      if (fs.existsSync(socketPath)) fs.unlinkSync(socketPath)
+    } catch {
+      // ignore
+    }
   }
 
   const server = net.createServer((socket) => {
@@ -162,9 +165,15 @@ export function createSocketServer(options: SocketServerOptions): SocketServer {
     })
   })
 
-  server.listen(socketPath, () => {
-    console.log(`[socket-server] listening on ${socketPath}`)
-  })
+  if (isWindows) {
+    server.listen(WINDOWS_TCP_PORT, '127.0.0.1', () => {
+      console.log(`[socket-server] listening on TCP port ${WINDOWS_TCP_PORT}`)
+    })
+  } else {
+    server.listen(socketPath, () => {
+      console.log(`[socket-server] listening on ${socketPath}`)
+    })
+  }
 
   server.on('error', (err) => {
     console.error('[socket-server] server error:', err)
@@ -174,7 +183,9 @@ export function createSocketServer(options: SocketServerOptions): SocketServer {
     close: async () => {
       return new Promise<void>((resolve) => {
         server.close(() => {
-          try { fs.unlinkSync(socketPath) } catch { /* ignore */ }
+          if (!isWindows) {
+            try { fs.unlinkSync(socketPath) } catch { /* ignore */ }
+          }
           resolve()
         })
       })
