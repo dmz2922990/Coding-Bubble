@@ -10,6 +10,7 @@ export interface TerminalInfo {
   name: string
   bundleId: string
   tty?: string
+  processId?: number
 }
 
 export interface PlatformTerminalJumper {
@@ -382,14 +383,18 @@ export class TerminalJumper {
   private platform: PlatformTerminalJumper
 
   constructor() {
-    this.platform = process.platform === 'darwin'
-      ? new MacOSTerminalJumper()
-      : new NoOpTerminalJumper()
+    if (process.platform === 'darwin') {
+      this.platform = new MacOSTerminalJumper()
+    } else if (process.platform === 'win32') {
+      this.platform = new WindowsTerminalJumper()
+    } else {
+      this.platform = new NoOpTerminalJumper()
+    }
   }
 
   async jump(session: SessionState): Promise<{ success: boolean; error?: string }> {
-    if (process.platform !== 'darwin') {
-      return { success: false, error: 'Terminal jump is only supported on macOS' }
+    if (process.platform !== 'darwin' && process.platform !== 'win32') {
+      return { success: false, error: 'Terminal jump is only supported on macOS and Windows' }
     }
 
     if (!session.pid) {
@@ -397,8 +402,9 @@ export class TerminalJumper {
     }
 
     try {
-      // Strategy 1: tmux + yabai
-      if (await isTmuxAvailable()) {
+
+      // Strategy 1: tmux + yabai (macOS only)
+      if (process.platform === 'darwin' && await isTmuxAvailable()) {
         const target = await findTmuxTarget(session.pid)
         if (target && await activateTmux(target)) {
           return { success: true }
@@ -414,15 +420,21 @@ export class TerminalJumper {
           return { success: true }
         }
 
-        // Strategy 3: Bundle ID fallback for detected terminal
-        if (await activateByBundleId(info.bundleId)) {
+        // Strategy 3: Platform-specific fallback for detected terminal
+        if (process.platform === 'darwin' && await activateByBundleId(info.bundleId)) {
+          return { success: true }
+        }
+        if (process.platform === 'win32' && info.processId && await activateWindowsProcess(info.processId)) {
           return { success: true }
         }
       }
 
       // Fallback: try common terminals in priority order
-      if (await fallbackActivate()) {
+      if (process.platform === 'darwin' && await fallbackActivate()) {
         return { success: true }
+      }
+      if (process.platform === 'win32') {
+        if (await windowsFallbackActivate()) return { success: true }
       }
 
       return { success: false, error: 'Could not activate any terminal' }
@@ -468,5 +480,197 @@ class NoOpTerminalJumper implements PlatformTerminalJumper {
 
   async focusTerminal(): Promise<boolean> {
     return false
+  }
+}
+
+// ═─ Windows Terminal Registry ────────────────────────────────
+
+const WINDOWS_TERMINAL_REGISTRY = new Map<string, string>([
+  ['powershell.exe', 'PowerShell'],
+  ['pwsh.exe', 'PowerShell Core'],
+  ['cmd.exe', 'Cmd'],
+  ['WindowsTerminal.exe', 'Windows Terminal'],
+  ['wt.exe', 'Windows Terminal'],
+  ['ConEmu64.exe', 'ConEmu'],
+  ['ConEmuC64.exe', 'ConEmu'],
+  ['Code.exe', 'VS Code'],
+  ['Cursor.exe', 'Cursor'],
+])
+
+const WINDOWS_FALLBACK_TERMINALS = [
+  { name: 'Windows Terminal', processName: 'WindowsTerminal' },
+  { name: 'PowerShell', processName: 'powershell' },
+  { name: 'PowerShell Core', processName: 'pwsh' },
+  { name: 'Cmd', processName: 'cmd' },
+]
+
+// ═─ Windows Process Tree Detection ───────────────────────────
+
+async function buildWindowsProcessTreeWmic(): Promise<Map<number, { ppid: number; name: string }> | null> {
+  try {
+    const { stdout } = await execFileAsync('wmic', [
+      'process', 'get', 'Name,ParentProcessId,ProcessId', '/format:csv'
+    ], { timeout: 5000, windowsHide: true })
+
+    const tree = new Map<number, { ppid: number; name: string }>()
+    const lines = stdout.trim().split(/\r?\n/)
+    console.log('[terminal-jumper] wmic returned', lines.length, 'lines')
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed || trimmed.startsWith('Node,')) continue
+      const parts = trimmed.split(',')
+      if (parts.length < 4) continue
+      const name = parts[1].trim()
+      const ppid = parseInt(parts[2].trim(), 10)
+      const pid = parseInt(parts[3].trim(), 10)
+      if (isNaN(ppid) || isNaN(pid)) continue
+      tree.set(pid, { ppid, name })
+    }
+
+    return tree.size > 0 ? tree : null
+  } catch (err) {
+    console.log('[terminal-jumper] wmic failed:', err)
+    return null
+  }
+}
+
+async function buildWindowsProcessTreePS(): Promise<Map<number, { ppid: number; name: string }> | null> {
+  try {
+    const { stdout } = await execFileAsync('powershell', [
+      '-NoProfile', '-NonInteractive', '-Command',
+      'Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name | ConvertTo-Json -Compress'
+    ], { timeout: 8000, windowsHide: true })
+
+    let procs = JSON.parse(stdout) as Array<{ ProcessId: number; ParentProcessId: number; Name: string }>
+    if (!Array.isArray(procs)) procs = [procs]
+
+    const tree = new Map<number, { ppid: number; name: string }>()
+    for (const p of procs) {
+      tree.set(p.ProcessId, { ppid: p.ParentProcessId, name: p.Name })
+    }
+
+    return tree.size > 0 ? tree : null
+  } catch {
+    return null
+  }
+}
+
+function traceToWindowsTerminal(
+  tree: Map<number, { ppid: number; name: string }>,
+  startPid: number
+): TerminalInfo | null {
+  let current = startPid
+  let topmost: TerminalInfo | null = null
+
+  while (current && current > 0) {
+    const proc = tree.get(current)
+    if (!proc) break
+    const terminalName = WINDOWS_TERMINAL_REGISTRY.get(proc.name)
+    if (terminalName) {
+      topmost = {
+        name: terminalName,
+        bundleId: proc.name,
+        processId: current,
+      }
+    }
+    current = proc.ppid
+  }
+
+  return topmost
+}
+
+async function detectTerminalWindows(pid: number): Promise<TerminalInfo | null> {
+  const tree = await buildWindowsProcessTreePS()
+  if (!tree) return null
+
+  const info = traceToWindowsTerminal(tree, pid)
+  if (info) return info
+
+  // Fallback: scan for claude processes and trace from them
+  for (const [procPid, proc] of tree) {
+    if (proc.name.toLowerCase().includes('claude')) {
+      const fallbackInfo = traceToWindowsTerminal(tree, procPid)
+      if (fallbackInfo) return fallbackInfo
+    }
+  }
+
+  return null
+}
+
+// ═─ Windows Activation ───────────────────────────────────────
+
+const WIN32_HELPER_PS = `
+Add-Type -TypeDefinition '
+using System;
+using System.Runtime.InteropServices;
+using System.Diagnostics;
+public class Win32Win {
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+  [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd);
+  [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+  public static bool ForceWindow(IntPtr hWnd) {
+    keybd_event(0x12, 0, 0, UIntPtr.Zero);
+    keybd_event(0x12, 0, 2, UIntPtr.Zero);
+    if (IsIconic(hWnd)) ShowWindow(hWnd, 9);
+    return SetForegroundWindow(hWnd);
+  }
+  public static bool ActivateByPid(int pid) {
+    try {
+      var p = Process.GetProcessById(pid);
+      var hWnd = p.MainWindowHandle;
+      if (hWnd == IntPtr.Zero) return false;
+      return ForceWindow(hWnd);
+    } catch { return false; }
+  }
+}' -ErrorAction SilentlyContinue
+`.trim()
+
+async function activateWindowsProcess(pid: number): Promise<boolean> {
+  try {
+    await execFileAsync('powershell', [
+      '-NoProfile', '-NonInteractive', '-Command',
+      `${WIN32_HELPER_PS}; [Win32Win]::ActivateByPid(${pid})`
+    ], { timeout: 5000, windowsHide: true })
+    return true
+  } catch (err) {
+    console.log('[terminal-jumper] activateWindowsProcess failed:', err)
+    return false
+  }
+}
+
+async function activateWindowsByName(processName: string): Promise<boolean> {
+  try {
+    await execFileAsync('powershell', [
+      '-NoProfile', '-NonInteractive', '-Command',
+      `${WIN32_HELPER_PS}; $p = Get-Process -Name '${processName}' -ErrorAction SilentlyContinue | Select-Object -First 1; if ($p) { [Win32Win]::ActivateByPid($p.Id) }`
+    ], { timeout: 5000, windowsHide: true })
+    return true
+  } catch (err) {
+    console.log('[terminal-jumper] activateWindowsByName failed:', err)
+    return false
+  }
+}
+
+async function windowsFallbackActivate(): Promise<boolean> {
+  for (const term of WINDOWS_FALLBACK_TERMINALS) {
+    if (await activateWindowsByName(term.processName)) return true
+  }
+  return false
+}
+
+// ═─ Windows Implementation ───────────────────────────────────
+
+class WindowsTerminalJumper implements PlatformTerminalJumper {
+  async detectTerminal(pid: number): Promise<TerminalInfo | null> {
+    return detectTerminalWindows(pid)
+  }
+
+  async focusTerminal(info: TerminalInfo): Promise<boolean> {
+    if (info.processId) {
+      return activateWindowsProcess(info.processId)
+    }
+    return activateWindowsByName(info.bundleId.replace('.exe', ''))
   }
 }

@@ -39,9 +39,6 @@ const net = __importStar(require("net"));
 const os = __importStar(require("os"));
 const path = __importStar(require("path"));
 function getSocketPath() {
-    if (process.platform === 'win32') {
-        return '\\\\.\\pipe\\claude-bubble';
-    }
     return path.join(os.tmpdir(), 'claude-bubble.sock');
 }
 function getLogPath() {
@@ -92,7 +89,11 @@ function main() {
         log('[hook] socket not exists');
         return;
     }
-    const sock = net.createConnection(SOCKET_PATH);
+    const isWindows = process.platform === 'win32';
+    const WINDOWS_TCP_PORT = 19527;
+    const sock = isWindows
+        ? net.createConnection({ host: '127.0.0.1', port: WINDOWS_TCP_PORT })
+        : net.createConnection(SOCKET_PATH);
     sock.on('connect', () => {
         const message = JSON.stringify({
             hook_event_name: hookName,
