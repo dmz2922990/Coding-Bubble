@@ -1,6 +1,7 @@
 /* ── ChatPanel 面板样式 ───────────────────────────────── */
 
 .chat-panel {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -84,6 +85,10 @@
 .chat-panel__messages::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.15);
   border-radius: 2px;
+}
+
+.chat-panel__messages::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .chat-panel__messages::-webkit-scrollbar-corner {
@@ -534,6 +539,24 @@
   padding: 8px 12px;
 }
 
+.remote-dialog__body::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.remote-dialog__body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+.remote-dialog__body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.remote-dialog__body::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 .remote-dialog__empty {
   display: flex;
   align-items: center;
@@ -656,8 +679,38 @@
 }
 
 .remote-dialog__option input[type="checkbox"] {
-  margin: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 28px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  position: relative;
   cursor: pointer;
+  transition: background 0.2s ease;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.remote-dialog__option input[type="checkbox"]::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.remote-dialog__option input[type="checkbox"]:checked {
+  background: rgba(255, 148, 0, 0.6);
+}
+
+.remote-dialog__option input[type="checkbox"]:checked::after {
+  transform: translateX(12px);
+  background: #ff9800;
 }
 
 .remote-dialog__create-btn {
@@ -882,6 +935,10 @@
 .session-tab__messages::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.15);
   border-radius: 2px;
+}
+
+.session-tab__messages::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .session-tab__messages::-webkit-scrollbar-corner {
