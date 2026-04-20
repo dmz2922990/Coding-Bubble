@@ -1505,4 +1505,8 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   streamManager?.closeAll()
   remoteManager?.close()
+  if (tray) {
+    tray.destroy()
+    tray = null
+  }
 })
