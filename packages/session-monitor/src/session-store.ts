@@ -57,6 +57,7 @@ export class SessionStore {
   private _notificationTimers = new Map<string, ReturnType<typeof setTimeout>>() // key: sessionId
   private _onInterventionChange?: (interventions: Intervention[]) => void
   private _onNotificationChange?: (notifications: BubbleNotification[]) => void
+  private _onPhaseChange?: () => void
 
   get sessions(): ReadonlyMap<string, SessionState> {
     return this._sessions
@@ -721,6 +722,7 @@ export class SessionStore {
     session.lastActivity = now()
     this._updateInterventions(session.sessionId, session.phase)
     this._updateNotifications(session)
+    this._onPhaseChange?.()
 
     // ONESHOT auto-revert
     const timeout = ONESHOT_TIMEOUTS[newType]
@@ -807,6 +809,10 @@ export class SessionStore {
 
   onNotificationChange(cb: (notifications: BubbleNotification[]) => void): void {
     this._onNotificationChange = cb
+  }
+
+  onPhaseChange(cb: () => void): void {
+    this._onPhaseChange = cb
   }
 
   private _updateNotifications(session: SessionState): void {

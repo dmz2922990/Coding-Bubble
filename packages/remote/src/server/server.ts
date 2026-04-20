@@ -3,6 +3,8 @@ import * as os from 'os'
 import type { ClientMessage, ServerMessage } from '../shared/protocol'
 import { ErrorCodes } from '../shared/errors'
 
+declare const __REMOTE_SERVER_VERSION__: string
+
 const AUTH_TIMEOUT_MS = 5000
 const DEFAULT_PORT = 9527
 

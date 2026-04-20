@@ -13,6 +13,7 @@ let panelWin: BrowserWindow | null = null
 let settingsWin: BrowserWindow | null = null
 let notificationWin: BrowserWindow | null = null
 let tray: Tray | null = null
+let ballVisible = true
 
 /** Pending permission resolvers keyed by sessionId — for hook sessions only */
 const pendingPermissionResolvers = new Map<string, { toolUseId: string | undefined; toolName?: string; toolInput?: Record<string, unknown> | null; formattedDetail: string; suggestions?: PermissionSuggestion[]; resolve: (response: HookResponse) => void }>()
@@ -202,7 +203,7 @@ function createBallWindow(): void {
   const POLL_INTERVAL = 20
   const BALL_SIZE = 56
   const pollTimer = setInterval(() => {
-    if (!ballWin || ballWin.isDestroyed()) return
+    if (!ballWin || ballWin.isDestroyed() || !ballVisible) return
     const now = Date.now()
     const cursor = screen.getCursorScreenPoint()
     const bounds = ballWin.getBounds()
@@ -327,6 +328,10 @@ function buildAppMenu(): Menu {
       click: () => createPanelWindow()
     },
     {
+      label: ballVisible ? '隐藏悬浮球' : '显示悬浮球',
+      click: () => toggleBallVisibility()
+    },
+    {
       label: '设置',
       click: () => createSettingsWindow()
     },
@@ -340,6 +345,17 @@ function buildAppMenu(): Menu {
       click: () => app.quit()
     }
   ])
+}
+
+function toggleBallVisibility(): void {
+  if (!ballWin || ballWin.isDestroyed()) return
+  ballVisible = !ballVisible
+  if (ballVisible) {
+    ballWin.show()
+  } else {
+    ballWin.hide()
+  }
+  tray?.setContextMenu(buildAppMenu())
 }
 
 const PANEL_W = 400
@@ -1332,9 +1348,9 @@ function bubbleControllerSync(): void {
     closeNotificationWindow()
   }
 
-  // Send display state for status dot (still goes to ball window)
+  // Send display state for status dot (always show regardless of panel visibility)
   const displayState = sessionStore?.resolveDisplayState()
-  if (!panelVisible && displayState && displayState.type !== 'idle' && displayState.type !== 'ended') {
+  if (displayState && displayState.type !== 'idle' && displayState.type !== 'ended') {
     ballWin.webContents.send('bubble:status', displayState.type)
   } else {
     ballWin.webContents.send('bubble:status', null)
@@ -1367,6 +1383,10 @@ app.whenReady().then(() => {
   })
 
   sessionStore.onNotificationChange(() => {
+    bubbleControllerSync()
+  })
+
+  sessionStore.onPhaseChange(() => {
     bubbleControllerSync()
   })
 
@@ -1406,6 +1426,7 @@ app.whenReady().then(() => {
   ;(globalThis as Record<string, unknown>).__remoteStreamCtx = remoteStreamCtx
 
   // Connect to configured remote servers
+  console.log(`[main] config path: ${getConfigPath()}`)
   const remoteServers = (readConfig().remoteServers as RemoteServerConfig[]) ?? []
   for (const serverConfig of remoteServers) {
     remoteManager.addServer(serverConfig)

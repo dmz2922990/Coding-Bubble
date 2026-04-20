@@ -3,6 +3,8 @@ import * as fs from 'fs'
 import * as crypto from 'crypto'
 import type { ClientMessage, ServerMessage, ListDirectoryMessage, ListDirectoryResultMessage, DirEntry } from '../shared/protocol'
 
+declare const __BUNDLED_REMOTE_SERVER_VERSION__: string
+
 export interface RemoteServerConfig {
   id: string
   name: string

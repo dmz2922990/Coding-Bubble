@@ -35,6 +35,10 @@ declare global {
       navigateToSession: (sessionId: string) => void
       /** Tab navigation listener (Main → Panel) */
       onNavigateToTab: (cb: (event: unknown, sessionId: string) => void) => () => void
+      /** Settings tab navigation listener (Main → Settings) */
+      onNavigateToSettingsTab: (cb: (event: unknown, tab: string) => void) => () => void
+      /** App version */
+      getAppVersion: () => Promise<string>
       /** Hook session management */
       session: {
         list: () => Promise<unknown[]>
