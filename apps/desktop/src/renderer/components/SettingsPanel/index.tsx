@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import './styles.css'
+import cbIcon from '../../assets/cb-icon.png'
 
 interface RemoteServerConfig {
   id: string
@@ -15,11 +16,12 @@ interface RemoteConnectionInfo {
   nextReconnectAt?: number
 }
 
-type TabId = 'remote' | 'notification'
+type TabId = 'remote' | 'notification' | 'about'
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'remote', label: '远程设备' },
   { id: 'notification', label: '通知' },
+  { id: 'about', label: '关于' },
 ]
 
 const NOTIFICATION_TYPES = [
@@ -36,10 +38,19 @@ export function SettingsPanel(): React.JSX.Element {
   const [autoCloseConfig, setAutoCloseConfig] = useState<Record<string, number | boolean>>({
     approval: 0, error: 30, input: 15, done: 15,
   })
+  const [appVersion, setAppVersion] = useState('')
 
   useEffect(() => {
     loadRemoteServers()
     loadNotificationConfig()
+
+    window.electronAPI.getAppVersion().then(v => setAppVersion(v)).catch(() => {})
+
+    const unsubscribeNav = window.electronAPI.onNavigateToSettingsTab(
+      (_event: unknown, tab: string) => {
+        if (tab === 'about') setActiveTab('about')
+      }
+    )
 
     const unsubscribe = window.electronAPI.remote.onStateChange(
       (_event: unknown, data) => {
@@ -50,7 +61,7 @@ export function SettingsPanel(): React.JSX.Element {
         )
       }
     )
-    return () => { unsubscribe() }
+    return () => { unsubscribe(); unsubscribeNav() }
   }, [])
 
   const loadRemoteServers = useCallback(async () => {
@@ -277,6 +288,23 @@ export function SettingsPanel(): React.JSX.Element {
                 </label>
               </div>
             </div>
+          </section>
+        )}
+
+        {activeTab === 'about' && (
+          <section className="settings-section about-section">
+            <img className="about-logo" src={cbIcon} alt="CB" />
+            <h2 className="about-title">Coding-Bubble</h2>
+            <p className="about-version">v{appVersion}</p>
+            <p className="about-desc">AI 编程助手的轻量级伴侣</p>
+            <a
+              className="about-link"
+              href="https://github.com/dmz2922990/Coding-Bubble"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              GitHub
+            </a>
           </section>
         )}
       </div>
