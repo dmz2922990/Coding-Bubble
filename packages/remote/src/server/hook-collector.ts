@@ -4,13 +4,14 @@ import type { HookEvent, HookResponse, PermissionSuggestion } from '@coding-bubb
 import type { RemoteServer } from './server'
 import type { HookPermissionResponseMessage } from '../shared/protocol'
 
-const PERMISSION_TIMEOUT_MS = 120_000
+// No timeout for permission requests — wait indefinitely for user decision
+const PERMISSION_TIMEOUT_MS = 0
 
 interface PendingPermission {
   sessionId: string
   toolUseId: string
   resolve: (response: HookResponse) => void
-  timer: ReturnType<typeof setTimeout>
+  timer: ReturnType<typeof setTimeout> | null
 }
 
 export class HookCollector {
@@ -59,13 +60,16 @@ export class HookCollector {
         }
         this._server.send({ type: 'hook_event', sessionId, event })
 
-        // Wait for client response with timeout
+        // Wait for client response (no timeout — wait indefinitely)
         return new Promise<HookResponse>((resolve) => {
           const key = `${sessionId}:${toolUseId}`
-          const timer = setTimeout(() => {
-            this._pendingPermissions.delete(key)
-            resolve({ decision: 'deny', reason: 'Timeout waiting for client response' })
-          }, PERMISSION_TIMEOUT_MS)
+          let timer: ReturnType<typeof setTimeout> | null = null
+          if (PERMISSION_TIMEOUT_MS > 0) {
+            timer = setTimeout(() => {
+              this._pendingPermissions.delete(key)
+              resolve({ decision: 'deny', reason: 'Timeout waiting for client response' })
+            }, PERMISSION_TIMEOUT_MS)
+          }
 
           this._pendingPermissions.set(key, { sessionId, toolUseId, resolve, timer })
         })
@@ -78,14 +82,14 @@ export class HookCollector {
     const pending = this._pendingPermissions.get(key)
     if (!pending) return
 
-    clearTimeout(pending.timer)
+    if (pending.timer) clearTimeout(pending.timer)
     this._pendingPermissions.delete(key)
     pending.resolve(message.response)
   }
 
   denyAllPending(reason: string): void {
-    for (const [key, pending] of this._pendingPermissions) {
-      clearTimeout(pending.timer)
+    for (const [, pending] of this._pendingPermissions) {
+      if (pending.timer) clearTimeout(pending.timer)
       pending.resolve({ decision: 'deny', reason })
     }
     this._pendingPermissions.clear()
