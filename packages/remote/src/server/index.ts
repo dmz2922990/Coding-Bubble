@@ -1,10 +1,12 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
+import * as crypto from 'crypto'
+import { spawn } from 'child_process'
 import { RemoteServer } from './server'
 import { HookCollector } from './hook-collector'
 import { StreamHandler } from './stream-handler'
-import type { ClientMessage } from '../shared/protocol'
+import type { ClientMessage, UpdateOfferMessage, UpdateChunkMessage } from '../shared/protocol'
 import { ErrorCodes } from '../shared/errors'
 
 // ── Directory Listing ─────────────────────────────────────────
@@ -69,6 +71,15 @@ async function main(): Promise<void> {
   const hookCollector = new HookCollector(remoteServer)
   const streamHandler = new StreamHandler(remoteServer)
 
+  // ── Update State ───────────────────────────────────────────
+  let updateState: {
+    version: string
+    size: number
+    checksum: string
+    chunks: Buffer[]
+    received: number
+  } | null = null
+
   function handleMessage(message: ClientMessage): void {
     switch (message.type) {
       case 'hook_permission_response':
@@ -126,6 +137,18 @@ async function main(): Promise<void> {
         break
       }
 
+      case 'update_offer':
+        handleUpdateOffer(message)
+        break
+
+      case 'update_chunk':
+        handleUpdateChunk(message)
+        break
+
+      case 'update_complete':
+        handleUpdateComplete()
+        break
+
       default: {
         const unknown = message as { type: string }
         remoteServer.send({
@@ -136,6 +159,92 @@ async function main(): Promise<void> {
         break
       }
     }
+  }
+
+  // ── Update Handlers ────────────────────────────────────────
+
+  function handleUpdateOffer(message: UpdateOfferMessage): void {
+    if (hookCollector.hasActiveSessions || streamHandler.hasActiveSessions) {
+      remoteServer.send({ type: 'update_reject', reason: 'active_sessions' })
+      return
+    }
+
+    updateState = {
+      version: message.version,
+      size: message.size,
+      checksum: message.checksum,
+      chunks: [],
+      received: 0,
+    }
+    remoteServer.send({ type: 'update_accept' })
+    console.log(`[remote] accepting update to v${message.version} (${message.size} bytes)`)
+  }
+
+  function handleUpdateChunk(message: UpdateChunkMessage): void {
+    if (!updateState) return
+    const chunk = Buffer.from(message.data, 'base64')
+    updateState.chunks.push(chunk)
+    updateState.received += chunk.length
+  }
+
+  function handleUpdateComplete(): void {
+    if (!updateState) return
+
+    const state = updateState
+    updateState = null
+
+    const fileBuffer = Buffer.concat(state.chunks, state.received)
+
+    // Validate size
+    if (fileBuffer.length !== state.size) {
+      remoteServer.send({ type: 'update_result', success: false, error: 'size_mismatch' })
+      console.error(`[remote] update failed: size mismatch (expected ${state.size}, got ${fileBuffer.length})`)
+      return
+    }
+
+    // Validate checksum
+    const hash = crypto.createHash('sha256').update(fileBuffer).digest('hex')
+    if (hash !== state.checksum) {
+      remoteServer.send({ type: 'update_result', success: false, error: 'checksum_mismatch' })
+      console.error(`[remote] update failed: checksum mismatch`)
+      return
+    }
+
+    // Atomic replacement: write .tmp then rename
+    const scriptPath = process.argv[1]
+    const tmpPath = scriptPath + '.tmp'
+    try {
+      fs.writeFileSync(tmpPath, fileBuffer)
+      fs.renameSync(tmpPath, scriptPath)
+    } catch (err) {
+      try { fs.unlinkSync(tmpPath) } catch { /* ignore */ }
+      remoteServer.send({ type: 'update_result', success: false, error: `write_failed: ${(err as Error).message}` })
+      console.error(`[remote] update failed: write error`, err)
+      return
+    }
+
+    console.log(`[remote] update to v${state.version} applied, restarting...`)
+    remoteServer.send({ type: 'update_result', success: true })
+
+    // Self-restart with same args
+    const nodePath = process.execPath
+    const newArgs = [scriptPath, ...process.argv.slice(2)]
+    const child = spawn(nodePath, newArgs, {
+      detached: true,
+      stdio: 'ignore',
+    })
+    child.unref()
+
+    // Graceful exit after brief delay to ensure response is sent
+    setTimeout(() => {
+      streamHandler.destroyAll().then(() => {
+        hookCollector.stop().then(() => {
+          remoteServer.close().then(() => {
+            process.exit(0)
+          })
+        })
+      })
+    }, 500)
   }
 
   // Start server and hook collector

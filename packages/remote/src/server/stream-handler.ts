@@ -105,6 +105,10 @@ export class StreamHandler {
     managed.permissionMode = message.mode
   }
 
+  get hasActiveSessions(): boolean {
+    return this._sessions.size > 0
+  }
+
   async destroyAll(): Promise<void> {
     const promises: Promise<void>[] = []
     for (const [id, managed] of this._sessions) {

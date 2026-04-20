@@ -1,4 +1,6 @@
 import WebSocket from 'ws'
+import * as fs from 'fs'
+import * as crypto from 'crypto'
 import type { ClientMessage, ServerMessage, ListDirectoryMessage, ListDirectoryResultMessage, DirEntry } from '../shared/protocol'
 
 export interface RemoteServerConfig {
@@ -38,10 +40,16 @@ export class RemoteManager {
     reconnectAttempt: number
     nextReconnectAt: number | null
     pendingRequests: Map<string, PendingRequest<unknown>>
+    serverVersion?: string
   }>()
 
   private _messageHandlers: ServerMessageHandler[] = []
   private _stateChangeHandler: StateChangeHandler | null = null
+  private _bundledServerPath: string | null = null
+
+  setBundledServerPath(filePath: string): void {
+    this._bundledServerPath = filePath
+  }
 
   onMessage(handler: ServerMessageHandler): void {
     this._messageHandlers.push(handler)
@@ -143,6 +151,90 @@ export class RemoteManager {
     }
   }
 
+  // ── Auto Update ────────────────────────────────────────────
+
+  private _checkAndUpdate(serverId: string, serverVersion?: string): void {
+    if (!this._bundledServerPath) {
+      console.log(`[remote-manager] update check skipped: no bundled server path`)
+      return
+    }
+    if (!fs.existsSync(this._bundledServerPath)) {
+      console.log(`[remote-manager] update check skipped: bundled file not found at ${this._bundledServerPath}`)
+      return
+    }
+
+    const bundledVersion = __BUNDLED_REMOTE_SERVER_VERSION__
+    const remoteVersion = serverVersion || '0.0.0'
+    console.log(`[remote-manager] version check: bundle=${bundledVersion}, server=${remoteVersion}`)
+    if (this._compareVersions(bundledVersion, remoteVersion) <= 0) return
+
+    console.log(`[remote-manager] server v${remoteVersion} < bundle v${bundledVersion}, sending update`)
+    this._sendUpdate(serverId)
+  }
+
+  private _compareVersions(a: string, b: string): number {
+    const pa = a.split('.').map(Number)
+    const pb = b.split('.').map(Number)
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+      const na = pa[i] || 0
+      const nb = pb[i] || 0
+      if (na !== nb) return na - nb
+    }
+    return 0
+  }
+
+  private _sendUpdate(serverId: string): void {
+    const conn = this._connections.get(serverId)
+    if (!conn?.ws || conn.ws.readyState !== WebSocket.OPEN) return
+    if (!this._bundledServerPath) return
+    if (!fs.existsSync(this._bundledServerPath)) return
+
+    const filePath = this._bundledServerPath
+    const fileContent = fs.readFileSync(filePath)
+    const checksum = crypto.createHash('sha256').update(fileContent).digest('hex')
+
+    // Send update offer
+    conn.ws.send(JSON.stringify({
+      type: 'update_offer',
+      version: __BUNDLED_REMOTE_SERVER_VERSION__,
+      size: fileContent.length,
+      checksum,
+    }))
+
+    // Wait for accept, then send chunks
+    const chunkHandler = (data: WebSocket.Data) => {
+      try {
+        const msg = JSON.parse(data.toString('utf-8')) as ServerMessage
+        if (msg.type === 'update_accept') {
+          conn.ws!.off('message', chunkHandler)
+
+          // Send file in 64KB chunks
+          const CHUNK_SIZE = 64 * 1024
+          let offset = 0
+          let sequence = 0
+
+          while (offset < fileContent.length) {
+            const chunk = fileContent.subarray(offset, offset + CHUNK_SIZE)
+            conn.ws!.send(JSON.stringify({
+              type: 'update_chunk',
+              sequence: sequence++,
+              data: chunk.toString('base64'),
+            }))
+            offset += CHUNK_SIZE
+          }
+
+          conn.ws!.send(JSON.stringify({ type: 'update_complete' }))
+          console.log(`[remote-manager] update sent (${sequence} chunks)`)
+        } else if (msg.type === 'update_reject') {
+          conn.ws!.off('message', chunkHandler)
+          console.log(`[remote-manager] update rejected: ${msg.reason}`)
+        }
+      } catch { /* ignore parse errors */ }
+    }
+
+    conn.ws.on('message', chunkHandler)
+  }
+
   async close(): Promise<void> {
     for (const [id] of this._connections) {
       this.removeServer(id)
@@ -200,6 +292,23 @@ export class RemoteManager {
           this._setState(serverId, 'disconnected')
           console.error(`[remote-manager] auth failed: ${msg.error}`)
           ws.close()
+        }
+        return
+      }
+
+      // Handle server_info — check version and trigger update
+      if (msg.type === 'server_info') {
+        conn.serverVersion = msg.version
+        this._checkAndUpdate(serverId, msg.version)
+        return
+      }
+
+      // Handle update_result
+      if (msg.type === 'update_result') {
+        if (msg.success) {
+          console.log(`[remote-manager] remote server updated successfully`)
+        } else {
+          console.error(`[remote-manager] remote server update failed: ${msg.error}`)
         }
         return
       }

@@ -175,6 +175,7 @@ export class RemoteServer {
       hostname: os.hostname(),
       platform: process.platform,
       pid: process.pid,
+      version: __REMOTE_SERVER_VERSION__,
     })
   }
 

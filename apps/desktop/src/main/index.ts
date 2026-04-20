@@ -293,6 +293,8 @@ ipcMain.on('notification:resize', (_event, width: number, height: number) => {
 })
 
 // ── IPC: 调试 ──────────────────────────────────────────────
+ipcMain.handle('app:version', () => app.getVersion())
+
 ipcMain.handle('ipc:ping', () => {
   console.log('[main] received ping from renderer')
   return 'pong from main 🐾'
@@ -327,6 +329,10 @@ function buildAppMenu(): Menu {
     {
       label: '设置',
       click: () => createSettingsWindow()
+    },
+    {
+      label: '关于',
+      click: () => openSettingsToTab('about')
     },
     { type: 'separator' },
     {
@@ -433,9 +439,12 @@ function createPanelWindow(): void {
   }
 }
 
-function createSettingsWindow(): void {
+function createSettingsWindow(tab?: string): void {
   if (settingsWin) {
     settingsWin.focus()
+    if (tab) {
+      settingsWin.webContents.send('settings:navigate-to-tab', tab)
+    }
     return
   }
 
@@ -477,6 +486,16 @@ function createSettingsWindow(): void {
   } else {
     settingsWin.loadFile(join(__dirname, '../renderer/index.html'), { search: 'view=settings' })
   }
+
+  if (tab) {
+    settingsWin.webContents.once('did-finish-load', () => {
+      settingsWin?.webContents.send('settings:navigate-to-tab', tab)
+    })
+  }
+}
+
+function openSettingsToTab(tab: string): void {
+  createSettingsWindow(tab)
 }
 
 ipcMain.on('contextmenu:show', () => {
@@ -1353,6 +1372,13 @@ app.whenReady().then(() => {
 
   // Initialize remote manager
   remoteManager = new RemoteManager()
+
+  // Set bundled remote server path for auto-update
+  const bundledServerPath = app.isPackaged
+    ? join(process.resourcesPath, 'coding-bubble-remote-server.js')
+    : join(__dirname, '../../../../packages/remote/dist/coding-bubble-remote-server.js')
+  remoteManager.setBundledServerPath(bundledServerPath)
+
   remoteHookAdapter = new RemoteHookAdapter(remoteManager, sessionStore)
   remoteStreamAdapter = new RemoteStreamAdapter(remoteManager, sessionStore)
   remoteHookAdapter.register()

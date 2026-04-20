@@ -23,6 +23,7 @@ export interface ServerInfoMessage {
   hostname: string
   platform: string
   pid: number
+  version?: string
 }
 
 // ── Hook Events (Server → Client) ─────────────────────────────
@@ -145,6 +146,40 @@ export interface ErrorMessage {
   sessionId?: string
 }
 
+// ── Remote Server Update (Client ↔ Server) ───────────────────
+
+export interface UpdateOfferMessage {
+  type: 'update_offer'
+  version: string
+  size: number
+  checksum: string
+}
+
+export interface UpdateAcceptMessage {
+  type: 'update_accept'
+}
+
+export interface UpdateRejectMessage {
+  type: 'update_reject'
+  reason: string
+}
+
+export interface UpdateChunkMessage {
+  type: 'update_chunk'
+  sequence: number
+  data: string // base64 encoded
+}
+
+export interface UpdateCompleteMessage {
+  type: 'update_complete'
+}
+
+export interface UpdateResultMessage {
+  type: 'update_result'
+  success: boolean
+  error?: string
+}
+
 // ═─ Discriminated Union ───────────────────────────────────────
 
 /** All messages that can be sent from client to server */
@@ -159,6 +194,9 @@ export type ClientMessage =
   | StreamPermissionResponseMessage
   | StreamSetPermissionModeMessage
   | ListDirectoryMessage
+  | UpdateOfferMessage
+  | UpdateChunkMessage
+  | UpdateCompleteMessage
 
 /** All messages that can be sent from server to client */
 export type ServerMessage =
@@ -169,6 +207,9 @@ export type ServerMessage =
   | StreamEventMessage
   | ListDirectoryResultMessage
   | ErrorMessage
+  | UpdateAcceptMessage
+  | UpdateRejectMessage
+  | UpdateResultMessage
 
 /** Union of all message types */
 export type RemoteMessage = ClientMessage | ServerMessage

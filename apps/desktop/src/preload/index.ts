@@ -54,6 +54,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('navigate-to-tab', cb)
     return () => ipcRenderer.removeListener('navigate-to-tab', cb)
   },
+  /** Settings tab navigation listener (Main → Settings) */
+  onNavigateToSettingsTab: (cb: (event: unknown, tab: string) => void) => {
+    ipcRenderer.on('settings:navigate-to-tab', cb)
+    return () => ipcRenderer.removeListener('settings:navigate-to-tab', cb)
+  },
+  /** App version */
+  getAppVersion: (): Promise<string> => ipcRenderer.invoke('app:version'),
   /** 会话管理 */
   session: {
     list: (): Promise<unknown[]> => ipcRenderer.invoke('session:list'),

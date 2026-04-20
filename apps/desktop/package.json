@@ -33,6 +33,10 @@
       {
         "from": "../../packages/session-monitor/resources/claude-bubble-state.js",
         "to": "claude-bubble-state.js"
+      },
+      {
+        "from": "../../packages/remote/dist/coding-bubble-remote-server.js",
+        "to": "coding-bubble-remote-server.js"
       }
     ],
     "mac": {

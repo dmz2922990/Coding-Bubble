@@ -91,6 +91,10 @@ export class HookCollector {
     this._pendingPermissions.clear()
   }
 
+  get hasActiveSessions(): boolean {
+    return this._pendingPermissions.size > 0
+  }
+
   async stop(): Promise<void> {
     this.denyAllPending('Server shutting down')
     if (this._closeSocketServer) {

@@ -1,10 +1,16 @@
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
+import { readFileSync } from 'fs'
+
+const remotePkg = JSON.parse(readFileSync(resolve(__dirname, '../../packages/remote/package.json'), 'utf-8'))
 
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin({ exclude: ['@coding-bubble/stream-json', '@coding-bubble/remote'] })],
+    define: {
+      __BUNDLED_REMOTE_SERVER_VERSION__: JSON.stringify(remotePkg.version),
+    },
     resolve: {
       alias: {
         '@coding-bubble/backend': resolve(__dirname, '../../packages/backend/src/index.ts'),
