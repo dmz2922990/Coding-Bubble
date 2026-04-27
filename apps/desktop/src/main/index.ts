@@ -76,7 +76,7 @@ function positionNotificationWin(contentWidth: number, contentHeight: number): v
 
 function createNotificationWindow(): void {
   if (notificationWin && !notificationWin.isDestroyed()) {
-    notificationWin.show()
+    notificationWin.showInactive()
     return
   }
 
@@ -91,6 +91,7 @@ function createNotificationWindow(): void {
     skipTaskbar: true,
     resizable: false,
     hasShadow: false,
+    focusable: false,
     show: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -109,7 +110,7 @@ function createNotificationWindow(): void {
   })
 
   notificationWin.on('ready-to-show', () => {
-    notificationWin?.show()
+    notificationWin?.showInactive()
     sendBubbleSide()
   })
 
@@ -175,6 +176,7 @@ function createBallWindow(): void {
     skipTaskbar: true,
     resizable: false,
     hasShadow: false,
+    focusable: false,
     show: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -229,7 +231,7 @@ function createBallWindow(): void {
   })
 
   ballWin.on('ready-to-show', () => {
-    ballWin?.show()
+    ballWin?.showInactive()
     sendBubbleSide()
   })
 
@@ -351,7 +353,7 @@ function toggleBallVisibility(): void {
   if (!ballWin || ballWin.isDestroyed()) return
   ballVisible = !ballVisible
   if (ballVisible) {
-    ballWin.show()
+    ballWin.showInactive()
   } else {
     ballWin.hide()
   }
