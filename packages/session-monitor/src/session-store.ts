@@ -43,6 +43,8 @@ function newPhase(id: string): SessionPhase {
 
 export class SessionStore {
   private _sessions = new Map<string, SessionState>()
+  /** Preserve initial cwd/projectName across session lifecycle (prevents cd from changing tab name) */
+  private _sessionInitialData = new Map<string, { cwd: string; projectName: string }>()
   private _pendingPermissions = new Map<string, PendingPermission[]>() // key: toolUseId
   private _invalidTransitions: Array<{ sessionId: string; from: string; to: string }> = []
   private _interventions = new Map<string, Intervention>() // key: sessionId
@@ -182,14 +184,24 @@ export class SessionStore {
 
   // ── Private ──────────────────────────────────────────────
 
+  /** Resolve initial cwd/projectName, preserving first-seen values across session lifecycle */
+  private _resolveInitialData(sessionId: string, cwd: string): { cwd: string; projectName: string } {
+    const existing = this._sessionInitialData.get(sessionId)
+    if (existing) return existing
+    const data = { cwd, projectName: projectNameFromCwd(cwd) }
+    this._sessionInitialData.set(sessionId, data)
+    return data
+  }
+
   private _createSession(sessionId: string, cwd: string, pid?: number): void {
     if (this._sessions.has(sessionId)) return
 
+    const initial = this._resolveInitialData(sessionId, cwd)
     const t = now()
     this._sessions.set(sessionId, {
       sessionId,
-      cwd,
-      projectName: projectNameFromCwd(cwd),
+      cwd: initial.cwd,
+      projectName: initial.projectName,
       phase: { type: 'idle' },
       chatItems: [],
       source: 'hook',
@@ -204,11 +216,12 @@ export class SessionStore {
   createStreamSession(sessionId: string, cwd: string): void {
     if (this._sessions.has(sessionId)) return
 
+    const initial = this._resolveInitialData(sessionId, cwd)
     const t = now()
     this._sessions.set(sessionId, {
       sessionId,
-      cwd,
-      projectName: projectNameFromCwd(cwd),
+      cwd: initial.cwd,
+      projectName: initial.projectName,
       phase: { type: 'idle' },
       chatItems: [],
       source: 'stream',
