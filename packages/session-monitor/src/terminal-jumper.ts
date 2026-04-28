@@ -24,6 +24,7 @@ const TERMINAL_REGISTRY = new Map<string, string>([
   ['Ghostty', 'com.mitchellh.ghostty'],
   ['ghostty', 'com.mitchellh.ghostty'],
   ['iTerm2', 'com.googlecode.iterm2'],
+  ['iTermServer', 'com.googlecode.iterm2'],
   ['Terminal', 'com.apple.Terminal'],
   ['Warp', 'dev.warp.Warp-Stable'],
   ['kitty', 'net.kovidgoyal.kitty'],
@@ -58,6 +59,13 @@ function findTerminalInPath(comm: string): TerminalInfo | null {
   for (const [name, bundleId] of TERMINAL_REGISTRY) {
     const lowerName = name.toLowerCase()
     if (lowerBasename === lowerName || lowerComm.endsWith(`/${lowerName}`)) {
+      return { name, bundleId }
+    }
+  }
+  // Fallback: match basename prefix (e.g. "iTermServer-3.6.9" starts with "iTermServer")
+  for (const [name, bundleId] of TERMINAL_REGISTRY) {
+    const lowerName = name.toLowerCase()
+    if (lowerBasename.startsWith(lowerName.toLowerCase())) {
       return { name, bundleId }
     }
   }
@@ -208,6 +216,8 @@ async function activateITerm2(tty: string | undefined): Promise<boolean> {
   if (!tty) return false
   const ttyBasename = tty.replace(/^\/dev\//, '')
   const script = `
+do shell script "open -a 'iTerm'"
+delay 0.3
 tell application "iTerm2"
   activate
   repeat with aWin in windows
@@ -454,6 +464,7 @@ class MacOSTerminalJumper implements PlatformTerminalJumper {
   async focusTerminal(info: TerminalInfo, session: SessionState): Promise<boolean> {
     switch (info.name) {
       case 'iTerm2':
+      case 'iTermServer':
         return activateITerm2(info.tty)
       case 'Ghostty':
         return activateGhostty(session.cwd)
