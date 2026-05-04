@@ -602,7 +602,7 @@ ipcMain.handle('dialog:saveMarkdown', async (_event, content: string, defaultNam
 
 // ── Session Monitor ──────────────────────────────────────────
 
-import { SessionStore, createSocketServer, installHooks, hooksInstalled, watchJsonlFile, parseFullConversation } from '@coding-bubble/session-monitor'
+import { SessionStore, HistoryStore, createSocketServer, installHooks, hooksInstalled, watchJsonlFile, parseFullConversation } from '@coding-bubble/session-monitor'
 import type { NotificationAutoCloseConfig } from '@coding-bubble/session-monitor'
 import type { HookEvent } from '@coding-bubble/session-monitor'
 import { TerminalJumper } from '@coding-bubble/session-monitor'
@@ -610,6 +610,7 @@ import { StreamAdapterManager, handleStreamEvent } from './stream-adapter'
 import type { StreamEventContext } from './stream-adapter'
 
 let sessionStore: SessionStore | null = null
+let historyStore: HistoryStore | null = null
 let streamManager: StreamAdapterManager | null = null
 let remoteManager: RemoteManager | null = null
 let remoteHookAdapter: RemoteHookAdapter | null = null
@@ -635,6 +636,11 @@ function broadcastToRenderer(channel: string, data: unknown): void {
 ipcMain.handle('session:list', () => {
   if (!sessionStore) return []
   return Array.from(sessionStore.sessions.values())
+})
+
+ipcMain.handle('history:query', (_event, page: number = 1, pageSize: number = 20) => {
+  if (!historyStore) return { entries: [], totalCount: 0 }
+  return historyStore.query(page, pageSize)
 })
 
 ipcMain.handle('session:approve', async (_event, sessionId: string) => {
@@ -1369,6 +1375,11 @@ app.whenReady().then(() => {
 
   sessionStore = new SessionStore()
   sessionStore.onPublish((channel: string, data: unknown) => broadcastToRenderer(channel, data))
+
+  historyStore = new HistoryStore(resolveDataDir())
+  sessionStore.onSessionEnd((session) => {
+    historyStore?.save(session)
+  })
 
   // Load notification auto-close config from persisted config
   const defaultAutoClose: NotificationAutoCloseConfig = { approval: 0, error: 30, input: 15, done: 15, quickApproval: true }

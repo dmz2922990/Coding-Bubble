@@ -60,6 +60,7 @@ export class SessionStore {
   private _onInterventionChange?: (interventions: Intervention[]) => void
   private _onNotificationChange?: (notifications: BubbleNotification[]) => void
   private _onPhaseChange?: () => void
+  private _onSessionEnd?: (session: SessionState) => void
 
   get sessions(): ReadonlyMap<string, SessionState> {
     return this._sessions
@@ -235,6 +236,7 @@ export class SessionStore {
     const session = this._sessions.get(sessionId)
     if (!session) return
     this.transition(session, 'ended')
+    this._onSessionEnd?.(session)
     this._removeIntervention(sessionId)
     this._notifications.delete(sessionId)
     this._clearNotificationTimer(sessionId)
@@ -826,6 +828,10 @@ export class SessionStore {
 
   onPhaseChange(cb: () => void): void {
     this._onPhaseChange = cb
+  }
+
+  onSessionEnd(cb: (session: SessionState) => void): void {
+    this._onSessionEnd = cb
   }
 
   private _updateNotifications(session: SessionState): void {

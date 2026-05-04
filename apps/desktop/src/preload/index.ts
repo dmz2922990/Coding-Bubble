@@ -158,6 +158,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     setConfig: (config: Record<string, number>): Promise<void> =>
       ipcRenderer.invoke('notification:set-config', config),
   },
+  /** Session history */
+  history: {
+    query: (page: number = 1, pageSize: number = 20): Promise<{ entries: unknown[]; totalCount: number }> =>
+      ipcRenderer.invoke('history:query', page, pageSize),
+  },
   /** Notification window: report content size to main process */
   notificationResize: (width: number, height: number): void => {
     ipcRenderer.send('notification:resize', width, height)

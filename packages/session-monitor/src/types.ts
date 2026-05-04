@@ -160,6 +160,18 @@ export type ChatHistoryItem =
   | { id: string; type: 'taskNotification'; taskId: string; phase: TaskNotificationPhase; description: string; progress: string[]; summary?: string; timestamp: number }
   | { id: string; type: 'resultSummary'; durationMs?: number; inputTokens?: number; outputTokens?: number; costUsd?: number; interrupted?: boolean; timestamp: number }
 
+// ═─ Session History ─────────────────────────────────────────
+
+export interface SessionHistoryEntry {
+  sessionId: string
+  projectName: string
+  cwd: string
+  source: 'hook' | 'stream' | 'remote-hook' | 'remote-stream'
+  summary: string
+  closedAt: number
+  createdAt: number
+}
+
 // ═─ Session State ───────────────────────────────────────────
 
 export interface SessionState {

@@ -4,6 +4,7 @@ import { TabBar } from './TabBar'
 import { SessionListView } from './SessionListView'
 import { SessionTab, PermissionStatusBar } from './SessionTab'
 import { MessageInput } from './MessageInput'
+import { HistoryView } from './HistoryView'
 import type { TabItem, SessionInfo, ChatItem, SessionPhaseType, InitMetadata, PermissionSuggestion } from './types'
 import './styles.css'
 
@@ -18,6 +19,7 @@ export function ChatPanel(): React.JSX.Element {
   const [sessionItems, setSessionItems] = useState<Map<string, ChatItem[]>>(new Map())
   const [activeSessionTab, setActiveSessionTab] = useState<string | null>(null)
   const [hookStatus, setHookStatus] = useState<{ installed: boolean }>({ installed: false })
+  const [isHistoryView, setIsHistoryView] = useState(false)
 
   const chatTab = useMemo<Omit<TabItem, 'content'>>(
     () => ({ id: 'chat', title: '对话', closable: false }),
@@ -257,9 +259,18 @@ export function ChatPanel(): React.JSX.Element {
     tabManager.removeTab(id)
   }, [tabManager, sessions])
 
+  const handleTabSelect = useCallback((tabId: string) => {
+    setIsHistoryView(false)
+    tabManager.setActiveTabId(tabId)
+  }, [tabManager])
+
   const activeTab = tabManager.tabs.find((t) => t.id === tabManager.activeTabId)
 
   const renderActiveTabContent = (): React.ReactNode => {
+    if (isHistoryView) {
+      return <HistoryView onBack={() => setIsHistoryView(false)} />
+    }
+
     if (tabManager.activeTabId === 'chat') {
       const sessionList = Array.from(sessions.values()).map((s) => s.session)
       return (
@@ -335,9 +346,16 @@ export function ChatPanel(): React.JSX.Element {
           tabs={allTabs}
           chatTab={allTabs.find((t) => t.id === 'chat')}
           activeTabId={tabManager.activeTabId}
-          onTabSelect={tabManager.setActiveTabId}
+          onTabSelect={handleTabSelect}
           onTabClose={handleTabClose}
         />
+        <button
+          className={`chat-panel__history-btn${isHistoryView ? ' chat-panel__history-btn--active' : ''}`}
+          onClick={() => setIsHistoryView(v => !v)}
+          title="会话历史"
+        >
+          History
+        </button>
         <button className="chat-panel__close" onClick={handleClose} title="关闭">×</button>
       </div>
 
