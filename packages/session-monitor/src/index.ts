@@ -1,4 +1,5 @@
 export { SessionStore } from './session-store'
+export { HistoryStore } from './history-store'
 export { createSocketServer } from './socket-server'
 export { installHooks, uninstallHooks, hooksInstalled } from './hook-installer'
 export { parseFullConversation, parseIncremental, watchJsonlFile } from './jsonl-parser'
