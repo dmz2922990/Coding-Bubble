@@ -357,7 +357,6 @@ export class SessionStore {
         }
         break
       case 'PostToolUseFailure':
-        this.transition(session, 'error')
         break
       case 'StopFailure':
         this.transition(session, 'error')
