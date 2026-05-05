@@ -21,6 +21,7 @@ export interface StreamAdapterOptions {
 /** Context objects needed by the shared stream event handler */
 export interface StreamEventContext {
   pendingPermissions: Map<string, PendingStreamPermission>
+  permissionQueue: Map<string, PendingStreamPermission[]>
   subToolParents: Map<string, string>
   interrupted: Set<string>
   destroying: Set<string>
@@ -33,6 +34,7 @@ export class StreamAdapterManager {
   private _store: SessionStore
   private _broadcast: (channel: string, data: unknown) => void
   private _pendingPermissions = new Map<string, PendingStreamPermission>()
+  private _permissionQueue = new Map<string, PendingStreamPermission[]>()
   private _interrupted = new Set<string>()
   private _subToolParents = new Map<string, string>()
 
@@ -145,6 +147,7 @@ export class StreamAdapterManager {
     })
 
     entry.resolve({ decision: 'allow' })
+    this._dequeueNext(sessionId)
   }
 
   denyPermission(sessionId: string, reason?: string): void {
@@ -167,6 +170,7 @@ export class StreamAdapterManager {
     })
 
     entry.resolve({ decision: 'deny', reason })
+    this._dequeueNext(sessionId)
   }
 
   alwaysAllowPermission(sessionId: string): void {
@@ -201,6 +205,7 @@ export class StreamAdapterManager {
     })
 
     entry.resolve({ decision: 'allow', updatedPermissions: [suggestion] })
+    this._dequeueNext(sessionId)
   }
 
   interrupt(sessionId: string): void {
@@ -233,10 +238,11 @@ export class StreamAdapterManager {
     })
 
     entry.resolve({ decision: 'allow', updatedInput })
+    this._dequeueNext(sessionId)
   }
-
   async destroy(sessionId: string): Promise<void> {
     _cleanupPending(this._pendingPermissions, sessionId)
+    this._permissionQueue.delete(sessionId)
     this._destroying.add(sessionId)
 
     const stream = this._sessions.get(sessionId)
@@ -265,9 +271,38 @@ export class StreamAdapterManager {
 
   // ── Private ──────────────────────────────────────────────────
 
+  private _dequeueNext(sessionId: string): void {
+    const queue = this._permissionQueue.get(sessionId)
+    if (!queue?.length) return
+
+    const next = queue.shift()!
+    if (queue.length === 0) this._permissionQueue.delete(sessionId)
+
+    new Promise<HookResponse>((resolve) => {
+      this._pendingPermissions.set(sessionId, {
+        requestId: next.requestId,
+        toolName: next.toolName,
+        toolInput: next.toolInput,
+        formattedDetail: next.formattedDetail,
+        suggestions: next.suggestions,
+        resolve,
+      })
+
+      this._store.process({
+        hook_event_name: 'PermissionRequest',
+        session_id: sessionId,
+        cwd: '',
+        payload: { toolUseId: next.requestId, tool: next.toolName, input: next.toolInput, suggestions: next.suggestions },
+      })
+    }).catch((err) => {
+      console.error('[stream-adapter] dequeued permission handler error:', err)
+    })
+  }
+
   private _handleEvent(sessionId: string, event: StreamEvent): void {
     handleStreamEvent(this._store, this._broadcast, sessionId, event, {
       pendingPermissions: this._pendingPermissions,
+      permissionQueue: this._permissionQueue,
       subToolParents: this._subToolParents,
       interrupted: this._interrupted,
       destroying: this._destroying,
@@ -401,6 +436,22 @@ export function handleStreamEvent(
       const toolInput = event.toolInput ?? null
       const rawSuggestions = (event.suggestions ?? []) as PermissionSuggestion[]
       const suggestions = mergeSuggestions(rawSuggestions)
+
+      // If AskUserQuestion is pending, queue this request instead of replacing it
+      const currentPending = ctx.pendingPermissions.get(sessionId)
+      if (currentPending?.toolName === 'AskUserQuestion') {
+        const queue = ctx.permissionQueue.get(sessionId) ?? []
+        queue.push({
+          requestId,
+          toolName,
+          toolInput,
+          formattedDetail: formatToolDetail(toolName, toolInput),
+          suggestions,
+          resolve: () => {}, // placeholder, will be replaced when dequeued
+        })
+        ctx.permissionQueue.set(sessionId, queue)
+        break
+      }
 
       _cleanupPending(ctx.pendingPermissions, sessionId)
 
