@@ -36,10 +36,12 @@ const BUBBLE_HOOK_ID = 'claude-bubble-state'
 // Injected at build time by tsup for standalone bundles
 declare const __HOOK_SCRIPT__: string | undefined
 
+// Store in a separate const to prevent tsup DCE from removing the return statement
+const _inlineHookScript: string | undefined = typeof __HOOK_SCRIPT__ !== 'undefined' ? __HOOK_SCRIPT__ : undefined
+
 function loadHookScript(): string {
-  // Standalone bundle: hook script inlined as string constant
-  if (typeof __HOOK_SCRIPT__ !== 'undefined' && __HOOK_SCRIPT__) {
-    return __HOOK_SCRIPT__
+  if (_inlineHookScript) {
+    return _inlineHookScript
   }
 
   const candidates = [
@@ -58,18 +60,23 @@ function loadHookScript(): string {
 
 export function installHooks(): void {
   const hookDir = join(resolveClaudeDir(), 'hooks')
+  const hookPath = resolveHookPath()
+  const settingsPath = resolveSettingsPath()
+
+  console.log('[hooks] installing hooks...')
+  console.log('[hooks] hook script:', hookPath)
+  console.log('[hooks] settings:', settingsPath)
+
   if (!existsSync(hookDir)) mkdirSync(hookDir, { recursive: true })
 
-  writeFileSync(resolveHookPath(), loadHookScript(), { mode: 0o755 })
+  writeFileSync(hookPath, loadHookScript(), { mode: 0o755 })
 
-  const settingsPath = resolveSettingsPath()
   const settings: Record<string, unknown> = existsSync(settingsPath)
     ? JSON.parse(readFileSync(settingsPath, 'utf-8'))
     : {}
 
   const hooks: Record<string, unknown[]> = (settings.hooks as Record<string, unknown[]>) ?? {}
 
-  const hookPath = resolveHookPath()
   const command = process.platform === 'win32'
     ? `node "${hookPath}"`
     : `node ${hookPath}`
@@ -94,10 +101,13 @@ export function installHooks(): void {
   const settingsDir = join(settingsPath, '..')
   if (!existsSync(settingsDir)) mkdirSync(settingsDir, { recursive: true })
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf-8')
+
+  console.log('[hooks] installed', HOOK_EVENTS.length, 'hook events to', settingsPath)
 }
 
 export function uninstallHooks(): void {
   const hookPath = resolveHookPath()
+  console.log('[hooks] uninstalling hooks...')
   if (existsSync(hookPath)) {
     try { require('fs').unlinkSync(hookPath) } catch { /* ignore */ }
   }
@@ -121,6 +131,7 @@ export function uninstallHooks(): void {
     }
 
     writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf-8')
+    console.log('[hooks] removed hook entries from', settingsPath)
   } catch { /* ignore */ }
 }
 
