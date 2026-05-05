@@ -1504,10 +1504,10 @@ app.whenReady().then(() => {
       const session = sessionStore?.sessions.get(sessionId)
       const permissionMode = session?.permissionMode ?? 'auto'
 
-      console.log('[main] onPermissionRequest sessionId:', sessionId, 'permissionMode:', permissionMode, 'suggestions:', suggestions.length)
+      console.log('[main] onPermissionRequest sessionId:', sessionId, 'permissionMode:', permissionMode, 'toolName:', toolName, 'suggestions:', suggestions.length)
 
-      if (permissionMode === 'bypassPermissions' || permissionMode === 'auto') {
-        // Auto-allow for bypass and auto modes only
+      // AskUserQuestion always requires user interaction regardless of permission mode
+      if ((permissionMode === 'bypassPermissions' || permissionMode === 'auto') && toolName !== 'AskUserQuestion') {
         console.log('[main] auto-allow for permissionMode:', permissionMode)
         return { decision: 'allow' }
       }
