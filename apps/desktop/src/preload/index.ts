@@ -76,7 +76,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onUpdate: (cb: (event: unknown, data: unknown) => void) => {
       ipcRenderer.on('session:update', cb)
       return () => ipcRenderer.removeListener('session:update', cb)
-    }
+    },
+    forceClose: (sessionId: string): Promise<void> =>
+      ipcRenderer.invoke('session:force-close', sessionId),
   },
   /** Stream session management */
   stream: {

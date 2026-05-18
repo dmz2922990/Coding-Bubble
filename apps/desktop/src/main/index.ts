@@ -638,6 +638,26 @@ ipcMain.handle('session:list', () => {
   return Array.from(sessionStore.sessions.values())
 })
 
+ipcMain.handle('session:force-close', async (_event, sessionId: string) => {
+  if (!sessionStore) return
+  const session = sessionStore.get(sessionId)
+  if (!session) return
+
+  const source = session.source ?? 'hook'
+
+  if (source === 'stream') {
+    try { await streamManager?.destroy(sessionId) } catch { /* best effort */ }
+  } else if (source === 'remote-stream') {
+    const serverId = remoteSessionServerMap.get(sessionId)
+    if (serverId) {
+      remoteSessionServerMap.delete(sessionId)
+      try { await remoteStreamAdapter?.destroy(serverId, sessionId) } catch { /* best effort */ }
+    }
+  }
+
+  sessionStore.forceEndSession(sessionId)
+})
+
 ipcMain.handle('history:query', (_event, page: number = 1, pageSize: number = 20) => {
   if (!historyStore) return { entries: [], totalCount: 0 }
   return historyStore.query(page, pageSize)

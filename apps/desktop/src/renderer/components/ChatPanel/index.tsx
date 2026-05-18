@@ -259,6 +259,12 @@ export function ChatPanel(): React.JSX.Element {
     tabManager.removeTab(id)
   }, [tabManager, sessions])
 
+  const handleForceClose = useCallback((sessionId: string) => {
+    const confirmed = window.confirm('确定强制关闭该会话？')
+    if (!confirmed) return
+    window.electronAPI.session.forceClose(sessionId)
+  }, [])
+
   const handleTabSelect = useCallback((tabId: string) => {
     setIsHistoryView(false)
     tabManager.setActiveTabId(tabId)
@@ -281,6 +287,7 @@ export function ChatPanel(): React.JSX.Element {
           onCreateStreamSession={handleCreateStreamSession}
           onCreateRemoteStreamSession={handleCreateRemoteStreamSession}
           onDestroyStream={handleTabClose}
+          onForceClose={handleForceClose}
         />
       )
     }

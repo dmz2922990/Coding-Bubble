@@ -46,11 +46,37 @@ interface Props {
   onCreateStreamSession?: (cwd: string, options?: { continue?: boolean; bypassPermissions?: boolean }) => void
   onCreateRemoteStreamSession?: (serverId: string, cwd: string, options?: { continue?: boolean; bypassPermissions?: boolean }) => void
   onDestroyStream?: (sessionId: string) => void
+  onForceClose?: (sessionId: string) => void
 }
 
-export function SessionListView({ sessions, onSessionClick, onJumpToTerminal, onCreateStreamSession, onCreateRemoteStreamSession, onDestroyStream }: Props): React.JSX.Element {
+export function SessionListView({ sessions, onSessionClick, onJumpToTerminal, onCreateStreamSession, onCreateRemoteStreamSession, onDestroyStream, onForceClose }: Props): React.JSX.Element {
   const [showLocalDialog, setShowLocalDialog] = useState(false)
   const [showRemoteDialog, setShowRemoteDialog] = useState(false)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; sessionId: string } | null>(null)
+
+  const handleContextMenu = useCallback((e: React.MouseEvent, sessionId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setContextMenu({ x: e.clientX, y: e.clientY, sessionId })
+  }, [])
+
+  const handleForceClose = useCallback(() => {
+    if (!contextMenu || !onForceClose) return
+    onForceClose(contextMenu.sessionId)
+    setContextMenu(null)
+  }, [contextMenu, onForceClose])
+
+  useEffect(() => {
+    if (!contextMenu) return
+    const close = () => setContextMenu(null)
+    window.addEventListener('click', close)
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
+    window.addEventListener('keydown', handleKey)
+    return () => {
+      window.removeEventListener('click', close)
+      window.removeEventListener('keydown', handleKey)
+    }
+  }, [contextMenu])
 
   return (
     <div className="session-list-wrapper">
@@ -61,7 +87,7 @@ export function SessionListView({ sessions, onSessionClick, onJumpToTerminal, on
           </div>
         ) : (
           sessions.map((s) => (
-            <SessionCard key={s.sessionId} session={s} onClick={() => onSessionClick(s.sessionId)} onJumpToTerminal={s.source === 'hook' && onJumpToTerminal ? () => onJumpToTerminal(s.sessionId) : undefined} onDestroy={(s.source === 'stream' || s.source === 'remote-stream') && onDestroyStream ? () => onDestroyStream(s.sessionId) : undefined} />
+            <SessionCard key={s.sessionId} session={s} onClick={() => onSessionClick(s.sessionId)} onJumpToTerminal={s.source === 'hook' && onJumpToTerminal ? () => onJumpToTerminal(s.sessionId) : undefined} onDestroy={(s.source === 'stream' || s.source === 'remote-stream') && onDestroyStream ? () => onDestroyStream(s.sessionId) : undefined} onContextMenu={handleContextMenu} />
           ))
         )}
       </div>
@@ -89,11 +115,20 @@ export function SessionListView({ sessions, onSessionClick, onJumpToTerminal, on
           onCreate={onCreateRemoteStreamSession!}
         />
       )}
+      {contextMenu && onForceClose && (
+        <div
+          className="session-context-menu"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button className="session-context-menu__item" onClick={handleForceClose}>
+            强制关闭
+          </button>
+        </div>
+      )}
     </div>
   )
 }
-
-// ── Local Session Dialog ─────────────────────────────────
 
 function LocalSessionDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (cwd: string, options?: { continue?: boolean; bypassPermissions?: boolean }) => void }): React.JSX.Element {
   const [entries, setEntries] = useState<{ name: string; path: string }[]>([])
@@ -339,13 +374,13 @@ function RemoteSessionDialog({ onClose, onCreate }: { onClose: () => void; onCre
   )
 }
 
-function SessionCard({ session, onClick, onJumpToTerminal, onDestroy }: { session: SessionInfo; onClick: () => void; onJumpToTerminal?: () => void; onDestroy?: () => void }): React.JSX.Element {
+function SessionCard({ session, onClick, onJumpToTerminal, onDestroy, onContextMenu }: { session: SessionInfo; onClick: () => void; onJumpToTerminal?: () => void; onDestroy?: () => void; onContextMenu?: (e: React.MouseEvent, sessionId: string) => void }): React.JSX.Element {
   const statusDotColor = PHASE_COLORS[session.phase] ?? '#888'
   const isWaitingApproval = session.phase === 'waitingForApproval'
   const isRemote = session.source?.startsWith('remote')
 
   return (
-    <div className={`session-card session-card--${session.source ?? 'hook'}`} onClick={onClick}>
+    <div className={`session-card session-card--${session.source ?? 'hook'}`} onClick={onClick} onContextMenu={onContextMenu ? (e) => onContextMenu(e, session.sessionId) : undefined}>
       <div className="session-card__row">
         <div className="session-card__info">
           <div className="session-card__header">

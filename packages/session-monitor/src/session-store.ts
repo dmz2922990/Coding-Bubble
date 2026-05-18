@@ -70,6 +70,28 @@ export class SessionStore {
     return this._sessions.get(sessionId)
   }
 
+  forceEndSession(sessionId: string): void {
+    const session = this._sessions.get(sessionId)
+    if (!session) return
+
+    this._clearOneshotTimer(sessionId)
+    this._clearNotificationTimer(sessionId)
+    this._removeIntervention(sessionId)
+    this._notifications.delete(sessionId)
+    this._notifyNotificationChange()
+
+    for (const [toolUseId, queue] of this._pendingPermissions) {
+      const filtered = queue.filter(p => p.sessionId !== sessionId)
+      if (filtered.length === 0) this._pendingPermissions.delete(toolUseId)
+      else this._pendingPermissions.set(toolUseId, filtered)
+    }
+
+    this._sessions.delete(sessionId)
+    this._sessionInitialData.delete(sessionId)
+    this._onSessionEnd?.(session)
+    this._publish('session:ended', { sessionId })
+  }
+
   setPermissionMode(sessionId: string, mode: string): void {
     const session = this._sessions.get(sessionId)
     if (session) {
